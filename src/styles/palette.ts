@@ -1,0 +1,35 @@
+export const palette = {
+  // blue
+  blue300: '#E8EEFC',
+  blue400: '#5B8CF1',
+  blue500: '#537FF1',
+  blue600: '#3E6AD1',
+  blue700: '#2C4FA1',
+  // pink
+  pink300: '#F1A5B5',
+  pink500: '#E3879E',
+  pink600: '#F1A5B5',
+  // purple
+  purple300: '#A1A6FF',
+  purple500: '#7D83FF',
+  purple600: '#5A61CC',
+  // green
+  green300: '#66D2D0',
+  green500: '#00A9A5',
+  green600: '#007D7A',
+  // yellow
+  yellow300: '#FFEB66',
+  yellow500: '#FFDD00',
+  yellow600: '#CCB000',
+  // grey
+  grey100: '#FAFAFC',
+  grey200: '#D5D7DA',
+  grey300: '#CECECE',
+  grey400: '#979797',
+  grey500: '#717680',
+  grey600: '#687182',
+  // etc
+  nearBlack: '#1E1E1E',
+  black: '#333333',
+  white: '#FFFFFF',
+};
