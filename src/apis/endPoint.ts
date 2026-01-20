@@ -12,4 +12,6 @@ export const ENDPOINT = {
   CAPABILITY: `/api/mileage/capability`,
   // contact
   CONTACT: `/api/mileage/contact`,
+  // award
+  AWARD: `/api/mileage/award`,
 };

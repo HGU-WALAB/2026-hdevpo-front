@@ -1,4 +1,6 @@
 import {
+  AwardListBlueIcon,
+  AwardListIcon,
   DashboardBlueIcon,
   DashboardIcon,
   MileageAddBlueIcon,
@@ -47,6 +49,14 @@ export const drawerItems = [
   },
   {
     id: 5,
+    text: '수상 내역',
+    shortText: '수상',
+    icon: AwardListIcon,
+    selectedIcon: AwardListBlueIcon,
+    route: ROUTE_PATH.awardArchive,
+  },
+  {
+    id: 6,
     text: '프로필 설정',
     shortText: '프로필',
     icon: UserIcon,

@@ -13,6 +13,7 @@ const AddMileagePage = React.lazy(() => import('@/pages/mileage/MileageAddPage')
 const ScholarshipApplyPage = React.lazy(
   () => import('@/pages/mileage/ScholarshipApplyPage'),
 );
+const AwardArchivePage = React.lazy(() => import('@/pages/award/AwardArchivePage'));
 const MyPage = React.lazy(() => import('@/pages/profile/MyPage'));
 const LoginPage = React.lazy(() => import('@/pages/auth/LoginPage'));
 const ErrorPage = React.lazy(() => import('@/pages/etc/ErrorPage'));
@@ -43,6 +44,10 @@ const router = createBrowserRouter(
         {
           path: ROUTE_PATH.scholarship,
           element: <ScholarshipApplyPage />,
+        },
+        {
+          path: ROUTE_PATH.awardArchive,
+          element: <AwardArchivePage />,
         },
         {
           path: ROUTE_PATH.myPage,

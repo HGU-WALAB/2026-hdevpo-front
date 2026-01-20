@@ -1,6 +1,10 @@
 // icons
 import AlertBoxIcon from '@/assets/icons/alertBox.svg?react';
+import ArrowRightIcon from '@/assets/icons/arrow-right.svg?react';
 import AsteriskIcon from '@/assets/icons/asterisk.svg?react';
+import AwardListIcon from '@/assets/icons/awardList.svg?react';
+import AwardListBlueIcon from '@/assets/icons/awardListBlue.svg?react';
+import BuildingIcon from '@/assets/icons/other.svg?react';
 import CheckIcon from '@/assets/icons/check.svg?react';
 import CheckBoxIcon from '@/assets/icons/checkBox.svg?react';
 import CheckCircleIcon from '@/assets/icons/checkCircle.svg?react';
@@ -20,6 +24,7 @@ import MileageListBlueIcon from '@/assets/icons/mileageListBlue.svg?react';
 import ScholarshipIcon from '@/assets/icons/scholarship.svg?react';
 import ScholarshipBlueIcon from '@/assets/icons/scholarshipBlue.svg?react';
 import SearchIcon from '@/assets/icons/search.svg?react';
+import SchoolIcon from '@/assets/icons/school.svg?react';
 import ThemeIcon from '@/assets/icons/theme.svg?react';
 import UserIcon from '@/assets/icons/user.svg?react';
 import UserBlueIcon from '@/assets/icons/userBlue.svg?react';
@@ -43,8 +48,12 @@ import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 
 export {
   AlertBoxIcon,
+  ArrowRightIcon,
   AsteriskIcon,
+  AwardListBlueIcon,
+  AwardListIcon,
   BackgroundImg,
+  BuildingIcon,
   CheckBoxIcon,
   CheckCircleIcon,
   CheckCircleOutlineIcon,
@@ -77,6 +86,7 @@ export {
   ChevronRightIcon as RightArrowIcon,
   ScholarshipBlueIcon,
   ScholarshipIcon,
+  SchoolIcon,
   SearchIcon,
   ThemeIcon,
   UserBlueIcon,

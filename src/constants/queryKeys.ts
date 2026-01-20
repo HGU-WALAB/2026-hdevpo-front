@@ -7,5 +7,6 @@ export const QUERY_KEYS = {
   userInfo: 'userInfo',
   capability: 'capability',
   semesterCapability: 'semesterCapability',
+  award: 'award',
   faq: 'faq',
 };
