@@ -1,9 +1,7 @@
 import { Flex, Footer } from '@/components';
 import {
   ChartSection,
-  FAQSection,
   NoAccessLogoutModal,
-  ProcessSection,
   ScholarshipDurationSection,
   ScholarshipStudentTypeSection,
 } from './components';
@@ -23,10 +21,6 @@ const DashboardPage = () => {
       </Flex.Row>
 
       <ChartSection />
-
-      <ProcessSection />
-
-      <FAQSection />
 
 
       {student.studentType === '기타' && <NoAccessLogoutModal />}

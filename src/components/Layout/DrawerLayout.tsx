@@ -20,7 +20,7 @@ const DrawerLayout = () => {
     <Flex.Column>
       <Drawer />
       <Flex.Row justify="center">
-        <Main open={isDrawerOpen}>
+        <Main open={isDrawerOpen} isMobile={isMobile}>
           <Header />
           <ErrorResetBoundary />
         </Main>
@@ -32,10 +32,11 @@ const DrawerLayout = () => {
 export default DrawerLayout;
 
 const MobileDrawerLayout = () => {
+  const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
   return (
     <Flex.Column>
       <HeaderMobile />
-      <Main open={false}>
+      <Main open={false} isMobile={isMobile}>
         <ErrorResetBoundary />
       </Main>
       <NavigationBar />

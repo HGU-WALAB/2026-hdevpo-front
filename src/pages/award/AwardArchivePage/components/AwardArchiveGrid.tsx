@@ -41,7 +41,11 @@ export const AwardArchiveGrid = ({ showForwardButton = true }: Props) => {
         />
       ))}
 
-      {showForwardButton && !isAwardPage && <AwardPageForwardButton />}
+      {showForwardButton && !isAwardPage && (
+        <S.ForwardButtonWrapper className="forwardButton">
+          <AwardPageForwardButton />
+        </S.ForwardButtonWrapper>
+      )}
     </S.GridLayout>
   );
 };
@@ -56,9 +60,10 @@ const S = {
     ${({ isMobile }) =>
       isMobile &&
       `
-        & > *:last-of-type {
+        & > .forwardButton {
           grid-column: span 2;
         }
       `}
   `,
+  ForwardButtonWrapper: styled('div')``,
 };
