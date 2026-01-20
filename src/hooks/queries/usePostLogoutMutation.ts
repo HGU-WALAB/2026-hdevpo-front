@@ -1,4 +1,4 @@
-import { postLogout } from '@/apis/auth';
+import { postLogout } from '@/pages/auth/apis/auth';
 import { useAuthStore } from '@/stores';
 import { useMutation } from '@tanstack/react-query';
 

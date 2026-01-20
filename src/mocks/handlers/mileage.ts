@@ -7,7 +7,7 @@ import { Error400, Error401, Error500, randomMswError } from '@/utils/mswError';
 
 import { mockEtcMileageList } from '@/mocks/fixtures/etcMileageList';
 import { mockSubmittedMileageList } from '@/mocks/fixtures/submittedMileageList';
-import { SubmittedMileageResponse } from '@/types/mileage';
+import { SubmittedMileageResponse } from '@/pages/mileage/types/mileage';
 import { LiveStorage } from '@mswjs/storage';
 
 export const MileageHandlers = [

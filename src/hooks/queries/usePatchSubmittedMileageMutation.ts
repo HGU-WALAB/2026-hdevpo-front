@@ -1,4 +1,4 @@
-import { patchSubmittedMileage } from '@/apis/mileage';
+import { patchSubmittedMileage } from '@/pages/mileage/apis/mileage';
 import { QUERY_KEYS } from '@/constants/queryKeys';
 import { getErrorMessage } from '@/utils/getErrorMessage';
 import { useMutation, useQueryClient } from '@tanstack/react-query';

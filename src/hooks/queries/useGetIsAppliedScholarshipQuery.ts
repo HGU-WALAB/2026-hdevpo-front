@@ -1,6 +1,6 @@
-import { getIsAppliedScholarship } from '@/apis/scholarship';
+import { getIsAppliedScholarship } from '@/pages/mileage/apis/scholarship';
 import { QUERY_KEYS } from '@/constants/queryKeys';
-import { IsAppliedScholarshipResponse } from '@/types/scholarship';
+import { IsAppliedScholarshipResponse } from '@/pages/mileage/types/scholarship';
 import { useQuery } from '@tanstack/react-query';
 
 const useGetIsAppliedScholarshipQuery = () => {

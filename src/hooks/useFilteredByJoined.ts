@@ -1,4 +1,4 @@
-import { filterJoinedItems } from '@/constants/filterItems';
+import { filterJoinedItems } from '@/pages/mileage/constants/filterItems';
 import { useQueryParams } from '@/hooks';
 import { TabItem } from '@/types/tab';
 

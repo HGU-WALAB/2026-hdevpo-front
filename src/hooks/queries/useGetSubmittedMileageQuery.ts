@@ -1,6 +1,6 @@
-import { getSubmittedMileageList } from '@/apis/mileage';
+import { getSubmittedMileageList } from '@/pages/mileage/apis/mileage';
 import { QUERY_KEYS } from '@/constants/queryKeys';
-import { SubmittedMileageResponse } from '@/types/mileage';
+import { SubmittedMileageResponse } from '@/pages/mileage/types/mileage';
 import { useQuery } from '@tanstack/react-query';
 
 const useGetSubmittedMileageQuery = () => {

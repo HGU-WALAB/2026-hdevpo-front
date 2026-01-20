@@ -1,4 +1,4 @@
-import { MileageResponse } from '@/types/mileage';
+import { MileageResponse } from '@/pages/mileage/types/mileage';
 
 export const mockMileageList: MileageResponse[] = [
   {

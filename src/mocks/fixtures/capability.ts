@@ -1,4 +1,4 @@
-import { CapabilityResponse } from '@/types/capability';
+import { CapabilityResponse } from '@/pages/dashboard/types/capability';
 
 export const mockCapability: CapabilityResponse[] = [
   {

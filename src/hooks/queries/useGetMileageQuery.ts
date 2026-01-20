@@ -1,6 +1,6 @@
-import { getMileageList } from '@/apis/mileage';
+import { getMileageList } from '@/pages/mileage/apis/mileage';
 import { QUERY_KEYS } from '@/constants/queryKeys';
-import { MileageRequest, MileageResponse } from '@/types/mileage';
+import { MileageRequest, MileageResponse } from '@/pages/mileage/types/mileage';
 import { useQuery } from '@tanstack/react-query';
 
 const useGetMileageQuery = ({

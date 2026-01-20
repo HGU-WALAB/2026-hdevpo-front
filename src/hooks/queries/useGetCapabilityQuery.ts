@@ -1,6 +1,6 @@
-import { getCapability } from '@/apis/capability';
+import { getCapability } from '@/pages/dashboard/apis/capability';
 import { QUERY_KEYS } from '@/constants/queryKeys';
-import { CapabilityResponse } from '@/types/capability';
+import { CapabilityResponse } from '@/pages/dashboard/types/capability';
 import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 

@@ -3,16 +3,20 @@ import { ROUTE_PATH } from '@/constants/routePath';
 import React from 'react';
 import { createBrowserRouter } from 'react-router-dom';
 
-const DashboardPage = React.lazy(() => import('@/pages/DashboardPage'));
-const MileageListPage = React.lazy(() => import('@/pages/MileageListPage'));
-const AddMileagePage = React.lazy(() => import('@/pages/AddMileagePage'));
-const ScholarshipApplyPage = React.lazy(
-  () => import('@/pages/ScholarshipApplyPage'),
+const DashboardPage = React.lazy(
+  () => import('@/pages/dashboard/DashboardPage'),
 );
-const MyPage = React.lazy(() => import('@/pages/MyPage'));
-const LoginPage = React.lazy(() => import('@/pages/LoginPage'));
-const ErrorPage = React.lazy(() => import('@/pages/ErrorPage'));
-const NotFoundPage = React.lazy(() => import('@/pages/NotFoundPage'));
+const MileageListPage = React.lazy(
+  () => import('@/pages/mileage/MileageListPage'),
+);
+const AddMileagePage = React.lazy(() => import('@/pages/mileage/MileageAddPage'));
+const ScholarshipApplyPage = React.lazy(
+  () => import('@/pages/mileage/ScholarshipApplyPage'),
+);
+const MyPage = React.lazy(() => import('@/pages/profile/MyPage'));
+const LoginPage = React.lazy(() => import('@/pages/auth/LoginPage'));
+const ErrorPage = React.lazy(() => import('@/pages/etc/ErrorPage'));
+const NotFoundPage = React.lazy(() => import('@/pages/etc/NotFoundPage'));
 
 const router = createBrowserRouter(
   [

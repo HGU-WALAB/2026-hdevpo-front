@@ -1,4 +1,4 @@
-import { HISNET_AUTH_URL } from '@/constants/auth';
+import { HISNET_AUTH_URL } from '@/pages/auth/constants/auth';
 import { usePostLoginMutation } from '@/hooks/queries';
 import { useEffect } from 'react';
 

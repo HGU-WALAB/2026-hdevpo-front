@@ -1,4 +1,4 @@
-import { ScholarshipDurationResponse } from '@/types/scholarship';
+import { ScholarshipDurationResponse } from '@/pages/mileage/types/scholarship';
 
 export const getIsScholarshipDuration = (
   today: string,

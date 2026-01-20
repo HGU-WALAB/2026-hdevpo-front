@@ -1,5 +1,5 @@
 import { ALL_SEMESTER } from '@/constants/system';
-import { MileageRequest } from '@/types/mileage';
+import { MileageRequest } from '@/pages/mileage/types/mileage';
 import { useCallback } from 'react';
 import { useSearchParams } from 'react-router-dom';
 

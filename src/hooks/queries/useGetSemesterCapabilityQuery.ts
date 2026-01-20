@@ -1,6 +1,6 @@
-import { getSemesterCapability } from '@/apis/capability';
+import { getSemesterCapability } from '@/pages/dashboard/apis/capability';
 import { QUERY_KEYS } from '@/constants/queryKeys';
-import { SemesterCapabilityResponse } from '@/types/capability';
+import { SemesterCapabilityResponse } from '@/pages/dashboard/types/capability';
 import { useQuery } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 

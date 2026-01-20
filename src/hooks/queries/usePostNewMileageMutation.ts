@@ -1,4 +1,4 @@
-import { postNewMileage } from '@/apis/mileage';
+import { postNewMileage } from '@/pages/mileage/apis/mileage';
 import { QUERY_KEYS } from '@/constants/queryKeys';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 

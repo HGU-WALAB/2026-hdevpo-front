@@ -1,4 +1,4 @@
-import { EtcMileageResponse } from '@/types/mileage';
+import { EtcMileageResponse } from '@/pages/mileage/types/mileage';
 
 export const mockEtcMileageList: EtcMileageResponse[] = [
   {

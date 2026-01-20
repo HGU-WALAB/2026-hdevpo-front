@@ -1,4 +1,4 @@
-import { deleteSubmittedMileage } from '@/apis/mileage';
+import { deleteSubmittedMileage } from '@/pages/mileage/apis/mileage';
 import { QUERY_KEYS } from '@/constants/queryKeys';
 import { TOAST_MESSAGES } from '@/constants/toastMessage';
 import { useMutation, useQueryClient } from '@tanstack/react-query';

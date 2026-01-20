@@ -1,7 +1,7 @@
 import { useFileWithType, useInput, useInputWithValidate } from '@/hooks';
 import { usePatchSubmittedMileageMutation } from '@/hooks/queries';
 import { useAuthStore } from '@/stores';
-import { SubmittedMileageResponse } from '@/types/mileage';
+import { SubmittedMileageResponse } from '@/pages/mileage/types/mileage';
 import { validateRequired } from '@/utils/validate';
 import { toast } from 'react-toastify';
 

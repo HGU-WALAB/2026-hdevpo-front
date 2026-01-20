@@ -1,6 +1,6 @@
-import { getScholarshipDuration } from '@/apis/scholarship';
+import { getScholarshipDuration } from '@/pages/mileage/apis/scholarship';
 import { QUERY_KEYS } from '@/constants/queryKeys';
-import { ScholarshipDurationResponse } from '@/types/scholarship';
+import { ScholarshipDurationResponse } from '@/pages/mileage/types/scholarship';
 import { useQuery } from '@tanstack/react-query';
 
 const useGetScholarshipDurationQuery = () => {

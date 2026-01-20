@@ -1,4 +1,4 @@
-import { postScholarshipApply } from '@/apis/scholarship';
+import { postScholarshipApply } from '@/pages/mileage/apis/scholarship';
 import { QUERY_KEYS } from '@/constants/queryKeys';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 

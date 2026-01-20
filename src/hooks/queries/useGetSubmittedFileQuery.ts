@@ -1,4 +1,4 @@
-import { getSubmittedMileageFile } from '@/apis/mileage';
+import { getSubmittedMileageFile } from '@/pages/mileage/apis/mileage';
 import { QUERY_KEYS } from '@/constants/queryKeys';
 import { useQuery } from '@tanstack/react-query';
 
