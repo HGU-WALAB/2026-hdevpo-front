@@ -28,6 +28,7 @@ const DashboardPage = () => {
 
       <FAQSection />
 
+
       {student.studentType === '기타' && <NoAccessLogoutModal />}
 
       <Footer />

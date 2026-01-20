@@ -1,5 +1,5 @@
 import { Flex, Heading, Text } from '@/components';
-import { ProcessStep } from '.';
+import { ProcessStep } from '../../../dashboard/DashboardPage/components';
 import { boxShadow } from '@/styles/common';
 import { styled, useTheme } from '@mui/material';
 

@@ -1,9 +1,11 @@
-import { Flex } from '@/components';
+import { Flex, Footer } from '@/components';
 import {
   ApplySection,
   ConsentSection,
+  FAQSection,
   MileageBannerSection,
   NotScholarshipDurationSection,
+  ProcessSection,
 } from './components';
 import { useScholarshipDuration } from '@/hooks';
 import { useGetIsAppliedScholarshipQuery } from '@/hooks/queries';
@@ -23,6 +25,8 @@ const ScholarshipApplyPage = () => {
     <Flex.Column gap="1rem">
       <MileageBannerSection />
 
+      <ProcessSection />
+
       <ConsentSection
         isAgree={isAgree}
         handleAgree={setIsAgree}
@@ -30,6 +34,10 @@ const ScholarshipApplyPage = () => {
       />
 
       <ApplySection isAgree={isAgree} />
+
+      <FAQSection />
+
+      <Footer />
     </Flex.Column>
   );
 };
