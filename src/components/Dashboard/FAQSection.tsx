@@ -1,13 +1,40 @@
 import { Accordion, Flex, Heading, Text } from '@/components';
 import { FAQ } from '@/constants/faq';
 import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
+import { useGetFAQContactDescQuery } from '@/hooks/queries';
 import { boxShadow } from '@/styles/common';
-import { FAQListItem } from '@/types/faq';
+import { FAQItem, FAQListItem } from '@/types/faq';
 import { styled, useMediaQuery, useTheme } from '@mui/material';
+import { useMemo } from 'react';
 
 const FAQSection = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
+  const { data: contactDesc } = useGetFAQContactDescQuery();
+
+  const faqData = useMemo(() => {
+    const faqList: FAQItem[] = FAQ.map(faq => ({ ...faq }));
+    const contactFaqIndex = faqList.findIndex(
+      faq => faq.category === '기타 서비스 문의',
+    );
+
+    if (contactFaqIndex !== -1 && contactDesc) {
+      faqList[contactFaqIndex] = {
+        ...faqList[contactFaqIndex],
+        list: faqList[contactFaqIndex].list.map((item, index) => {
+          if (index === 0) {
+            return {
+              ...item,
+              desc: contactDesc,
+            };
+          }
+          return item;
+        }),
+      };
+    }
+
+    return faqList;
+  }, [contactDesc]);
 
   return (
     <S.Container height="fit-content" width="100%" gap="1rem">
@@ -15,7 +42,7 @@ const FAQSection = () => {
         자주 묻는 질문
       </Heading>
       <S.Grid isMobile={isMobile}>
-        {FAQ.map(faq => (
+        {faqData.map(faq => (
           <Accordion
             key={`faq-accordion-${faq.category}`}
             title={faq.category}
