@@ -5,6 +5,7 @@ import {
   SectionErrorFallback,
   TableListSkeleton,
   Title,
+  Footer,
 } from '@/components';
 import { useTrackPageView } from '@/service/amplitude/useTrackPageView';
 import { QueryErrorResetBoundary } from '@tanstack/react-query';
@@ -65,6 +66,8 @@ const AwardArchivePage = () => {
           )}
         </QueryErrorResetBoundary>
       </Flex.Column>
+
+      <Footer />
     </Flex.Column>
   );
 };
