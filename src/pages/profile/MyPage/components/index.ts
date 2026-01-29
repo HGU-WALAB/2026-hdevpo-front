@@ -1,3 +1,5 @@
+export { default as GitHubAccountSection } from './GitHubAccountSection';
+export { default as ImportantNoticeSection } from './ImportantNoticeSection';
 export { default as InfoField } from './InfoField';
 export { default as InfoGuideSection } from './InfoGuideSection';
 export { default as infoLabels } from './InfoLabels';

@@ -1,64 +1,188 @@
-import { BoxSkeleton, Flex } from '@/components';
-import { InfoField } from '.';
+import { BoxSkeleton, Flex, Heading, Text } from '@/components';
 import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { useGetUserInfoQuery } from '@/hooks/queries';
+import { useLogin } from '@/hooks';
 import { getDate } from '@/utils/getDate';
-import { styled, useMediaQuery } from '@mui/material';
+import RefreshIcon from '@mui/icons-material/Refresh';
+import { styled, useMediaQuery, useTheme } from '@mui/material';
+
+import { UpdateSucceedModal } from '.';
+import infoLabels from './InfoLabels';
 
 const UserInfoSection = () => {
+  const theme = useTheme();
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
   const { data: userInfo, isLoading } = useGetUserInfoQuery();
+  const { handleHisnetAuth, isLoginSucceed } = useLogin();
 
   const customOrder = [
     'studentName',
     'studentId',
-    'studentEmail',
-    'department',
-    'major1',
-    'major2',
     'grade',
     'term',
+    'major1',
+    'major2',
+    'studentEmail',
   ];
+
+  const handleRefreshAuth = () => {
+    handleHisnetAuth();
+  };
 
   if (isLoading) return <BoxSkeleton height={400} />;
 
+  const formatValue = (key: string, value: string) => {
+    if (key === 'grade') return `${value}학년`;
+    if (key === 'term') return `${value}학기`;
+    return value;
+  };
+
   return (
-    <S.Grid isMobile={isMobile}>
-      {Object.entries(userInfo ?? [])
-        .filter(([key]) => customOrder.includes(key))
-        .sort(
-          ([keyA], [keyB]) =>
-            customOrder.indexOf(keyA) - customOrder.indexOf(keyB),
-        )
-        .map(([key, value]) => (
-          <InfoField key={key} info={[key, value]} />
-        ))}
-      <Flex.Column justify="flex-end" margin="0 0 1rem">
-        <S.modDateBox align="flex-end">
-          {getDate(userInfo?.modDate ?? '')} 마지막으로 업데이트됨
-        </S.modDateBox>
-      </Flex.Column>
-    </S.Grid>
+    <S.Container>
+      <Flex.Row justify="space-between" align="center" margin="0 0 1rem">
+        <Flex.Row align="center" gap="0.75rem" style={{ flex: 1 }}>
+          <Heading
+            as="h3"
+            style={{
+              fontWeight: 700,
+              margin: 0,
+              fontSize: '1.125rem',
+              lineHeight: '1.5',
+            }}
+          >
+            학생 정보
+          </Heading>
+          <Text
+            style={{
+              ...theme.typography.body2,
+              color: theme.palette.grey[500],
+              fontSize: '0.875rem',
+              lineHeight: '1.5',
+            }}
+          >
+            * 아래 정보는 히즈넷에서 자동으로 가져온 데이터입니다.
+          </Text>
+        </Flex.Row>
+        <S.UpdateButton onClick={handleRefreshAuth}>
+          <RefreshIcon sx={{ fontSize: 20 }} />
+          <Text
+            style={{
+              ...theme.typography.body2,
+              fontWeight: 500,
+              fontSize: '1rem',
+            }}
+          >
+            정보 업데이트
+          </Text>
+        </S.UpdateButton>
+        <UpdateSucceedModal isSucceed={isLoginSucceed} />
+      </Flex.Row>
+
+      <S.InfoList>
+        {Object.entries(userInfo ?? [])
+          .filter(([key]) => customOrder.includes(key))
+          .sort(
+            ([keyA], [keyB]) =>
+              customOrder.indexOf(keyA) - customOrder.indexOf(keyB),
+          )
+          .map(([key, value]) => (
+            <S.InfoRow key={key}>
+              <S.LabelWrapper>
+                <Text
+                  style={{
+                    ...theme.typography.body2,
+                    fontWeight: 700,
+                    color: '#575757',
+                    fontSize: '1rem',
+                    lineHeight: '1.5',
+                  }}
+                >
+                  {infoLabels[key] || key}
+                </Text>
+              </S.LabelWrapper>
+              <Text
+                style={{
+                  ...theme.typography.body2,
+                  color: theme.palette.common.black,
+                  fontWeight: 700,
+                  fontSize: '1rem',
+                  lineHeight: '1.5',
+                }}
+              >
+                {formatValue(key, value as string)}
+              </Text>
+            </S.InfoRow>
+          ))}
+      </S.InfoList>
+
+      <S.LastUpdateRow>
+        <S.LabelWrapper>
+          <Text
+            style={{
+              ...theme.typography.body2,
+              color: theme.palette.grey[500],
+              fontSize: '1rem',
+              lineHeight: '1.5',
+            }}
+          >
+            마지막 업데이트
+          </Text>
+        </S.LabelWrapper>
+        <Text
+          style={{
+            ...theme.typography.body2,
+            color: theme.palette.grey[600],
+            fontSize: '1rem',
+            lineHeight: '1.5',
+          }}
+        >
+          {getDate(userInfo?.modDate ?? '')}
+        </Text>
+      </S.LastUpdateRow>
+    </S.Container>
   );
 };
 
 export default UserInfoSection;
 
 const S = {
-  modDateBox: styled(Flex.Row)`
-    background-color: ${({ theme }) => theme.palette.primary.main};
-    border-radius: 0.5rem;
-    color: ${({ theme }) => theme.palette.white};
-    font-size: 0.875rem;
-    height: fit-content;
-    padding: 0.25rem 1rem;
-    width: fit-content;
+  Container: styled(Flex.Column)`
+    background-color: ${({ theme }) => theme.palette.background.paper};
+    border-radius: 0.75rem;
+    padding: 1.25rem;
+    width: 100%;
   `,
-  Grid: styled('div')<{ isMobile: boolean }>`
-    display: grid;
-    gap: ${({ isMobile }) => (isMobile ? 'none' : '1rem')};
-    grid-auto-rows: minmax(100px, auto);
-    grid-template-columns: ${({ isMobile }) =>
-      `repeat(${isMobile ? 1 : 3}, 1fr)`};
+  UpdateButton: styled(Flex.Row)`
+    align-items: center;
+    gap: 0.375rem;
+    color: ${({ theme }) => theme.palette.primary.main};
+    cursor: pointer;
+    white-space: nowrap;
+    &:hover {
+      opacity: 0.8;
+    }
+  `,
+  InfoList: styled(Flex.Column)`
+    gap: 0;
+  `,
+  LabelWrapper: styled('div')`
+    width: 7rem;
+    flex-shrink: 0;
+  `,
+  InfoRow: styled(Flex.Row)`
+    align-items: center;
+    padding: 0.875rem 0;
+    border-bottom: 4px solid #F3F4F6;
+    gap: 1.5rem;
+    &:last-of-type {
+      border-bottom: none;
+    }
+  `,
+  LastUpdateRow: styled(Flex.Row)`
+    align-items: center;
+    padding: 0.875rem 0 0;
+    margin-top: 0.5rem;
+    border-top: 4px solid #F3F4F6;
+    gap: 1.5rem;
   `,
 };
