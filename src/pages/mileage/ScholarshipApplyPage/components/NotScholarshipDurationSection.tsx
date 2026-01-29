@@ -1,12 +1,12 @@
 import { EmptyBoxImg } from '@/assets';
 import { Flex, Heading } from '@/components';
-import { MileageBannerSection } from '.';
+// import { MileageBannerSection } from '.';
 import { styled } from '@mui/material';
 
 const NotScholarshipDurationSection = () => {
   return (
     <Flex.Column gap="1rem" width="100%" height="100%">
-      <MileageBannerSection />
+      {/* <MileageBannerSection /> */}
       <Flex.Column
         width="100%"
         height="50%"

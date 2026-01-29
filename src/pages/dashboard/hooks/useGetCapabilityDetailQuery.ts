@@ -14,3 +14,8 @@ const useGetCapabilityDetailQuery = () => {
 export default useGetCapabilityDetailQuery;
 
 
+
+
+
+
+

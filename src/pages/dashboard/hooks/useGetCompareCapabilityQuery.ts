@@ -21,3 +21,8 @@ const useGetCompareCapabilityQuery = ({
 export default useGetCompareCapabilityQuery;
 
 
+
+
+
+
+
