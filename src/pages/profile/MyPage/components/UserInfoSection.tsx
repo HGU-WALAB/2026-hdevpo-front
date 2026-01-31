@@ -1,17 +1,15 @@
 import { BoxSkeleton, Flex, Heading, Text } from '@/components';
-import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { useGetUserInfoQuery } from '@/hooks/queries';
 import { useLogin } from '@/hooks';
 import { getDate } from '@/utils/getDate';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { styled, useMediaQuery, useTheme } from '@mui/material';
+import { styled, useTheme } from '@mui/material';
 
 import { UpdateSucceedModal } from '.';
 import infoLabels from './InfoLabels';
 
 const UserInfoSection = () => {
   const theme = useTheme();
-  const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
   const { data: userInfo, isLoading } = useGetUserInfoQuery();
   const { handleHisnetAuth, isLoginSucceed } = useLogin();
 
@@ -79,13 +77,13 @@ const UserInfoSection = () => {
       </Flex.Row>
 
       <S.InfoList>
-        {Object.entries(userInfo ?? [])
-          .filter(([key]) => customOrder.includes(key))
-          .sort(
-            ([keyA], [keyB]) =>
-              customOrder.indexOf(keyA) - customOrder.indexOf(keyB),
-          )
-          .map(([key, value]) => (
+      {Object.entries(userInfo ?? [])
+        .filter(([key]) => customOrder.includes(key))
+        .sort(
+          ([keyA], [keyB]) =>
+            customOrder.indexOf(keyA) - customOrder.indexOf(keyB),
+        )
+        .map(([key, value]) => (
             <S.InfoRow key={key}>
               <S.LabelWrapper>
                 <Text

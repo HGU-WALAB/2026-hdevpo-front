@@ -15,6 +15,9 @@ const ScholarshipApplyPage = React.lazy(
 );
 const AwardArchivePage = React.lazy(() => import('@/pages/award/AwardArchivePage'));
 const MyPage = React.lazy(() => import('@/pages/profile/MyPage'));
+const GitHubCallbackPage = React.lazy(
+  () => import('@/pages/profile/GitHubCallbackPage'),
+);
 const LoginPage = React.lazy(() => import('@/pages/auth/LoginPage'));
 const ErrorPage = React.lazy(() => import('@/pages/etc/ErrorPage'));
 const NotFoundPage = React.lazy(() => import('@/pages/etc/NotFoundPage'));
@@ -65,6 +68,10 @@ const router = createBrowserRouter(
         {
           path: ROUTE_PATH.login,
           element: <LoginPage />,
+        },
+        {
+          path: ROUTE_PATH.githubCallback,
+          element: <GitHubCallbackPage />,
         },
       ],
     },

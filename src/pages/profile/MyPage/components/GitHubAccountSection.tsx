@@ -1,14 +1,28 @@
-import { Flex, Heading, Text } from '@/components';
+import { BoxSkeleton, Flex, Heading, Text } from '@/components';
 import LinkIcon from '@mui/icons-material/Link';
+import CloseIcon from '@mui/icons-material/Close';
 import { styled, useTheme } from '@mui/material';
+import { getGitHubConnect } from '@/pages/profile/apis/github';
+import useGetGitHubStatusQuery from '@/pages/profile/hooks/useGetGitHubStatusQuery';
 
 const GitHubAccountSection = () => {
   const theme = useTheme();
+  const { data: githubStatus, isLoading } = useGetGitHubStatusQuery();
 
   const handleConnect = () => {
-    // TODO: GitHub 연결 API 구현 시 추가
-    console.log('GitHub 연결');
+    getGitHubConnect();
+    // OAuth 리다이렉트가 자동으로 발생합니다
   };
+
+  const handleDisconnect = () => {
+    // TODO: 연결 해제 기능 구현 시 추가
+    console.log('GitHub 연결 해제');
+  };
+
+  if (isLoading) return <BoxSkeleton height={150} />;
+
+  const isConnected = githubStatus?.connected ?? false;
+  const githubUsername = githubStatus?.githubUsername ?? '';
 
   return (
     <S.Container>
@@ -36,18 +50,33 @@ const GitHubAccountSection = () => {
             * 개인 계정을 연결하여 추가 기능을 사용할 수 있습니다.
           </Text>
         </Flex.Row>
-        <S.ConnectButton onClick={handleConnect}>
-          <LinkIcon sx={{ fontSize: 20 }} />
-          <Text
-            style={{
-              ...theme.typography.body2,
-              fontWeight: 500,
-              fontSize: '1rem',
-            }}
-          >
-            연결
-          </Text>
-        </S.ConnectButton>
+        {isConnected ? (
+          <S.DisconnectButton onClick={handleDisconnect}>
+            <CloseIcon sx={{ fontSize: 20 }} />
+            <Text
+              style={{
+                ...theme.typography.body2,
+                fontWeight: 500,
+                fontSize: '1rem',
+              }}
+            >
+              연결 해제
+            </Text>
+          </S.DisconnectButton>
+        ) : (
+          <S.ConnectButton onClick={handleConnect}>
+            <LinkIcon sx={{ fontSize: 20 }} />
+            <Text
+              style={{
+                ...theme.typography.body2,
+                fontWeight: 500,
+                fontSize: '1rem',
+              }}
+            >
+              연결
+            </Text>
+          </S.ConnectButton>
+        )}
       </Flex.Row>
 
       <S.InfoRow>
@@ -55,7 +84,8 @@ const GitHubAccountSection = () => {
           <Text
             style={{
               ...theme.typography.body2,
-              fontWeight: 500,
+              fontWeight: 700,
+              color: '#575757',
               fontSize: '1rem',
               lineHeight: '1.5',
             }}
@@ -66,13 +96,13 @@ const GitHubAccountSection = () => {
         <Text
           style={{
             ...theme.typography.body2,
-            color: '#999999',
+            color: isConnected ? theme.palette.common.black : '#999999',
             fontWeight: 700,
             fontSize: '1rem',
             lineHeight: '1.5',
           }}
         >
-          연결되지 않음
+          {isConnected ? `@${githubUsername}` : '연결되지 않음'}
         </Text>
       </S.InfoRow>
     </S.Container>
@@ -98,8 +128,18 @@ const S = {
       opacity: 0.8;
     }
   `,
+  DisconnectButton: styled(Flex.Row)`
+    align-items: center;
+    gap: 0.375rem;
+    color: #EF4444;
+    cursor: pointer;
+    white-space: nowrap;
+    &:hover {
+      opacity: 0.8;
+    }
+  `,
   LabelWrapper: styled('div')`
-    width: 5rem;
+    width: 7rem;
     flex-shrink: 0;
   `,
   InfoRow: styled(Flex.Row)`

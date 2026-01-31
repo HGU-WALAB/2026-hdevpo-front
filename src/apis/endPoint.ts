@@ -14,4 +14,8 @@ export const ENDPOINT = {
   CONTACT: `/api/mileage/contact`,
   // award
   AWARD: `/api/mileage/award`,
+  // github
+  GITHUB_STATUS: `/api/mileage/github/status`,
+  GITHUB_CONNECT: `/api/mileage/github/connect`,
+  GITHUB_CALLBACK: `/api/mileage/auth/github/callback`,
 };
