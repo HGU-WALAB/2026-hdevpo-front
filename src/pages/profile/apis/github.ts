@@ -27,3 +27,10 @@ export const getGitHubCallback = async (code?: string, error?: string) => {
   return response;
 };
 
+export const deleteGitHubConnect = async () => {
+  const response = await http.delete<GitHubStatusResponse>(
+    ENDPOINT.GITHUB_CONNECT,
+  );
+  return response;
+};
+

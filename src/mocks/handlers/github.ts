@@ -51,5 +51,15 @@ export const GitHubHandlers = [
 
     return HttpResponse.json(mockGitHubStatusDisconnected, { status: 200 });
   }),
+
+  http.delete(BASE_URL + ENDPOINT.GITHUB_CONNECT, () => {
+    const { is401Error, is500Error } = randomMswError();
+
+    if (is401Error) return Error401();
+    if (is500Error) return Error500();
+
+    // 연결 해제 성공 시 연결 해제된 상태 반환
+    return HttpResponse.json(mockGitHubStatusDisconnected, { status: 200 });
+  }),
 ];
 

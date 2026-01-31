@@ -4,10 +4,12 @@ import CloseIcon from '@mui/icons-material/Close';
 import { styled, useTheme } from '@mui/material';
 import { getGitHubConnect } from '@/pages/profile/apis/github';
 import useGetGitHubStatusQuery from '@/pages/profile/hooks/useGetGitHubStatusQuery';
+import useDeleteGitHubConnectMutation from '@/pages/profile/hooks/useDeleteGitHubConnectMutation';
 
 const GitHubAccountSection = () => {
   const theme = useTheme();
   const { data: githubStatus, isLoading } = useGetGitHubStatusQuery();
+  const { mutate: deleteGitHubConnect } = useDeleteGitHubConnectMutation();
 
   const handleConnect = () => {
     getGitHubConnect();
@@ -15,8 +17,7 @@ const GitHubAccountSection = () => {
   };
 
   const handleDisconnect = () => {
-    // TODO: 연결 해제 기능 구현 시 추가
-    console.log('GitHub 연결 해제');
+    deleteGitHubConnect();
   };
 
   if (isLoading) return <BoxSkeleton height={150} />;
