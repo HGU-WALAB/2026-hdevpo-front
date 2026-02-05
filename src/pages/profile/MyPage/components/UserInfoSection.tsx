@@ -21,9 +21,7 @@ const UserInfoSection = () => {
     'studentName',
     'studentId',
     'grade',
-    'term',
     'major1',
-    'major2',
     'studentEmail',
   ];
 
@@ -37,9 +35,20 @@ const UserInfoSection = () => {
 
   if (isLoading) return <BoxSkeleton height={400} />;
 
-  const formatValue = (key: string, value: string) => {
-    if (key === 'grade') return `${value}학년`;
-    if (key === 'term') return `${value}학기`;
+  const formatValue = (key: string, value: string, userInfo: any) => {
+    if (key === 'grade') {
+      const grade = value ? `${value}학년` : '';
+      const term = userInfo?.term ? `(${userInfo.term}학기)` : '';
+      return term ? `${grade}${term}` : grade;
+    }
+    if (key === 'major1') {
+      const major1 = value || '';
+      const major2 = userInfo?.major2 || '';
+      if (major1 && major2) {
+        return `${major1} / ${major2}`;
+      }
+      return major1 || major2;
+    }
     return value;
   };
 
@@ -170,7 +179,7 @@ const UserInfoSection = () => {
                   flex: 1,
                 }}
               >
-                {formatValue(key, value as string)}
+                {formatValue(key, value as string, userInfo)}
               </Text>
             </S.InfoRow>
           ))}
