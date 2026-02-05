@@ -60,7 +60,7 @@ const UpdateConfirmModal = ({ isOpen, onConfirm, onClose }: Props) => {
         >
           정보 업데이트시 로그아웃 후 로그인이 필요합니다
         </Heading>
-        <S.ConfirmButton label="확인" size="large" onClick={handleConfirm} />
+        <S.ConfirmButton label="히즈넷 정보 업데이트하기" size="large" onClick={handleConfirm} />
       </Modal.Body>
     </Modal>
   );
