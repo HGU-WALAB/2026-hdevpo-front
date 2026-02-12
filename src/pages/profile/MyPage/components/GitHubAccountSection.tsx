@@ -151,17 +151,27 @@ const GitHubAccountSection = () => {
             아이디
           </Text>
         </S.LabelWrapper>
-        <Text
-          style={{
-            ...theme.typography.body2,
-            color: isConnected ? theme.palette.common.black : '#999999',
-            fontWeight: 700,
-            fontSize: '1rem',
-            lineHeight: '1.5',
-          }}
-        >
-          {isConnected ? `@${githubUsername}` : '연결되지 않음'}
-        </Text>
+        {isConnected && githubUsername ? (
+          <S.GitHubLink
+            href={`https://github.com/${githubUsername}`}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            @{githubUsername}
+          </S.GitHubLink>
+        ) : (
+          <Text
+            style={{
+              ...theme.typography.body2,
+              color: '#999999',
+              fontWeight: 700,
+              fontSize: '1rem',
+              lineHeight: '1.5',
+            }}
+          >
+            연결되지 않음
+          </Text>
+        )}
       </S.InfoRow>
     </S.Container>
   );
@@ -204,6 +214,18 @@ const S = {
     align-items: center;
     padding: 0.875rem 0;
     gap: 1.5rem;
+  `,
+  GitHubLink: styled('a')`
+    ${({ theme }) => theme.typography.body2};
+    font-weight: 700;
+    font-size: 1rem;
+    line-height: 1.5;
+    color: ${({ theme }) => theme.palette.primary.main};
+    text-decoration: underline;
+    cursor: pointer;
+    &:hover {
+      opacity: 0.9;
+    }
   `,
 };
 

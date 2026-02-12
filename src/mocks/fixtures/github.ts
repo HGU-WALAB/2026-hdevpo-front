@@ -6,8 +6,8 @@ export const mockGitHubStatusConnected: GitHubStatusResponse = {
 };
 
 export const mockGitHubStatusDisconnected: GitHubStatusResponse = {
-  connected: false,
-  githubUsername: '',
+  connected: true,
+  githubUsername: 'LYH513',
 };
 
 
