@@ -1,16 +1,20 @@
-import { Flex, Footer } from '@/components';
+import { DownloadIcon } from '@/assets';
+import { Button, Flex, Footer } from '@/components';
+import { palette } from '@/styles/palette';
+import { Button as MuiButton, InputBase } from '@mui/material';
+import { styled } from '@mui/material/styles';
 import { useTrackPageView } from '@/service/amplitude/useTrackPageView';
 import CodeIcon from '@mui/icons-material/Code';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FolderIcon from '@mui/icons-material/Folder';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
-import PersonIcon from '@mui/icons-material/Person';
+import SearchIcon from '@mui/icons-material/Search';
 import { useCallback, useState } from 'react';
 
 import {
-  DEFAULT_SECTION_ORDER,
+  DRAGGABLE_SECTION_ORDER,
   SECTION_TITLES,
-  type SectionOrderKey,
+  type DraggableSectionKey,
 } from '../constants/constants';
 import {
   ActivitiesSectionContent,
@@ -21,28 +25,30 @@ import {
   UserInfoSectionContent,
 } from './components';
 
-const SECTION_ICONS: Record<SectionOrderKey, React.ReactNode> = {
-  user_info: <PersonIcon sx={{ fontSize: 20, color: '#537FF1' }} />,
-  tech_stack: <CodeIcon sx={{ fontSize: 20, color: '#537FF1' }} />,
-  repo: <FolderIcon sx={{ fontSize: 20, color: '#537FF1' }} />,
-  mileage: <MenuBookIcon sx={{ fontSize: 20, color: '#537FF1' }} />,
-  activities: <EmojiEventsIcon sx={{ fontSize: 20, color: '#537FF1' }} />,
+const SECTION_ICONS: Record<DraggableSectionKey, React.ReactNode> = {
+  tech_stack: <CodeIcon sx={{ fontSize: 20, color: palette.grey500 }} />,
+  repo: <FolderIcon sx={{ fontSize: 20, color: palette.grey500 }} />,
+  mileage: <MenuBookIcon sx={{ fontSize: 20, color: palette.grey500 }} />,
+  activities: <EmojiEventsIcon sx={{ fontSize: 20, color: palette.grey500 }} />,
 };
 
 const SummaryPage = () => {
   useTrackPageView({ eventName: '[View] 활동 요약' });
-  const [sectionOrder, setSectionOrder] = useState<SectionOrderKey[]>(
-    DEFAULT_SECTION_ORDER,
+  const [sectionOrder, setSectionOrder] = useState<DraggableSectionKey[]>(
+    DRAGGABLE_SECTION_ORDER,
   );
-  const [draggedId, setDraggedId] = useState<SectionOrderKey | null>(null);
-  const [dragOverId, setDragOverId] = useState<SectionOrderKey | null>(null);
+  const [draggedId, setDraggedId] = useState<DraggableSectionKey | null>(null);
+  const [githubSearchQuery, setGithubSearchQuery] = useState('');
+  const [dragOverId, setDragOverId] = useState<DraggableSectionKey | null>(
+    null,
+  );
 
-  const handleDragStart = useCallback((id: SectionOrderKey) => {
+  const handleDragStart = useCallback((id: DraggableSectionKey) => {
     setDraggedId(id);
   }, []);
 
   const handleDragOver = useCallback(
-    (_e: React.DragEvent<HTMLElement>, targetId: SectionOrderKey) => {
+    (_e: React.DragEvent<HTMLElement>, targetId: DraggableSectionKey) => {
       setDragOverId(targetId);
     },
     [],
@@ -53,7 +59,7 @@ const SummaryPage = () => {
   }, []);
 
   const handleDrop = useCallback(
-    (targetId: SectionOrderKey) => {
+    (targetId: DraggableSectionKey) => {
       if (draggedId == null || draggedId === targetId) {
         setDraggedId(null);
         setDragOverId(null);
@@ -76,14 +82,12 @@ const SummaryPage = () => {
     [draggedId, sectionOrder],
   );
 
-  const renderSectionContent = (key: SectionOrderKey) => {
+  const renderSectionContent = (key: DraggableSectionKey) => {
     switch (key) {
-      case 'user_info':
-        return <UserInfoSectionContent />;
       case 'tech_stack':
         return <TechStackSectionContent />;
       case 'repo':
-        return <RepoSectionContent />;
+        return <RepoSectionContent searchQuery={githubSearchQuery} />;
       case 'mileage':
         return <MileageSectionContent />;
       case 'activities':
@@ -93,8 +97,36 @@ const SummaryPage = () => {
     }
   };
 
+  const repoHeaderRight = (
+    <S.SearchInputWrap>
+      <SearchIcon sx={{ fontSize: 18, color: palette.grey500 }} />
+      <S.GithubSearchInput
+        placeholder="레포지토리 이름으로 검색"
+        value={githubSearchQuery}
+        onChange={e => setGithubSearchQuery(e.target.value)}
+        inputProps={{ 'aria-label': '레포지토리 이름 검색' }}
+      />
+    </S.SearchInputWrap>
+  );
+
   return (
     <Flex.Column margin="1rem" gap="1.5rem">
+      <S.ButtonRow justify="flex-end" gap="0.5rem">
+        <S.PreviewButton variant="outlined" size="medium" onClick={() => {}}>
+          미리보기
+        </S.PreviewButton>
+        <Button
+          label="PDF"
+          variant="contained"
+          color="blue"
+          size="medium"
+          icon={DownloadIcon}
+          iconPosition="start"
+          style={{ width: '7.5rem' }}
+          onClick={() => {}}
+        />
+      </S.ButtonRow>
+      <UserInfoSectionContent />
       <Flex.Column gap="1rem">
         {sectionOrder.map(key => (
           <DraggableSection
@@ -102,6 +134,7 @@ const SummaryPage = () => {
             sectionId={key}
             title={SECTION_TITLES[key]}
             icon={SECTION_ICONS[key]}
+            headerRight={key === 'repo' ? repoHeaderRight : undefined}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -118,3 +151,40 @@ const SummaryPage = () => {
 };
 
 export default SummaryPage;
+
+const S = {
+  SearchInputWrap: styled('div')`
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    min-width: 12rem;
+    padding: 0.4rem 0.75rem;
+    border-radius: 0.5rem;
+    background-color: ${({ theme }) => theme.palette.grey[100]};
+  `,
+  GithubSearchInput: styled(InputBase)`
+    flex: 1;
+    font-size: 0.875rem;
+    & .MuiInputBase-input {
+      padding: 0;
+      &::placeholder {
+        color: ${palette.grey500};
+      }
+    }
+  `,
+  ButtonRow: styled(Flex.Row)`
+    margin-bottom: 0.5rem;
+    width: 100%;
+  `,
+  PreviewButton: styled(MuiButton)`
+    width: 7.5rem;
+    border-color: ${palette.blue400};
+    color: ${palette.blue400};
+    border-radius: 0.75rem;
+    &:hover {
+      border-color: ${palette.blue600};
+      color: ${palette.blue600};
+      background-color: rgba(91, 140, 241, 0.08);
+    }
+  `,
+};

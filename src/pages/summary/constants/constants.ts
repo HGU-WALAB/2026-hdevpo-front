@@ -1,6 +1,6 @@
 /**
  * 섹션 순서 키. 추후 PUT /api/portfolio/settings 의 section_order 와 연동 예정.
- * user_info 는 추후 상단 고정 처리 시 제외할 수 있음.
+ * user_info 는 상단 고정이라 드래그 대상에서 제외.
  */
 export type SectionOrderKey =
   | 'user_info'
@@ -9,8 +9,11 @@ export type SectionOrderKey =
   | 'mileage'
   | 'activities';
 
-export const DEFAULT_SECTION_ORDER: SectionOrderKey[] = [
-  'user_info',
+/** 드래그 대상 섹션 (user_info 제외) */
+export type DraggableSectionKey = Exclude<SectionOrderKey, 'user_info'>;
+
+/** 드래그로 순서 변경 가능한 섹션 (user_info 제외) */
+export const DRAGGABLE_SECTION_ORDER: DraggableSectionKey[] = [
   'tech_stack',
   'repo',
   'mileage',
