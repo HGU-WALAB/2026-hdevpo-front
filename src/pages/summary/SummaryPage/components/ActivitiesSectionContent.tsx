@@ -7,46 +7,41 @@ import EditIcon from '@mui/icons-material/Edit';
 import { useCallback, useState } from 'react';
 import { styled, useTheme } from '@mui/material';
 
-/** API: POST /api/portfolio/activities, PUT /api/portfolio/activities/{id}, DELETE /api/portfolio/activities/{id} */
-interface ActivityItem {
-  id: number;
-  title: string;
-  description: string;
-  start_date: string;
-  end_date: string;
+import {
+  type ActivityItem,
+  useSummaryContext,
+} from '../context/SummaryContext';
+
+interface ActivitiesSectionContentProps {
+  readOnly?: boolean;
 }
 
-const INITIAL_ACTIVITIES: ActivityItem[] = [
-  {
-    id: 1,
-    title: '교내 해커톤 대상',
-    description: '소프트웨어 중심대학',
-    start_date: '2024-01-01',
-    end_date: '2024-06-30',
-  },
-];
-
-const ActivitiesSectionContent = () => {
+const ActivitiesSectionContent = ({
+  readOnly = false,
+}: ActivitiesSectionContentProps) => {
   const theme = useTheme();
-  const [activities, setActivities] = useState<ActivityItem[]>(INITIAL_ACTIVITIES);
+  const {
+    activities,
+    setActivities,
+    activitiesNextId,
+    setActivitiesNextId,
+  } = useSummaryContext();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<Partial<ActivityItem>>({});
-  const [nextId, setNextId] = useState(2);
 
   const handleAdd = useCallback(() => {
     const newItem: ActivityItem = {
-      id: nextId,
+      id: activitiesNextId,
       title: '새 활동',
       description: '',
       start_date: new Date().toISOString().slice(0, 10),
       end_date: new Date().toISOString().slice(0, 10),
     };
     setActivities(prev => [newItem, ...prev]);
-    setNextId(prev => prev + 1);
+    setActivitiesNextId(prev => prev + 1);
     setEditingId(newItem.id);
     setEditDraft(newItem);
-    // TODO: POST /api/portfolio/activities { title, description, start_date, end_date } → use returned id
-  }, [nextId]);
+  }, [activitiesNextId, setActivities, setActivitiesNextId]);
 
   const handleStartEdit = useCallback((item: ActivityItem) => {
     setEditingId(item.id);
@@ -70,33 +65,36 @@ const ActivitiesSectionContent = () => {
     );
     setEditingId(null);
     setEditDraft({});
-    // TODO: PUT /api/portfolio/activities/{editingId} { title, description, start_date, end_date }
-  }, [editingId, editDraft]);
+  }, [editingId, editDraft, setActivities]);
 
   const handleCancelEdit = useCallback(() => {
     setEditingId(null);
     setEditDraft({});
   }, []);
 
-  const handleDelete = useCallback((id: number) => {
-    setActivities(prev => prev.filter(a => a.id !== id));
-    if (editingId === id) {
-      setEditingId(null);
-      setEditDraft({});
-    }
-    // TODO: DELETE /api/portfolio/activities/{id}
-  }, [editingId]);
+  const handleDelete = useCallback(
+    (id: number) => {
+      setActivities(prev => prev.filter(a => a.id !== id));
+      if (editingId === id) {
+        setEditingId(null);
+        setEditDraft({});
+      }
+    },
+    [editingId, setActivities],
+  );
 
   return (
     <Flex.Column gap="0.75rem">
-      <S.AddButton type="button" onClick={handleAdd}>
-        <AddIcon sx={{ fontSize: 18 }} />
-        활동 추가
-      </S.AddButton>
+      {!readOnly && (
+        <S.AddButton type="button" onClick={handleAdd}>
+          <AddIcon sx={{ fontSize: 18 }} />
+          활동 추가
+        </S.AddButton>
+      )}
       <S.List>
         {activities.map(item => (
           <S.Row key={item.id} align="center" gap="0.75rem" wrap="wrap">
-            {editingId === item.id ? (
+            {!readOnly && editingId === item.id ? (
               <S.EditForm align="center" gap="0.5rem" wrap="wrap">
                 <S.DateInput
                   type="date"
@@ -201,24 +199,26 @@ const ActivitiesSectionContent = () => {
                 </Text>
               </>
             )}
-            <Flex.Row gap="0.25rem" align="center" style={{ flexShrink: 0 }}>
-              {editingId !== item.id && (
-                <S.EditButton
+            {!readOnly && (
+              <Flex.Row gap="0.25rem" align="center" style={{ flexShrink: 0 }}>
+                {editingId !== item.id && (
+                  <S.EditButton
+                    type="button"
+                    onClick={() => handleStartEdit(item)}
+                    aria-label="수정"
+                  >
+                    <EditIcon sx={{ fontSize: 16 }} />
+                  </S.EditButton>
+                )}
+                <S.DeleteButton
                   type="button"
-                  onClick={() => handleStartEdit(item)}
-                  aria-label="수정"
+                  onClick={() => handleDelete(item.id)}
+                  aria-label="삭제"
                 >
-                  <EditIcon sx={{ fontSize: 16 }} />
-                </S.EditButton>
-              )}
-              <S.DeleteButton
-                type="button"
-                onClick={() => handleDelete(item.id)}
-                aria-label="삭제"
-              >
-                <DeleteOutlineIcon sx={{ fontSize: 18 }} />
-              </S.DeleteButton>
-            </Flex.Row>
+                  <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                </S.DeleteButton>
+              </Flex.Row>
+            )}
           </S.Row>
         ))}
       </S.List>
@@ -243,7 +243,8 @@ const S = {
     font-weight: 500;
     align-self: flex-start;
     box-shadow: 0 1px 2px rgba(83, 127, 241, 0.08);
-    transition: background-color 0.15s ease, color 0.15s ease, box-shadow 0.15s ease;
+    transition: background-color 0.15s ease, color 0.15s ease,
+      box-shadow 0.15s ease;
     &:hover {
       background-color: ${palette.blue300};
       color: ${palette.blue600};

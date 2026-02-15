@@ -9,99 +9,41 @@ import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { styled, useTheme, useMediaQuery } from '@mui/material';
 
-const ITEMS_PER_PAGE = 4;
+import { useSummaryContext } from '../context/SummaryContext';
 
-/** API 형식: { repo_id, custom_title, is_visible } */
-interface RepoItem {
-  repo_id: number;
-  custom_title: string | null;
-  is_visible: boolean;
-  name: string;
-  owner?: string;
-  description: string;
-  created_at: string;
-  updated_at: string;
-  languages: string[];
-}
+const ITEMS_PER_PAGE = 4;
 
 interface RepoSectionContentProps {
   searchQuery?: string;
+  readOnly?: boolean;
 }
 
-const INITIAL_REPOS: RepoItem[] = [
-  {
-    repo_id: 1,
-    name: 'web-camp-2026',
-    owner: 'lyh',
-    custom_title: null,
-    is_visible: false,
-    description: 'No description',
-    created_at: '2025-01-01',
-    updated_at: '2025-02-01',
-    languages: ['TypeScript', 'HTML'],
-  },
-  {
-    repo_id: 2,
-    name: 'phenotype-viewer',
-    owner: 'lyh',
-    custom_title: null,
-    is_visible: false,
-    description: '이미지 파일과 예측 값 간의 대응 관계 제공',
-    created_at: '2024-06-01',
-    updated_at: '2025-01-15',
-    languages: ['Java'],
-  },
-  {
-    repo_id: 3,
-    name: 'springboot-user-crud',
-    owner: 'lyh',
-    custom_title: null,
-    is_visible: false,
-    description: 'Spring Boot CRUD 예제',
-    created_at: '2024-03-01',
-    updated_at: '2025-01-10',
-    languages: ['Java'],
-  },
-  {
-    repo_id: 4,
-    name: 'tayo_BE',
-    owner: 'lyh',
-    custom_title: null,
-    is_visible: false,
-    description: '프로젝트 백엔드',
-    created_at: '2024-05-01',
-    updated_at: '2025-02-01',
-    languages: ['Java', 'Spring'],
-  },
-  {
-    repo_id: 5,
-    name: 'test-repo',
-    owner: 'lyh',
-    custom_title: null,
-    is_visible: false,
-    description: '테스트 레포',
-    created_at: '2025-01-15',
-    updated_at: '2025-01-20',
-    languages: ['TypeScript'],
-  },
-];
-
 /** 깃허브 레포지토리. 추후 PUT /api/portfolio/repositories (repo_id, custom_title, is_visible) 연동 */
-const RepoSectionContent = ({ searchQuery = '' }: RepoSectionContentProps) => {
+const RepoSectionContent = ({
+  searchQuery = '',
+  readOnly = false,
+}: RepoSectionContentProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
-  const [repos, setRepos] = useState<RepoItem[]>(INITIAL_REPOS);
+  const { repos, setRepos } = useSummaryContext();
   const [page, setPage] = useState(0);
 
   useEffect(() => {
     setPage(0);
   }, [searchQuery]);
 
+  const displayRepos = useMemo(() => {
+    if (readOnly) return repos.filter(r => r.is_visible);
+    return repos;
+  }, [repos, readOnly]);
+
   const filteredRepos = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
-    if (!q) return repos;
-    return repos.filter(r => r.name.toLowerCase().includes(q));
-  }, [repos, searchQuery]);
+    if (!q) return displayRepos;
+    return displayRepos.filter(r =>
+      r.name.toLowerCase().includes(q),
+    );
+  }, [displayRepos, searchQuery]);
 
   const visibleRepos = useMemo(
     () => repos.filter(r => r.is_visible).map(r => r.custom_title ?? r.name),
@@ -118,20 +60,23 @@ const RepoSectionContent = ({ searchQuery = '' }: RepoSectionContentProps) => {
     [filteredRepos, page],
   );
 
-  const handleToggleVisible = useCallback((repoId: number) => {
-    setRepos(prev =>
-      prev.map(r =>
-        r.repo_id === repoId ? { ...r, is_visible: !r.is_visible } : r,
-      ),
-    );
-  }, []);
+  const handleToggleVisible = useCallback(
+    (repoId: number) => {
+      setRepos(prev =>
+        prev.map(r =>
+          r.repo_id === repoId ? { ...r, is_visible: !r.is_visible } : r,
+        ),
+      );
+    },
+    [setRepos],
+  );
 
-  const displayName = (repo: RepoItem) =>
+  const displayName = (repo: { custom_title: string | null; name: string }) =>
     repo.custom_title ?? repo.name;
 
   return (
     <Flex.Column gap="1rem">
-      {visibleRepos.length > 0 && (
+      {!readOnly && visibleRepos.length > 0 && (
         <Flex.Row gap="0.5rem" wrap="wrap" align="center">
           <Text
             style={{
@@ -150,29 +95,33 @@ const RepoSectionContent = ({ searchQuery = '' }: RepoSectionContentProps) => {
       <S.Grid $isMobile={isMobile}>
         {paginatedRepos.map(repo => (
           <S.Card key={repo.repo_id} $isMobile={isMobile}>
-            <Flex.Row justify="flex-end" style={{ marginBottom: '0.25rem' }}>
-              <S.EyeButton
-                type="button"
-                onClick={() => handleToggleVisible(repo.repo_id)}
-                aria-label={repo.is_visible ? '미리보기에 숨기기' : '미리보기에 표시'}
-              >
-                {repo.is_visible ? (
-                  <VisibilityIcon
-                    sx={{
-                      fontSize: 18,
-                      color: palette.blue500,
-                    }}
-                  />
-                ) : (
-                  <VisibilityOffOutlinedIcon
-                    sx={{
-                      fontSize: 18,
-                      color: theme.palette.grey[500],
-                    }}
-                  />
-                )}
-              </S.EyeButton>
-            </Flex.Row>
+            {!readOnly && (
+              <Flex.Row justify="flex-end" style={{ marginBottom: '0.25rem' }}>
+                <S.EyeButton
+                  type="button"
+                  onClick={() => handleToggleVisible(repo.repo_id)}
+                  aria-label={
+                    repo.is_visible ? '미리보기에 숨기기' : '미리보기에 표시'
+                  }
+                >
+                  {repo.is_visible ? (
+                    <VisibilityIcon
+                      sx={{
+                        fontSize: 18,
+                        color: palette.blue500,
+                      }}
+                    />
+                  ) : (
+                    <VisibilityOffOutlinedIcon
+                      sx={{
+                        fontSize: 18,
+                        color: theme.palette.grey[500],
+                      }}
+                    />
+                  )}
+                </S.EyeButton>
+              </Flex.Row>
+            )}
             <Flex.Column gap="0.5rem">
               <S.RepoLink href="#">{displayName(repo)}</S.RepoLink>
               <Text

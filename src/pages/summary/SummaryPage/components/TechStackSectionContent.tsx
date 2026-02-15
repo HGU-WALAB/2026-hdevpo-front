@@ -4,35 +4,41 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useCallback, useState } from 'react';
 import { styled } from '@mui/material';
 
-/** 기술 스택. 추후 PUT /api/portfolio/tech-stack (tech_stack) 연동 */
-const INITIAL_TAGS = ['Java', 'Spring Boot', 'TypeScript', 'React'];
+import { useSummaryContext } from '../context/SummaryContext';
 
-const TechStackSectionContent = () => {
-  const [tags, setTags] = useState<string[]>(INITIAL_TAGS);
+interface TechStackSectionContentProps {
+  readOnly?: boolean;
+}
+
+const TechStackSectionContent = ({
+  readOnly = false,
+}: TechStackSectionContentProps) => {
+  const { techStackTags, setTechStackTags } = useSummaryContext();
   const [isAdding, setIsAdding] = useState(false);
   const [inputValue, setInputValue] = useState('');
 
-  const handleDelete = useCallback((index: number) => {
-    setTags(prev => prev.filter((_, i) => i !== index));
-  }, []);
+  const handleDelete = useCallback(
+    (index: number) => {
+      setTechStackTags(prev => prev.filter((_, i) => i !== index));
+    },
+    [setTechStackTags],
+  );
 
   const handleAdd = useCallback(() => {
     const trimmed = inputValue.trim();
-    if (trimmed !== '' && !tags.includes(trimmed)) {
-      setTags(prev => [...prev, trimmed]);
+    if (trimmed !== '' && !techStackTags.includes(trimmed)) {
+      setTechStackTags(prev => [...prev, trimmed]);
       setInputValue('');
       setIsAdding(false);
     } else if (trimmed === '') {
       setIsAdding(false);
       setInputValue('');
     }
-  }, [inputValue, tags]);
+  }, [inputValue, techStackTags, setTechStackTags]);
 
   const handleAddKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      if (e.key === 'Enter') {
-        handleAdd();
-      }
+      if (e.key === 'Enter') handleAdd();
       if (e.key === 'Escape') {
         setIsAdding(false);
         setInputValue('');
@@ -43,33 +49,36 @@ const TechStackSectionContent = () => {
 
   return (
     <Flex.Row gap="0.5rem" wrap="wrap" align="center">
-      {tags.map((name, index) => (
+      {techStackTags.map((name, index) => (
         <S.Tag key={`${name}-${index}`}>
           <span>{name}</span>
-          <S.RemoveButton
-            type="button"
-            onClick={() => handleDelete(index)}
-            aria-label={`${name} 삭제`}
-          >
-            <CloseIcon sx={{ fontSize: 14 }} />
-          </S.RemoveButton>
+          {!readOnly && (
+            <S.RemoveButton
+              type="button"
+              onClick={() => handleDelete(index)}
+              aria-label={`${name} 삭제`}
+            >
+              <CloseIcon sx={{ fontSize: 14 }} />
+            </S.RemoveButton>
+          )}
         </S.Tag>
       ))}
-      {isAdding ? (
-        <S.AddInput
-          autoFocus
-          value={inputValue}
-          onChange={e => setInputValue(e.target.value)}
-          onBlur={handleAdd}
-          onKeyDown={handleAddKeyDown}
-          placeholder="추가할 기술"
-          maxLength={30}
-        />
-      ) : (
-        <S.AddButton type="button" onClick={() => setIsAdding(true)}>
-          + 추가
-        </S.AddButton>
-      )}
+      {!readOnly &&
+        (isAdding ? (
+          <S.AddInput
+            autoFocus
+            value={inputValue}
+            onChange={e => setInputValue(e.target.value)}
+            onBlur={handleAdd}
+            onKeyDown={handleAddKeyDown}
+            placeholder="추가할 기술"
+            maxLength={30}
+          />
+        ) : (
+          <S.AddButton type="button" onClick={() => setIsAdding(true)}>
+            + 추가
+          </S.AddButton>
+        ))}
     </Flex.Row>
   );
 };

@@ -6,6 +6,7 @@ export const ROUTE_PATH = {
   scholarship: '/scholarship/apply',
   awardArchive: '/mileage/award',
   summary: '/summary',
+  summaryPreview: '/summary/preview',
   myPage: '/my',
   githubCallback: '/auth/github/callback',
 };

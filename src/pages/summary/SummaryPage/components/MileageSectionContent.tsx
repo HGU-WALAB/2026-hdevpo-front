@@ -4,51 +4,41 @@ import { palette } from '@/styles/palette';
 import EditIcon from '@mui/icons-material/Edit';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
-import { useCallback, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { styled, useTheme } from '@mui/material';
 
-/** API: POST /api/portfolio/mileage { mileage_id, additional_info }, PUT /api/portfolio/mileage/{id} { additional_info } */
-interface MileageItem {
-  mileage_id: number;
-  semester: string;
-  category: string;
-  item: string;
-  additional_info: string;
-  is_visible: boolean;
+import {
+  type MileageItem,
+  useSummaryContext,
+} from '../context/SummaryContext';
+
+interface MileageSectionContentProps {
+  readOnly?: boolean;
 }
 
-const INITIAL_ITEMS: MileageItem[] = [
-  {
-    mileage_id: 101,
-    semester: '2024-02',
-    category: '전공',
-    item: '선형대수학',
-    additional_info: '',
-    is_visible: false,
-  },
-  {
-    mileage_id: 102,
-    semester: '2024-01',
-    category: '비교과',
-    item: 'PPS Camp / 나의첫웹서비스',
-    additional_info: '상세 설명 (유저 추가)',
-    is_visible: false,
-  },
-];
-
-const MileageSectionContent = () => {
+const MileageSectionContent = ({
+  readOnly = false,
+}: MileageSectionContentProps) => {
   const theme = useTheme();
-  const [items, setItems] = useState<MileageItem[]>(INITIAL_ITEMS);
+  const { mileageItems, setMileageItems } = useSummaryContext();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState('');
 
-  const handleToggleVisible = useCallback((mileageId: number) => {
-    setItems(prev =>
-      prev.map(m =>
-        m.mileage_id === mileageId ? { ...m, is_visible: !m.is_visible } : m,
-      ),
-    );
-  }, []);
+  const displayItems = useMemo(
+    () => (readOnly ? mileageItems.filter(m => m.is_visible) : mileageItems),
+    [mileageItems, readOnly],
+  );
+
+  const handleToggleVisible = useCallback(
+    (mileageId: number) => {
+      setMileageItems(prev =>
+        prev.map(m =>
+          m.mileage_id === mileageId ? { ...m, is_visible: !m.is_visible } : m,
+        ),
+      );
+    },
+    [setMileageItems],
+  );
 
   const handleStartEdit = useCallback((item: MileageItem) => {
     setEditingId(item.mileage_id);
@@ -58,15 +48,14 @@ const MileageSectionContent = () => {
   const handleSaveEdit = useCallback(() => {
     if (editingId == null) return;
     const next = editDraft.trim();
-    setItems(prev =>
+    setMileageItems(prev =>
       prev.map(m =>
         m.mileage_id === editingId ? { ...m, additional_info: next } : m,
       ),
     );
     setEditingId(null);
     setEditDraft('');
-    // TODO: PUT /api/portfolio/mileage/{editingId} { additional_info: next }
-  }, [editingId, editDraft]);
+  }, [editingId, editDraft, setMileageItems]);
 
   const handleCancelEdit = useCallback(() => {
     setEditingId(null);
@@ -75,7 +64,7 @@ const MileageSectionContent = () => {
 
   return (
     <S.List>
-      {items.map(row => (
+      {displayItems.map(row => (
         <S.Row key={row.mileage_id} align="center" gap="0.75rem" wrap="wrap">
           <Text
             as="span"
@@ -101,8 +90,12 @@ const MileageSectionContent = () => {
           >
             {row.item}
           </Text>
-          {editingId === row.mileage_id ? (
-            <Flex.Row gap="0.5rem" align="center" style={{ flex: 1, minWidth: '12rem' }}>
+          {!readOnly && editingId === row.mileage_id ? (
+            <Flex.Row
+              gap="0.5rem"
+              align="center"
+              style={{ flex: 1, minWidth: '12rem' }}
+            >
               <S.EditInput
                 value={editDraft}
                 onChange={e => setEditDraft(e.target.value)}
@@ -143,30 +136,36 @@ const MileageSectionContent = () => {
               )}
             </Text>
           )}
-          <Flex.Row gap="0.25rem" align="center" style={{ flexShrink: 0 }}>
-            {editingId !== row.mileage_id && (
-              <S.EditButton
-                type="button"
-                onClick={() => handleStartEdit(row)}
-                aria-label="내용 수정"
-              >
-                <EditIcon sx={{ fontSize: 16 }} />
-              </S.EditButton>
-            )}
-            <S.EyeButton
-              type="button"
-              onClick={() => handleToggleVisible(row.mileage_id)}
-              aria-label={row.is_visible ? '미리보기에서 숨기기' : '미리보기에 표시'}
-            >
-              {row.is_visible ? (
-                <VisibilityIcon sx={{ fontSize: 18, color: palette.blue500 }} />
-              ) : (
-                <VisibilityOffOutlinedIcon
-                  sx={{ fontSize: 18, color: theme.palette.grey[500] }}
-                />
+          {!readOnly && (
+            <Flex.Row gap="0.25rem" align="center" style={{ flexShrink: 0 }}>
+              {editingId !== row.mileage_id && (
+                <S.EditButton
+                  type="button"
+                  onClick={() => handleStartEdit(row)}
+                  aria-label="내용 수정"
+                >
+                  <EditIcon sx={{ fontSize: 16 }} />
+                </S.EditButton>
               )}
-            </S.EyeButton>
-          </Flex.Row>
+              <S.EyeButton
+                type="button"
+                onClick={() => handleToggleVisible(row.mileage_id)}
+                aria-label={
+                  row.is_visible ? '미리보기에서 숨기기' : '미리보기에 표시'
+                }
+              >
+                {row.is_visible ? (
+                  <VisibilityIcon
+                    sx={{ fontSize: 18, color: palette.blue500 }}
+                  />
+                ) : (
+                  <VisibilityOffOutlinedIcon
+                    sx={{ fontSize: 18, color: theme.palette.grey[500] }}
+                  />
+                )}
+              </S.EyeButton>
+            </Flex.Row>
+          )}
         </S.Row>
       ))}
     </S.List>
