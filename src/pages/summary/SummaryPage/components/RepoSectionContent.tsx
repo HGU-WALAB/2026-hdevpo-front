@@ -3,15 +3,16 @@ import { ROUTE_PATH } from '@/constants/routePath';
 import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { boxShadow } from '@/styles/common';
 import { palette } from '@/styles/palette';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import LinkIcon from '@mui/icons-material/Link';
 import { useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { styled, useTheme, useMediaQuery } from '@mui/material';
+import { toast } from 'react-toastify';
 
+import { putRepositories } from '../../apis/portfolio';
 import { useSummaryContext } from '../context/SummaryContext';
 
 const GITHUB_STORAGE_KEY = 'github-storage';
@@ -21,8 +22,11 @@ function getGithubUsernameFromStorage(): string | null {
   try {
     const raw = typeof window !== 'undefined' ? localStorage.getItem(GITHUB_STORAGE_KEY) : null;
     if (!raw) return null;
-    const data = JSON.parse(raw) as { githubUsername?: string } | null;
-    const name = data?.githubUsername;
+    const data = JSON.parse(raw) as {
+      state?: { connected?: boolean; githubName?: string | null };
+      githubUsername?: string;
+    } | null;
+    const name = data?.state?.githubName ?? data?.githubUsername;
     return typeof name === 'string' && name.trim() ? name.trim() : null;
   } catch {
     return null;
@@ -63,11 +67,6 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
     return repos;
   }, [repos, readOnly]);
 
-  const visibleRepos = useMemo(
-    () => repos.filter(r => r.is_visible).map(r => r.custom_title ?? r.name),
-    [repos],
-  );
-
   const totalPages = Math.ceil(displayRepos.length / ITEMS_PER_PAGE) || 1;
   const paginatedRepos = useMemo(
     () =>
@@ -78,15 +77,25 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
     [displayRepos, page],
   );
 
-  const handleToggleVisible = useCallback(
-    (repoId: number) => {
-      setRepos(prev =>
-        prev.map(r =>
-          r.repo_id === repoId ? { ...r, is_visible: !r.is_visible } : r,
-        ),
-      );
+  const handleDelete = useCallback(
+    async (repoId: number) => {
+      const nextRepos = repos.filter(r => r.repo_id !== repoId);
+      setRepos(nextRepos);
+      const putBody = nextRepos.map(r => ({
+        repo_id: r.repo_id,
+        custom_title: r.custom_title,
+        description: r.description,
+        is_visible: r.is_visible,
+      }));
+      try {
+        await putRepositories(putBody);
+        toast.success('레포지토리가 삭제되었습니다.');
+      } catch {
+        setRepos(repos);
+        toast.error('레포지토리 삭제에 실패했습니다.');
+      }
     },
-    [setRepos],
+    [repos, setRepos],
   );
 
   const displayName = (repo: { custom_title: string | null; name: string }) =>
@@ -94,50 +103,18 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
 
   return (
     <Flex.Column gap="1rem">
-      {!readOnly && visibleRepos.length > 0 && (
-        <Flex.Row gap="0.5rem" wrap="wrap" align="center">
-          <Text
-            style={{
-              ...theme.typography.caption,
-              color: theme.palette.grey[600],
-              marginRight: '0.25rem',
-            }}
-          >
-            활성화된 레포:
-          </Text>
-          {visibleRepos.map(name => (
-            <S.ActiveTag key={name}>{name}</S.ActiveTag>
-          ))}
-        </Flex.Row>
-      )}
       <S.Grid $isMobile={isMobile}>
         {paginatedRepos.map(repo => (
           <S.Card key={repo.repo_id} $isMobile={isMobile}>
             {!readOnly && (
               <Flex.Row justify="flex-end" style={{ marginBottom: '0.25rem' }}>
-                <S.EyeButton
+                <S.DeleteButton
                   type="button"
-                  onClick={() => handleToggleVisible(repo.repo_id)}
-                  aria-label={
-                    repo.is_visible ? '미리보기에 숨기기' : '미리보기에 표시'
-                  }
+                  onClick={() => handleDelete(repo.repo_id)}
+                  aria-label="레포지토리 삭제"
                 >
-                  {repo.is_visible ? (
-                    <VisibilityIcon
-                      sx={{
-                        fontSize: 18,
-                        color: palette.blue500,
-                      }}
-                    />
-                  ) : (
-                    <VisibilityOffOutlinedIcon
-                      sx={{
-                        fontSize: 18,
-                        color: theme.palette.grey[500],
-                      }}
-                    />
-                  )}
-                </S.EyeButton>
+                  <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                </S.DeleteButton>
               </Flex.Row>
             )}
             <Flex.Column gap="0.5rem">
@@ -156,7 +133,9 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
                   color: theme.palette.grey[500],
                 }}
               >
-                {repo.created_at} ~ {repo.updated_at}
+                {repo.created_at && repo.updated_at
+                  ? `${repo.created_at} ~ ${repo.updated_at}`
+                  : repo.created_at || repo.updated_at || '-'}
               </Text>
               <Flex.Row gap="0.5rem" wrap="wrap">
                 {repo.languages.map(lang => (
@@ -237,7 +216,7 @@ const S = {
       box-shadow: 0 2px 6px rgba(83, 127, 241, 0.3);
     }
   `,
-  EyeButton: styled('button')`
+  DeleteButton: styled('button')`
     padding: 0;
     border: none;
     background: none;
@@ -245,8 +224,11 @@ const S = {
     display: flex;
     align-items: center;
     justify-content: center;
+    border-radius: 0.25rem;
+    color: ${({ theme }) => theme.palette.grey[500]};
     &:hover {
-      opacity: 0.8;
+      color: ${palette.pink500};
+      background-color: rgba(227, 135, 158, 0.15);
     }
   `,
   Grid: styled('div')<{ $isMobile?: boolean }>`
@@ -288,17 +270,6 @@ const S = {
     border: 1.5px solid ${palette.blue400};
     ${({ theme }) => theme.typography.caption};
     font-size: 0.75rem;
-    font-weight: 500;
-    box-shadow: 0 1px 2px rgba(83, 127, 241, 0.08);
-  `,
-  ActiveTag: styled('span')`
-    padding: 0.375rem 0.75rem;
-    border-radius: 999px;
-    background-color: ${palette.white};
-    color: ${palette.blue500};
-    border: 1.5px solid ${palette.blue400};
-    ${({ theme }) => theme.typography.body2};
-    font-size: 0.875rem;
     font-weight: 500;
     box-shadow: 0 1px 2px rgba(83, 127, 241, 0.08);
   `,

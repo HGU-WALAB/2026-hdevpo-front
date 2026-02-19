@@ -4,9 +4,13 @@ import { BASE_URL } from '@/apis/config';
 import { ENDPOINT } from '@/apis/endPoint';
 import type {
   ActivityApiItem,
+  PortfolioRepositoryItem,
+  PutRepositoryItem,
   UserInfoResponse,
 } from '@/pages/summary/apis/portfolio';
 import { mockActivitiesResponse } from '@/mocks/fixtures/portfolioActivities';
+import { mockGitHubRepos } from '@/mocks/fixtures/portfolioGithubRepos';
+import { mockPortfolioRepositories } from '@/mocks/fixtures/portfolioRepositories';
 import { mockTechStackResponse } from '@/mocks/fixtures/portfolioTechStack';
 import { mockUserInfoResponse } from '@/mocks/fixtures/portfolioUserInfo';
 
@@ -20,6 +24,11 @@ const activitiesStore: ActivityApiItem[] = mockActivitiesResponse.map(a => ({
   ...a,
 }));
 let nextActivityId = Math.max(0, ...activitiesStore.map(a => a.id)) + 1;
+
+const repositoriesStore: PortfolioRepositoryItem[] = mockPortfolioRepositories.map(
+  r => ({ ...r }),
+);
+let nextRepoId = Math.max(0, ...repositoriesStore.map(r => r.id)) + 1;
 
 /** 401/500 랜덤 반환 없이 항상 성공. (개발 시 불필요한 로그아웃·passthrough 방지) */
 export const PortfolioHandlers = [
@@ -109,5 +118,35 @@ export const PortfolioHandlers = [
     const body = (await request.json()) as { bio: string };
     userInfoStore.bio = body.bio ?? userInfoStore.bio;
     return HttpResponse.json({ ...userInfoStore }, { status: 200 });
+  }),
+
+  http.get(BASE_URL + ENDPOINT.PORTFOLIO_REPOSITORIES, () => {
+    const sorted = [...repositoriesStore].sort(
+      (a, b) => a.display_order - b.display_order,
+    );
+    return HttpResponse.json({ repositories: sorted }, { status: 200 });
+  }),
+
+  http.put(BASE_URL + ENDPOINT.PORTFOLIO_REPOSITORIES, async ({ request }) => {
+    const body = (await request.json()) as PutRepositoryItem[];
+    repositoriesStore.length = 0;
+    body.forEach((item, index) => {
+      repositoriesStore.push({
+        id: nextRepoId++,
+        repo_id: item.repo_id,
+        custom_title: item.custom_title ?? null,
+        description: item.description ?? '',
+        is_visible: item.is_visible ?? true,
+        display_order: index,
+      });
+    });
+    const sorted = [...repositoriesStore].sort(
+      (a, b) => a.display_order - b.display_order,
+    );
+    return HttpResponse.json({ repositories: sorted }, { status: 200 });
+  }),
+
+  http.get(BASE_URL + ENDPOINT.PORTFOLIO_GITHUB_REPOS, () => {
+    return HttpResponse.json({ repos: [...mockGitHubRepos] }, { status: 200 });
   }),
 ];

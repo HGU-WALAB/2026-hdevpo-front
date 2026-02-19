@@ -122,3 +122,64 @@ export const patchUserInfo = async (body: UserInfoPatchRequest) => {
   >(ENDPOINT.PORTFOLIO_USER_INFO, body);
   return response;
 };
+
+/** 활동 요약 - 포트폴리오 레포지토리 한 건 (GET 응답) */
+export interface PortfolioRepositoryItem {
+  id: number;
+  repo_id: number;
+  custom_title: string | null;
+  description: string;
+  is_visible: boolean;
+  display_order: number;
+}
+
+export interface RepositoriesResponse {
+  repositories: PortfolioRepositoryItem[];
+}
+
+/** 활동 요약 - 포트폴리오 레포지토리 PUT 요청 한 건 */
+export interface PutRepositoryItem {
+  repo_id: number;
+  custom_title: string | null;
+  description: string;
+  is_visible: boolean;
+}
+
+/** GitHub 레포 목록 한 건 (선택 모달용) */
+export interface GitHubRepoItem {
+  repo_id: number;
+  name: string;
+  description: string | null;
+  created_at: string;
+  updated_at: string;
+  languages: string[];
+}
+
+export interface GitHubReposResponse {
+  repos: GitHubRepoItem[];
+}
+
+/** 활동 요약 - 포트폴리오 레포지토리 조회 */
+export const getRepositories = async () => {
+  const response = await http.get<RepositoriesResponse>(
+    ENDPOINT.PORTFOLIO_REPOSITORIES,
+  );
+  return response;
+};
+
+/** 활동 요약 - 포트폴리오 레포지토리 전체 교체 (PUT) */
+export const putRepositories = async (body: PutRepositoryItem[]) => {
+  const response = await http.put<PutRepositoryItem[], RepositoriesResponse>(
+    ENDPOINT.PORTFOLIO_REPOSITORIES,
+    body,
+  );
+  return response;
+};
+
+/** 활동 요약 - 연결된 GitHub 레포 목록 조회 (선택 모달용) */
+export const getGitHubRepos = async () => {
+  const response = await http.get<GitHubReposResponse>(
+    ENDPOINT.PORTFOLIO_GITHUB_REPOS,
+  );
+  return response;
+};

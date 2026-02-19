@@ -26,4 +26,6 @@ export const ENDPOINT = {
   PORTFOLIO_TECH_STACK: `/api/portfolio/tech-stack`,
   PORTFOLIO_ACTIVITIES: `/api/portfolio/activities`,
   PORTFOLIO_USER_INFO: `/api/portfolio/user-info`,
+  PORTFOLIO_REPOSITORIES: `/api/portfolio/repositories`,
+  PORTFOLIO_GITHUB_REPOS: `/api/portfolio/github/repos`,
 };

@@ -1,0 +1,301 @@
+import { SearchIcon } from '@/assets';
+import { Button, Flex, Input, Modal, Text } from '@/components';
+import { palette } from '@/styles/palette';
+import type { GitHubRepoItem, PortfolioRepositoryItem, PutRepositoryItem } from '../../apis/portfolio';
+import { getGitHubRepos, getRepositories, putRepositories } from '../../apis/portfolio';
+import { mergeRepositories, useSummaryContext } from '../context/SummaryContext';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Checkbox from '@mui/material/Checkbox';
+import { styled, useTheme } from '@mui/material';
+import { toast } from 'react-toastify';
+
+interface RepoSelectModalProps {
+  open: boolean;
+  onClose: () => void;
+}
+
+/** 포트폴리오 레포지토리 선택 모달. GitHub 레포 목록 + 기존 선택 비교 후 확인 시 PUT */
+const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
+  const theme = useTheme();
+  const { setRepos } = useSummaryContext();
+  const [githubRepos, setGitHubRepos] = useState<GitHubRepoItem[]>([]);
+  const [portfolioRepos, setPortfolioRepos] = useState<PortfolioRepositoryItem[]>([]);
+  const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
+  const [searchQuery, setSearchQuery] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+
+  const portfolioByRepoId = useMemo(
+    () => new Map(portfolioRepos.map(p => [p.repo_id, p])),
+    [portfolioRepos],
+  );
+
+  useEffect(() => {
+    if (!open) return;
+    setLoading(true);
+    Promise.all([getRepositories(), getGitHubRepos()])
+      .then(([portfolioRes, githubRes]) => {
+        const list = portfolioRes.repositories ?? [];
+        const ghList = githubRes.repos ?? [];
+        setPortfolioRepos(list);
+        setGitHubRepos(ghList);
+        setSelectedIds(new Set(list.map(r => r.repo_id)));
+      })
+      .catch(() => {
+        toast.error('레포지토리 목록을 불러오지 못했습니다.');
+        onClose();
+      })
+      .finally(() => setLoading(false));
+  }, [open, onClose]);
+
+  const toggleRepo = useCallback((repoId: number) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(repoId)) next.delete(repoId);
+      else next.add(repoId);
+      return next;
+    });
+  }, []);
+
+  const handleConfirm = useCallback(async () => {
+    const portfolioMap = portfolioByRepoId;
+    const putBody: PutRepositoryItem[] = githubRepos
+      .filter(gh => selectedIds.has(gh.repo_id))
+      .map(gh => {
+        const p = portfolioMap.get(gh.repo_id);
+        return {
+          repo_id: gh.repo_id,
+          custom_title: p?.custom_title ?? gh.name ?? null,
+          description: p?.description ?? gh.description ?? '',
+          is_visible: p?.is_visible ?? true,
+        };
+      });
+    setSubmitting(true);
+    try {
+      const res = await putRepositories(putBody);
+      const merged = mergeRepositories(res.repositories ?? [], githubRepos);
+      setRepos(merged);
+      toast.success('레포지토리가 저장되었습니다.');
+      onClose();
+    } catch {
+      toast.error('레포지토리 저장에 실패했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [selectedIds, portfolioByRepoId, githubRepos, setRepos, onClose]);
+
+  const filteredRepos = useMemo(() => {
+    const q = searchQuery.trim().toLowerCase();
+    if (!q) return githubRepos;
+    return githubRepos.filter(
+      r =>
+        r.name.toLowerCase().includes(q) ||
+        (r.description?.toLowerCase().includes(q) ?? false) ||
+        r.languages.some(l => l.toLowerCase().includes(q)),
+    );
+  }, [githubRepos, searchQuery]);
+
+  const selectedCount = selectedIds.size;
+
+  return (
+    <Modal
+      open={open}
+      toggleModal={onClose}
+      size="large"
+      hasCloseButton
+      style={{ backgroundColor: theme.palette.background.default }}
+    >
+      <Modal.Header position="start">레포지토리 선택</Modal.Header>
+      <Modal.Body
+        position="start"
+        style={{ gap: '1rem', marginTop: '0.5rem', minHeight: '18rem' }}
+      >
+        <Text
+          style={{
+            ...theme.typography.body2,
+            color: theme.palette.grey[600],
+            margin: 0,
+          }}
+        >
+          포트폴리오에 추가할 레포지토리를 선택하세요.
+        </Text>
+        {!loading && (
+          <Flex.Row gap="0.5rem">
+            <Input
+              placeholder="레포지토리 검색..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+              style={{
+                width: '100%',
+                maxWidth: '20rem',
+                backgroundColor: theme.palette.variant?.default ?? theme.palette.grey[50],
+              }}
+              inputProps={{ 'aria-label': '레포지토리 검색' }}
+            />
+            <S.SearchButton type="button" aria-label="검색">
+              <SearchIcon />
+            </S.SearchButton>
+          </Flex.Row>
+        )}
+        {loading ? (
+          <Text style={{ ...theme.typography.body2, color: theme.palette.grey[500], margin: 0 }}>
+            불러오는 중...
+          </Text>
+        ) : (
+          <S.List>
+            {filteredRepos.map(repo => (
+              <S.Row
+                key={repo.repo_id}
+                role="button"
+                tabIndex={0}
+                onClick={() => toggleRepo(repo.repo_id)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    toggleRepo(repo.repo_id);
+                  }
+                }}
+              >
+                <Checkbox
+                  checked={selectedIds.has(repo.repo_id)}
+                  onChange={() => toggleRepo(repo.repo_id)}
+                  onClick={e => e.stopPropagation()}
+                  sx={{
+                    color: palette.grey400,
+                    '&.Mui-checked': { color: palette.blue500 },
+                  }}
+                />
+                <Flex.Column gap="0.375rem" style={{ flex: 1, minWidth: 0 }}>
+                  <Text
+                    style={{
+                      ...theme.typography.body2,
+                      fontWeight: 600,
+                      margin: 0,
+                      color: theme.palette.text.primary,
+                    }}
+                  >
+                    {repo.name}
+                  </Text>
+                  {repo.description && (
+                    <Text
+                      style={{
+                        ...theme.typography.caption,
+                        color: theme.palette.grey[600],
+                        margin: 0,
+                      }}
+                    >
+                      {repo.description}
+                    </Text>
+                  )}
+                  <Text
+                    style={{
+                      ...theme.typography.caption,
+                      color: theme.palette.grey[500],
+                      margin: 0,
+                    }}
+                  >
+                    {repo.created_at} ~ {repo.updated_at}
+                  </Text>
+                  {repo.languages.length > 0 && (
+                    <Flex.Row gap="0.375rem" wrap="wrap">
+                      {repo.languages.map(lang => (
+                        <S.LangTag key={lang}>{lang}</S.LangTag>
+                      ))}
+                    </Flex.Row>
+                  )}
+                </Flex.Column>
+              </S.Row>
+            ))}
+          </S.List>
+        )}
+      </Modal.Body>
+      <Modal.Footer
+        style={{
+          display: 'flex',
+          flexWrap: 'wrap',
+          justifyContent: 'flex-end',
+          alignItems: 'center',
+          gap: '0.75rem',
+        }}
+      >
+        <Text
+          style={{
+            ...theme.typography.body2,
+            color: theme.palette.grey[600],
+            margin: 0,
+          }}
+        >
+          {selectedCount}개 선택됨
+        </Text>
+        <Flex.Row gap="0.5rem">
+          <Button
+            label="취소"
+            variant="outlined"
+            size="large"
+            onClick={onClose}
+          />
+          <Button
+            label="확인"
+            variant="contained"
+            color="blue"
+            size="large"
+            disabled={loading || submitting}
+            onClick={handleConfirm}
+          />
+        </Flex.Row>
+      </Modal.Footer>
+    </Modal>
+  );
+};
+
+export default RepoSelectModal;
+
+const S = {
+  SearchButton: styled('button')`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background-color: ${({ theme }) => theme.palette.primary.main};
+    border: none;
+    border-radius: 0.4rem;
+    padding: 0.5rem 1rem;
+    cursor: pointer;
+    color: ${palette.white};
+    &:hover,
+    &:active {
+      background-color: ${palette.blue600};
+    }
+  `,
+  List: styled('div')`
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    max-height: 28rem;
+    overflow-y: auto;
+  `,
+  Row: styled(Flex.Row)`
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem 1.25rem;
+    border-radius: 0.75rem;
+    background-color: ${({ theme }) => theme.palette.background.paper};
+    border: 1px solid ${({ theme }) => theme.palette.grey[200]};
+    cursor: pointer;
+    transition: box-shadow 0.2s ease, border-color 0.2s ease;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+    &:hover {
+      border-color: ${palette.blue300};
+      box-shadow: 0 2px 8px rgba(83, 127, 241, 0.08);
+    }
+  `,
+  LangTag: styled('span')`
+    padding: 0.3rem 0.625rem;
+    border-radius: 999px;
+    background-color: ${palette.blue300};
+    color: ${palette.blue600};
+    font-size: 0.75rem;
+    font-weight: 500;
+    flex-shrink: 0;
+  `,
+};

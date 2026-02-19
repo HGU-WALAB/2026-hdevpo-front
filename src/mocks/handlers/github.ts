@@ -15,12 +15,8 @@ export const GitHubHandlers = [
     if (is401Error) return Error401();
     if (is500Error) return Error500();
 
-    // 연결 상태를 랜덤하게 반환 (테스트용)
-    const isConnected = Math.random() > 0.5;
-    return HttpResponse.json(
-      isConnected ? mockGitHubStatusConnected : mockGitHubStatusDisconnected,
-      { status: 200 },
-    );
+    // 연결 성공 상태로 반환 (로컬 스토리지 동기화용)
+    return HttpResponse.json(mockGitHubStatusConnected, { status: 200 });
   }),
 
   http.get(BASE_URL + ENDPOINT.GITHUB_CONNECT, () => {
@@ -35,7 +31,6 @@ export const GitHubHandlers = [
     if (is401Error) return Error401();
     if (is500Error) return Error500();
 
-    // URL에서 code 파라미터 확인
     const url = new URL(request.url);
     const code = url.searchParams.get('code');
     const error = url.searchParams.get('error');
@@ -45,7 +40,7 @@ export const GitHubHandlers = [
     }
 
     if (code) {
-      // code가 있으면 연결 성공으로 간주
+      // code가 있으면 연결 성공 → 클라이언트에서 github-storage 동기화
       return HttpResponse.json(mockGitHubStatusConnected, { status: 200 });
     }
 

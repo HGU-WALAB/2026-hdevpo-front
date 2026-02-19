@@ -13,13 +13,19 @@ import { toast } from 'react-toastify';
 import {
   deleteActivity as deleteActivityApi,
   getActivities,
+  getGitHubRepos,
+  getRepositories,
   getTechStack,
   getUserInfo,
   postActivity,
   putActivity as putActivityApi,
   putTechStack,
 } from '../../apis/portfolio';
-import type { UserInfoResponse } from '../../apis/portfolio';
+import type {
+  GitHubRepoItem,
+  PortfolioRepositoryItem,
+  UserInfoResponse,
+} from '../../apis/portfolio';
 import {
   DRAGGABLE_SECTION_ORDER,
   type DraggableSectionKey,
@@ -80,63 +86,27 @@ function apiActivityToItem(
   };
 }
 
-const INITIAL_REPOS: RepoItem[] = [
-  {
-    repo_id: 1,
-    name: 'web-camp-2026',
-    owner: 'lyh',
-    custom_title: null,
-    is_visible: false,
-    description: 'No description',
-    created_at: '2025-01-01',
-    updated_at: '2025-02-01',
-    languages: ['TypeScript', 'HTML'],
-  },
-  {
-    repo_id: 2,
-    name: 'phenotype-viewer',
-    owner: 'lyh',
-    custom_title: null,
-    is_visible: false,
-    description: '이미지 파일과 예측 값 간의 대응 관계 제공',
-    created_at: '2024-06-01',
-    updated_at: '2025-01-15',
-    languages: ['Java'],
-  },
-  {
-    repo_id: 3,
-    name: 'springboot-user-crud',
-    owner: 'lyh',
-    custom_title: null,
-    is_visible: false,
-    description: 'Spring Boot CRUD 예제',
-    created_at: '2024-03-01',
-    updated_at: '2025-01-10',
-    languages: ['Java'],
-  },
-  {
-    repo_id: 4,
-    name: 'tayo_BE',
-    owner: 'lyh',
-    custom_title: null,
-    is_visible: false,
-    description: '프로젝트 백엔드',
-    created_at: '2024-05-01',
-    updated_at: '2025-02-01',
-    languages: ['Java', 'Spring'],
-  },
-  {
-    repo_id: 5,
-    name: 'test-repo',
-    owner: 'lyh',
-    custom_title: null,
-    is_visible: false,
-    description: '테스트 레포',
-    created_at: '2025-01-15',
-    updated_at: '2025-01-20',
-    languages: ['TypeScript'],
-  },
-];
+export function mergeRepositories(
+  portfolio: PortfolioRepositoryItem[],
+  githubRepos: GitHubRepoItem[],
+): RepoItem[] {
+  const byRepoId = new Map(githubRepos.map(r => [r.repo_id, r]));
+  return portfolio
+    .sort((a, b) => a.display_order - b.display_order)
+    .map(p => {
+      const gh = byRepoId.get(p.repo_id);
+      return {
+        repo_id: p.repo_id,
+        custom_title: p.custom_title,
+        is_visible: p.is_visible,
+        name: gh?.name ?? p.custom_title ?? String(p.repo_id),
+        description: p.description || (gh?.description ?? ''),
+        created_at: gh?.created_at ?? '',
+        updated_at: gh?.updated_at ?? '',
+        languages: gh?.languages ?? [],
+      };
+    });
+}
 
 const INITIAL_MILEAGE: MileageItem[] = [
   {
@@ -198,7 +168,7 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
     DRAGGABLE_SECTION_ORDER,
   );
   const [techStackTags, setTechStackTagsState] = useState<string[]>([]);
-  const [repos, setRepos] = useState<RepoItem[]>(INITIAL_REPOS);
+  const [repos, setRepos] = useState<RepoItem[]>([]);
   const [mileageItems, setMileageItems] = useState<MileageItem[]>(
     INITIAL_MILEAGE,
   );
@@ -252,6 +222,18 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       .then(res => setUserInfo(res))
       .catch(() => {
         toast.error('유저 정보를 불러오지 못했습니다.');
+      });
+
+    Promise.all([getRepositories(), getGitHubRepos()])
+      .then(([portfolioRes, githubRes]) => {
+        const merged = mergeRepositories(
+          portfolioRes.repositories ?? [],
+          githubRes.repos ?? [],
+        );
+        setRepos(merged);
+      })
+      .catch(() => {
+        toast.error('레포지토리 목록을 불러오지 못했습니다.');
       });
   }, []);
 

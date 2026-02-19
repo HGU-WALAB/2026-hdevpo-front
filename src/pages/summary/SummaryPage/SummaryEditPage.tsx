@@ -23,10 +23,30 @@ import {
   ActivitiesSectionContent,
   DraggableSection,
   MileageSectionContent,
+  RepoSelectModal,
   RepoSectionContent,
   TechStackSectionContent,
   UserInfoSectionContent,
 } from './components';
+
+const GITHUB_STORAGE_KEY = 'github-storage';
+function getGithubUsernameFromStorage(): string | null {
+  try {
+    const raw =
+      typeof window !== 'undefined'
+        ? localStorage.getItem(GITHUB_STORAGE_KEY)
+        : null;
+    if (!raw) return null;
+    const data = JSON.parse(raw) as {
+      state?: { connected?: boolean; githubName?: string | null };
+      githubUsername?: string;
+    } | null;
+    const name = data?.state?.githubName ?? data?.githubUsername;
+    return typeof name === 'string' && name.trim() ? name.trim() : null;
+  } catch {
+    return null;
+  }
+}
 
 const SECTION_ICONS: Record<DraggableSectionKey, React.ReactNode> = {
   tech_stack: <CodeIcon sx={{ fontSize: 20, color: palette.grey500 }} />,
@@ -47,9 +67,9 @@ const SummaryEditPage = () => {
     activities,
   } = useSummaryContext();
   const [draggedId, setDraggedId] = useState<DraggableSectionKey | null>(null);
-  const [dragOverId, setDragOverId] = useState<DraggableSectionKey | null>(
-    null,
-  );
+  const [dragOverId, setDragOverId] = useState<DraggableSectionKey | null>(null);
+  const [repoModalOpen, setRepoModalOpen] = useState(false);
+  const hasGithub = getGithubUsernameFromStorage() != null;
 
   const handleDragStart = useCallback((id: DraggableSectionKey) => {
     setDraggedId(id);
@@ -121,6 +141,17 @@ const SummaryEditPage = () => {
     }
   }, [sectionOrder, techStackTags, repos, mileageItems, activities]);
 
+  const repoHeaderRight =
+    hasGithub ? (
+      <S.RepoSelectButton
+        type="button"
+        onClick={() => setRepoModalOpen(true)}
+      >
+        <FolderIcon sx={{ fontSize: 18 }} />
+        깃허브 레포지토리 선택하기
+      </S.RepoSelectButton>
+    ) : undefined;
+
   return (
     <Flex.Column margin="1rem" gap="1.5rem">
       <S.TopRow align="center" justify="space-between" gap="1rem" wrap="wrap">
@@ -155,6 +186,7 @@ const SummaryEditPage = () => {
             sectionId={key}
             title={SECTION_TITLES[key]}
             icon={SECTION_ICONS[key]}
+            headerRight={key === 'repo' ? repoHeaderRight : undefined}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -165,6 +197,10 @@ const SummaryEditPage = () => {
           </DraggableSection>
         ))}
       </Flex.Column>
+      <RepoSelectModal
+        open={repoModalOpen}
+        onClose={() => setRepoModalOpen(false)}
+      />
       <Footer />
     </Flex.Column>
   );
@@ -202,6 +238,25 @@ const S = {
       border-color: ${palette.blue600};
       color: ${palette.blue600};
       background-color: rgba(91, 140, 241, 0.08);
+    }
+  `,
+  RepoSelectButton: styled('button')`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    background-color: ${palette.blue500};
+    color: ${palette.white};
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    box-shadow: 0 1px 3px rgba(83, 127, 241, 0.25);
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    &:hover {
+      background-color: ${palette.blue600};
+      box-shadow: 0 2px 6px rgba(83, 127, 241, 0.3);
     }
   `,
 };
