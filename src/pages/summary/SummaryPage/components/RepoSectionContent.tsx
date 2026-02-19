@@ -5,14 +5,12 @@ import { boxShadow } from '@/styles/common';
 import { palette } from '@/styles/palette';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import LinkIcon from '@mui/icons-material/Link';
-import { useCallback, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { styled, useTheme, useMediaQuery } from '@mui/material';
-import { toast } from 'react-toastify';
 
-import { putRepositories } from '../../apis/portfolio';
+import { formatDateRange } from '../../utils/date';
 import { useSummaryContext } from '../context/SummaryContext';
 
 const GITHUB_STORAGE_KEY = 'github-storage';
@@ -42,25 +40,11 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
   const theme = useTheme();
   const navigate = useNavigate();
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
-  const { repos, setRepos } = useSummaryContext();
+  const { repos: contextRepos } = useSummaryContext();
+  const repos = Array.isArray(contextRepos) ? contextRepos : [];
   const [page, setPage] = useState(0);
 
   const hasGithubInStorage = useMemo(() => getGithubUsernameFromStorage(), []);
-
-  if (!readOnly && !hasGithubInStorage) {
-    return (
-      <S.ConnectCard>
-        <S.ConnectMessage>
-          깃허브 계정이 연결되어 있지 않습니다. 깃허브 계정 연결을 통해
-          포트폴리오 항목을 추가할 수 있습니다.
-        </S.ConnectMessage>
-        <S.ConnectButton type="button" onClick={() => navigate(ROUTE_PATH.myPage)}>
-          <LinkIcon sx={{ fontSize: 18 }} />
-          깃허브 계정 연결
-        </S.ConnectButton>
-      </S.ConnectCard>
-    );
-  }
 
   const displayRepos = useMemo(() => {
     if (readOnly) return repos.filter(r => r.is_visible);
@@ -77,26 +61,28 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
     [displayRepos, page],
   );
 
-  const handleDelete = useCallback(
-    async (repoId: number) => {
-      const nextRepos = repos.filter(r => r.repo_id !== repoId);
-      setRepos(nextRepos);
-      const putBody = nextRepos.map(r => ({
-        repo_id: r.repo_id,
-        custom_title: r.custom_title,
-        description: r.description,
-        is_visible: r.is_visible,
-      }));
-      try {
-        await putRepositories(putBody);
-        toast.success('레포지토리가 삭제되었습니다.');
-      } catch {
-        setRepos(repos);
-        toast.error('레포지토리 삭제에 실패했습니다.');
-      }
-    },
-    [repos, setRepos],
-  );
+  if (!readOnly && !hasGithubInStorage) {
+    return (
+      <S.ConnectCard>
+        <S.ConnectMessage>
+          깃허브 계정이 연결되어 있지 않습니다. 깃허브 계정 연결을 통해
+          포트폴리오 항목을 추가할 수 있습니다.
+        </S.ConnectMessage>
+        <S.ConnectButton type="button" onClick={() => navigate(ROUTE_PATH.myPage)}>
+          <LinkIcon sx={{ fontSize: 18 }} />
+          깃허브 계정 연결
+        </S.ConnectButton>
+      </S.ConnectCard>
+    );
+  }
+
+  if (!readOnly && hasGithubInStorage && displayRepos.length === 0) {
+    return (
+      <S.ConnectCard>
+        <S.ConnectMessage>선택된 레포지토리가 없습니다.</S.ConnectMessage>
+      </S.ConnectCard>
+    );
+  }
 
   const displayName = (repo: { custom_title: string | null; name: string }) =>
     repo.custom_title ?? repo.name;
@@ -106,17 +92,6 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
       <S.Grid $isMobile={isMobile}>
         {paginatedRepos.map(repo => (
           <S.Card key={repo.repo_id} $isMobile={isMobile}>
-            {!readOnly && (
-              <Flex.Row justify="flex-end" style={{ marginBottom: '0.25rem' }}>
-                <S.DeleteButton
-                  type="button"
-                  onClick={() => handleDelete(repo.repo_id)}
-                  aria-label="레포지토리 삭제"
-                >
-                  <DeleteOutlineIcon sx={{ fontSize: 18 }} />
-                </S.DeleteButton>
-              </Flex.Row>
-            )}
             <Flex.Column gap="0.5rem">
               <S.RepoLink href="#">{displayName(repo)}</S.RepoLink>
               <Text
@@ -133,9 +108,7 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
                   color: theme.palette.grey[500],
                 }}
               >
-                {repo.created_at && repo.updated_at
-                  ? `${repo.created_at} ~ ${repo.updated_at}`
-                  : repo.created_at || repo.updated_at || '-'}
+                {formatDateRange(repo.created_at, repo.updated_at)}
               </Text>
               <Flex.Row gap="0.5rem" wrap="wrap">
                 {repo.languages.map(lang => (
@@ -214,21 +187,6 @@ const S = {
     &:hover {
       background-color: ${palette.blue600};
       box-shadow: 0 2px 6px rgba(83, 127, 241, 0.3);
-    }
-  `,
-  DeleteButton: styled('button')`
-    padding: 0;
-    border: none;
-    background: none;
-    cursor: pointer;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 0.25rem;
-    color: ${({ theme }) => theme.palette.grey[500]};
-    &:hover {
-      color: ${palette.pink500};
-      background-color: rgba(227, 135, 158, 0.15);
     }
   `,
   Grid: styled('div')<{ $isMobile?: boolean }>`

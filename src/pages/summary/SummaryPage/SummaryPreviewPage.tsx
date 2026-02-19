@@ -1,16 +1,13 @@
 import { DownloadIcon } from '@/assets';
 import { Button, Flex, Footer } from '@/components';
-import { ROUTE_PATH } from '@/constants/routePath';
 import { palette } from '@/styles/palette';
 import { useTrackPageView } from '@/service/amplitude/useTrackPageView';
 import CodeIcon from '@mui/icons-material/Code';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FolderIcon from '@mui/icons-material/Folder';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
-import { Button as MuiButton } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useCallback } from 'react';
-import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import { SECTION_TITLES, type DraggableSectionKey } from '../constants/constants';
@@ -34,7 +31,6 @@ const SECTION_ICONS: Record<DraggableSectionKey, React.ReactNode> = {
 
 const SummaryPreviewPage = () => {
   useTrackPageView({ eventName: '[View] 활동 요약 미리보기' });
-  const navigate = useNavigate();
   const {
     sectionOrder,
     techStackTags,
@@ -77,13 +73,6 @@ const SummaryPreviewPage = () => {
   return (
     <Flex.Column margin="1rem" gap="1.5rem">
       <S.ButtonRow justify="flex-end" gap="0.5rem">
-        <S.EditButton
-          variant="outlined"
-          size="large"
-          onClick={() => navigate(ROUTE_PATH.summary)}
-        >
-          편집
-        </S.EditButton>
         <Button
           label="프롬프트 복사"
           variant="contained"
@@ -94,7 +83,7 @@ const SummaryPreviewPage = () => {
           onClick={handleCopyMarkdown}
         />
       </S.ButtonRow>
-      <UserInfoSectionContent />
+      <UserInfoSectionContent readOnly />
       <Flex.Column gap="1rem">
         {sectionOrder.map(key => (
           <StaticSection
@@ -117,16 +106,5 @@ const S = {
   ButtonRow: styled(Flex.Row)`
     margin-bottom: 0.5rem;
     width: 100%;
-  `,
-  EditButton: styled(MuiButton)`
-    width: 7.5rem;
-    border-color: ${palette.blue400};
-    color: ${palette.blue400};
-    border-radius: 0.75rem;
-    &:hover {
-      border-color: ${palette.blue600};
-      color: ${palette.blue600};
-      background-color: rgba(91, 140, 241, 0.08);
-    }
   `,
 };

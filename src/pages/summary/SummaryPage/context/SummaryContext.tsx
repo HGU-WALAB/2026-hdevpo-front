@@ -13,7 +13,7 @@ import { toast } from 'react-toastify';
 import {
   deleteActivity as deleteActivityApi,
   getActivities,
-  getGitHubRepos,
+  getGitHubReposWithFallback,
   getRepositories,
   getTechStack,
   getUserInfo,
@@ -31,13 +31,17 @@ import {
   type DraggableSectionKey,
 } from '../../constants/constants';
 
-/** 변경사항 반영 대기 시간 (ms). 이 시간 동안 추가 변경이 있으면 PUT/POST/DELETE 호출 */
-const DEBOUNCE_PUT_MS = 10_000;
+/** 변경사항 반영 대기 시간 (ms). 이 시간 동안 추가 변경이 없으면 모아둔 변경사항을 한꺼번에 API로 전송 */
+const DEBOUNCE_PUT_MS = 5_000;
+
+const SAVED_TOAST_OPTIONS = {
+  position: 'bottom-right' as const,
+};
 
 /**
  * 활동 요약 API 패턴:
  * - GET: 페이지 진입 시(SummaryProvider 마운트) 1회만 호출
- * - PUT/DELETE/POST: 변경사항이 있을 때 10초(DEBOUNCE_PUT_MS) 동안 추가 변경이 없으면,
+ * - PUT/DELETE/POST: 변경사항이 있을 때 DEBOUNCE_PUT_MS(5초) 동안 추가 변경이 없으면,
  *   그때 모아둔 변경사항을 한꺼번에 API로 전송 (DELETE → POST → PUT 순)
  * - 새 리소스 추가 시: apis/portfolio.ts에 함수 추가 → 여기서 진입 시 GET, 디바운스 후 flush에서 함께 호출
  */
@@ -219,17 +223,31 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       });
 
     getUserInfo()
-      .then(res => setUserInfo(res))
+      .then(res => {
+        setUserInfo(res);
+        try {
+          localStorage.setItem(
+            'portfolio-user-info',
+            JSON.stringify(res),
+          );
+        } catch {
+          // ignore
+        }
+      })
       .catch(() => {
         toast.error('유저 정보를 불러오지 못했습니다.');
       });
 
-    Promise.all([getRepositories(), getGitHubRepos()])
-      .then(([portfolioRes, githubRes]) => {
-        const merged = mergeRepositories(
-          portfolioRes.repositories ?? [],
-          githubRes.repos ?? [],
-        );
+    getRepositories()
+      .then(portfolioRes => {
+        const repositories = portfolioRes.repositories ?? [];
+        return getGitHubReposWithFallback().then(ghRepos => ({
+          repositories,
+          ghRepos,
+        }));
+      })
+      .then(({ repositories, ghRepos }) => {
+        const merged = mergeRepositories(repositories, ghRepos);
         setRepos(merged);
       })
       .catch(() => {
@@ -237,12 +255,15 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       });
   }, []);
 
-  /** 기술 스택 변경 시 10초 디바운스 후 PUT */
+  /** 기술 스택 변경 시 디바운스 후 PUT */
   useEffect(() => {
     if (!techStackUserModifiedRef.current) return;
 
     const id = window.setTimeout(() => {
       putTechStack({ tech_stack: techStackTags })
+        .then(() => {
+          toast.success('변경사항이 저장되었습니다.', SAVED_TOAST_OPTIONS);
+        })
         .catch(() => {
           toast.error('기술 스택 저장에 실패했습니다.');
         });
@@ -259,6 +280,7 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
     }
 
     const id = window.setTimeout(async () => {
+      let hasError = false;
       const deletedIds = new Set(activitiesDeletedIdsRef.current);
       activitiesDeletedIdsRef.current.clear();
 
@@ -267,6 +289,7 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
           await deleteActivityApi(activityId);
         } catch {
           toast.error('활동 삭제에 실패했습니다.');
+          hasError = true;
         }
       }
 
@@ -296,6 +319,7 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
           );
         } catch {
           toast.error('활동 추가에 실패했습니다.');
+          hasError = true;
         }
       }
 
@@ -309,7 +333,12 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
           });
         } catch {
           toast.error('활동 수정에 실패했습니다.');
+          hasError = true;
         }
+      }
+
+      if (!hasError) {
+        toast.success('변경사항이 저장되었습니다.', SAVED_TOAST_OPTIONS);
       }
     }, DEBOUNCE_PUT_MS);
 

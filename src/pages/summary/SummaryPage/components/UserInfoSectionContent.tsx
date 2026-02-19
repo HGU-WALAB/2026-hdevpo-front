@@ -9,8 +9,12 @@ import { toast } from 'react-toastify';
 import { patchUserInfo } from '../../apis/portfolio';
 import { useSummaryContext } from '../context/SummaryContext';
 
+interface UserInfoSectionContentProps {
+  readOnly?: boolean;
+}
+
 /** 유저정보. 상단 고정, 타이틀 없음. name/department/major1·2 표시, bio만 수정 가능 */
-const UserInfoSectionContent = () => {
+const UserInfoSectionContent = ({ readOnly = false }: UserInfoSectionContentProps) => {
   const { userInfo, setUserInfo } = useSummaryContext();
   const [isEditingBio, setIsEditingBio] = useState(false);
   const [bioDraft, setBioDraft] = useState('');
@@ -72,12 +76,14 @@ const UserInfoSectionContent = () => {
               >
                 {bio || '-'}
               </Text>
-              <S.EditBioButton type="button" onClick={handleStartEditBio}>
-                <EditIcon sx={{ fontSize: 18 }} />
-                수정
-              </S.EditBioButton>
+              {!readOnly && (
+                <S.EditBioButton type="button" onClick={handleStartEditBio}>
+                  <EditIcon sx={{ fontSize: 18 }} />
+                  수정
+                </S.EditBioButton>
+              )}
             </Flex.Row>
-          ) : (
+          ) : !readOnly ? (
             <Flex.Column gap="0.5rem" style={{ width: '100%' }}>
               <S.BioTextarea
                 value={bioDraft}
@@ -98,7 +104,7 @@ const UserInfoSectionContent = () => {
                 </S.SmallButton>
               </Flex.Row>
             </Flex.Column>
-          )}
+          ) : null}
           <Text
             style={{
               color: palette.grey600,

@@ -2,10 +2,16 @@ import { SearchIcon } from '@/assets';
 import { Button, Flex, Input, Modal, Text } from '@/components';
 import { palette } from '@/styles/palette';
 import type { GitHubRepoItem, PortfolioRepositoryItem, PutRepositoryItem } from '../../apis/portfolio';
-import { getGitHubRepos, getRepositories, putRepositories } from '../../apis/portfolio';
+import {
+  getGitHubReposWithFallback,
+  getRepositories,
+  putRepositories,
+} from '../../apis/portfolio';
+import { formatDateRange } from '../../utils/date';
 import { mergeRepositories, useSummaryContext } from '../context/SummaryContext';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Checkbox from '@mui/material/Checkbox';
+import LinearProgress from '@mui/material/LinearProgress';
 import { styled, useTheme } from '@mui/material';
 import { toast } from 'react-toastify';
 
@@ -33,10 +39,12 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    Promise.all([getRepositories(), getGitHubRepos()])
-      .then(([portfolioRes, githubRes]) => {
+    getRepositories()
+      .then(portfolioRes => {
         const list = portfolioRes.repositories ?? [];
-        const ghList = githubRes.repos ?? [];
+        return getGitHubReposWithFallback().then(ghList => ({ list, ghList }));
+      })
+      .then(({ list, ghList }) => {
         setPortfolioRepos(list);
         setGitHubRepos(ghList);
         setSelectedIds(new Set(list.map(r => r.repo_id)));
@@ -75,7 +83,9 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
       const res = await putRepositories(putBody);
       const merged = mergeRepositories(res.repositories ?? [], githubRepos);
       setRepos(merged);
-      toast.success('레포지토리가 저장되었습니다.');
+      toast.success('변경사항이 저장되었습니다.', {
+        position: 'bottom-right',
+      });
       onClose();
     } catch {
       toast.error('레포지토리 저장에 실패했습니다.');
@@ -95,6 +105,11 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
     );
   }, [githubRepos, searchQuery]);
 
+  const selectedRepos = useMemo(
+    () => githubRepos.filter(r => selectedIds.has(r.repo_id)),
+    [githubRepos, selectedIds],
+  );
+
   const selectedCount = selectedIds.size;
 
   return (
@@ -106,10 +121,7 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
       style={{ backgroundColor: theme.palette.background.default }}
     >
       <Modal.Header position="start">레포지토리 선택</Modal.Header>
-      <Modal.Body
-        position="start"
-        style={{ gap: '1rem', marginTop: '0.5rem', minHeight: '18rem' }}
-      >
+      <Modal.Body position="start" style={{ gap: '1rem', marginTop: '0.5rem' }}>
         <Text
           style={{
             ...theme.typography.body2,
@@ -137,11 +149,41 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
             </S.SearchButton>
           </Flex.Row>
         )}
-        {loading ? (
-          <Text style={{ ...theme.typography.body2, color: theme.palette.grey[500], margin: 0 }}>
-            불러오는 중...
-          </Text>
-        ) : (
+        {!loading && selectedRepos.length > 0 && (
+          <S.SelectedTags wrap="wrap" gap="0.5rem">
+            {selectedRepos.map(repo => (
+              <S.SelectedTag
+                key={repo.repo_id}
+                type="button"
+                onClick={e => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  toggleRepo(repo.repo_id);
+                }}
+                aria-label={`${repo.name} 선택 해제`}
+              >
+                <span>{repo.name}</span>
+                <S.TagRemove aria-hidden>×</S.TagRemove>
+              </S.SelectedTag>
+            ))}
+          </S.SelectedTags>
+        )}
+        <S.ListWrap>
+          {loading ? (
+            <S.LoadingWrap>
+              <LinearProgress
+                sx={{
+                  width: '12rem',
+                  height: 6,
+                  borderRadius: 3,
+                  backgroundColor: palette.blue300,
+                  '& .MuiLinearProgress-bar': {
+                    backgroundColor: palette.blue500,
+                  },
+                }}
+              />
+            </S.LoadingWrap>
+          ) : (
           <S.List>
             {filteredRepos.map(repo => (
               <S.Row
@@ -194,7 +236,7 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
                       margin: 0,
                     }}
                   >
-                    {repo.created_at} ~ {repo.updated_at}
+                    {formatDateRange(repo.created_at, repo.updated_at)}
                   </Text>
                   {repo.languages.length > 0 && (
                     <Flex.Row gap="0.375rem" wrap="wrap">
@@ -207,7 +249,8 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
               </S.Row>
             ))}
           </S.List>
-        )}
+          )}
+        </S.ListWrap>
       </Modal.Body>
       <Modal.Footer
         style={{
@@ -250,6 +293,8 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
 
 export default RepoSelectModal;
 
+const LIST_AREA_HEIGHT = '28rem';
+
 const S = {
   SearchButton: styled('button')`
     display: flex;
@@ -266,12 +311,28 @@ const S = {
       background-color: ${palette.blue600};
     }
   `,
+  ListWrap: styled('div')`
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    height: ${LIST_AREA_HEIGHT};
+    min-height: ${LIST_AREA_HEIGHT};
+    flex-shrink: 0;
+  `,
+  LoadingWrap: styled('div')`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    min-height: ${LIST_AREA_HEIGHT};
+  `,
   List: styled('div')`
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
     width: 100%;
-    max-height: 28rem;
+    height: 100%;
     overflow-y: auto;
   `,
   Row: styled(Flex.Row)`
@@ -297,5 +358,37 @@ const S = {
     font-size: 0.75rem;
     font-weight: 500;
     flex-shrink: 0;
+  `,
+  SelectedTags: styled(Flex.Row)`
+    width: 100%;
+  `,
+  SelectedTag: styled('button')`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    padding: 0.35rem 0.5rem 0.35rem 0.75rem;
+    border-radius: 999px;
+    border: 1.5px solid ${palette.blue400};
+    background-color: ${palette.white};
+    color: ${palette.blue600};
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: background-color 0.2s ease, border-color 0.2s ease;
+    &:hover {
+      background-color: ${palette.blue300};
+      border-color: ${palette.blue500};
+    }
+    span {
+      max-width: 12rem;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  `,
+  TagRemove: styled('span')`
+    font-size: 1.125rem;
+    line-height: 1;
+    opacity: 0.8;
   `,
 };

@@ -183,3 +183,68 @@ export const getGitHubRepos = async () => {
   );
   return response;
 };
+
+/**
+ * GitHub 레포 목록 조회. 백엔드는 GET /api/portfolio/repositories 만 제공하므로
+ * 상세(name, created_at, updated_at, languages)는 GitHub 공개 API로만 조회.
+ */
+export async function getGitHubReposWithFallback(): Promise<GitHubRepoItem[]> {
+  const username = getGithubUsernameFromStorage();
+  if (!username) return [];
+  return fetchGitHubReposByUsername(username);
+}
+
+/** GitHub 공개 API 응답 한 건 */
+interface GitHubApiRepoItem {
+  id: number;
+  name: string;
+  description: string | null;
+  html_url?: string;
+  language: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+/**
+ * GitHub 공개 API로 사용자 레포 목록 조회 (배포 등 백엔드 404 시 fallback용).
+ * GET https://api.github.com/users/{username}/repos
+ */
+export const fetchGitHubReposByUsername = async (
+  username: string,
+): Promise<GitHubRepoItem[]> => {
+  const res = await fetch(
+    `https://api.github.com/users/${encodeURIComponent(username)}/repos`,
+    {
+      headers: { Accept: 'application/vnd.github.v3+json' },
+    },
+  );
+  if (!res.ok) return [];
+  const raw: GitHubApiRepoItem[] = await res.json();
+  return raw.map(r => ({
+    repo_id: r.id,
+    name: r.name ?? '',
+    description: r.description ?? null,
+    created_at: r.created_at ?? '',
+    updated_at: r.updated_at ?? '',
+    languages: r.language ? [r.language] : [],
+  }));
+};
+
+const GITHUB_STORAGE_KEY = 'github-storage';
+
+/** 로컬스토리지 github-storage에서 GitHub 사용자명 반환 (레포 fallback용) */
+export function getGithubUsernameFromStorage(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = localStorage.getItem(GITHUB_STORAGE_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as {
+      state?: { githubName?: string | null };
+      githubUsername?: string;
+    } | null;
+    const name = data?.state?.githubName ?? data?.githubUsername;
+    return typeof name === 'string' && name.trim() ? name.trim() : null;
+  } catch {
+    return null;
+  }
+}

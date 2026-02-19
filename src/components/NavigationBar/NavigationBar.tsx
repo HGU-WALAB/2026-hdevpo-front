@@ -6,7 +6,8 @@ import { styled } from '@mui/material';
 import { useMemo } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 
-const customOrder = ['조회', '등록', '대시보드', '장학금 신청', '활동요약', '프로필'];
+/** 모바일 하단 네비 순서: 대시보드 맨 왼쪽, 포트폴리오는 프로필 왼쪽 */
+const customOrder = ['대시보드', '조회', '등록', '장학금 신청', '포트폴리오', '프로필'];
 
 const NavigationBar = () => {
   const navigate = useNavigate();
