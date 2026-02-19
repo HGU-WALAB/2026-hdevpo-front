@@ -69,9 +69,12 @@ const ActivitiesSectionContent = ({
   }, [editingId, editDraft, setActivities]);
 
   const handleCancelEdit = useCallback(() => {
+    if (editingId != null && editingId < 0) {
+      setActivities(prev => prev.filter(a => a.id !== editingId));
+    }
     setEditingId(null);
     setEditDraft({});
-  }, []);
+  }, [editingId, setActivities]);
 
   const handleDelete = useCallback(
     (id: number) => {

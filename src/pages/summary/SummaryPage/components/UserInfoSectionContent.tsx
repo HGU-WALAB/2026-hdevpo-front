@@ -1,7 +1,6 @@
 import { Flex, Text } from '@/components';
 import { boxShadow } from '@/styles/common';
 import { palette } from '@/styles/palette';
-import ComputerIcon from '@mui/icons-material/ComputerOutlined';
 import EditIcon from '@mui/icons-material/Edit';
 import { useCallback, useState } from 'react';
 import { styled } from '@mui/material';
