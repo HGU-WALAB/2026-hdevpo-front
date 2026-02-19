@@ -24,6 +24,7 @@ import {
   ActivitiesSectionContent,
   DraggableSection,
   MileageSectionContent,
+  MileageSelectModal,
   RepoSelectModal,
   RepoSectionContent,
   TechStackSectionContent,
@@ -71,6 +72,7 @@ const SummaryEditPage = () => {
   const [draggedId, setDraggedId] = useState<DraggableSectionKey | null>(null);
   const [dragOverId, setDragOverId] = useState<DraggableSectionKey | null>(null);
   const [repoModalOpen, setRepoModalOpen] = useState(false);
+  const [mileageModalOpen, setMileageModalOpen] = useState(false);
   const hasGithub = getGithubUsernameFromStorage() != null;
 
   const handleDragStart = useCallback((id: DraggableSectionKey) => {
@@ -111,7 +113,7 @@ const SummaryEditPage = () => {
       putPortfolioSettings({ section_order: next })
         .then(() => {
           toast.success('변경사항이 저장되었습니다.', {
-            position: 'bottom-right',
+            position: 'top-center',
           });
         })
         .catch(() => {
@@ -181,6 +183,16 @@ const SummaryEditPage = () => {
       </S.RepoSelectButton>
     ) : undefined;
 
+  const mileageHeaderRight = (
+    <S.RepoSelectButton
+      type="button"
+      onClick={() => setMileageModalOpen(true)}
+    >
+      <MenuBookIcon sx={{ fontSize: 18 }} />
+      마일리지 선택하기
+    </S.RepoSelectButton>
+  );
+
   return (
     <Flex.Column margin="1rem" gap="1.5rem">
       <S.TopRow align="center" justify="space-between" gap="1rem" wrap="wrap">
@@ -215,7 +227,13 @@ const SummaryEditPage = () => {
             sectionId={key}
             title={SECTION_TITLES[key]}
             icon={SECTION_ICONS[key]}
-            headerRight={key === 'repo' ? repoHeaderRight : undefined}
+            headerRight={
+              key === 'repo'
+                ? repoHeaderRight
+                : key === 'mileage'
+                  ? mileageHeaderRight
+                  : undefined
+            }
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -229,6 +247,10 @@ const SummaryEditPage = () => {
       <RepoSelectModal
         open={repoModalOpen}
         onClose={() => setRepoModalOpen(false)}
+      />
+      <MileageSelectModal
+        open={mileageModalOpen}
+        onClose={() => setMileageModalOpen(false)}
       />
       <Footer />
     </Flex.Column>

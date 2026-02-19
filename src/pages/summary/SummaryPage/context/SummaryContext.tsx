@@ -14,6 +14,7 @@ import {
   deleteActivity as deleteActivityApi,
   getActivities,
   getGitHubReposWithFallback,
+  getPortfolioMileage,
   getPortfolioSettings,
   getRepositories,
   getTechStack,
@@ -36,7 +37,7 @@ import {
 const DEBOUNCE_PUT_MS = 5_000;
 
 const SAVED_TOAST_OPTIONS = {
-  position: 'bottom-right' as const,
+  position: 'top-center' as const,
 };
 
 /**
@@ -62,6 +63,8 @@ export interface RepoItem {
 }
 
 export interface MileageItem {
+  /** 포트폴리오 마일리지 항목 id (PUT /api/portfolio/mileage/{id}용) */
+  id?: number;
   mileage_id: number;
   semester: string;
   category: string;
@@ -116,24 +119,19 @@ export function mergeRepositories(
     });
 }
 
-const INITIAL_MILEAGE: MileageItem[] = [
-  {
-    mileage_id: 101,
-    semester: '2024-02',
-    category: '전공',
-    item: '선형대수학',
-    additional_info: '',
-    is_visible: false,
-  },
-  {
-    mileage_id: 102,
-    semester: '2024-01',
-    category: '비교과',
-    item: 'PPS Camp / 나의첫웹서비스',
-    additional_info: '상세 설명 (유저 추가)',
-    is_visible: false,
-  },
-];
+export function portfolioMileageToItem(
+  p: import('../../apis/portfolio').PortfolioMileageItem,
+): MileageItem {
+  return {
+    id: p.id,
+    mileage_id: p.mileage_id,
+    semester: p.semester ?? '',
+    category: p.categoryName ?? '',
+    item: p.subitemName ?? '',
+    additional_info: p.additional_info ?? '',
+    is_visible: true,
+  };
+}
 
 export type UserInfo = UserInfoResponse;
 
@@ -177,9 +175,7 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
   );
   const [techStackTags, setTechStackTagsState] = useState<string[]>([]);
   const [repos, setRepos] = useState<RepoItem[]>([]);
-  const [mileageItems, setMileageItems] = useState<MileageItem[]>(
-    INITIAL_MILEAGE,
-  );
+  const [mileageItems, setMileageItems] = useState<MileageItem[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [activitiesNextId, setActivitiesNextId] = useState(-1);
 
@@ -271,6 +267,18 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       })
       .catch(() => {
         toast.error('레포지토리 목록을 불러오지 못했습니다.');
+      });
+
+    getPortfolioMileage()
+      .then(res => {
+        const list = res.mileage ?? [];
+        const sorted = [...list].sort(
+          (a, b) => a.display_order - b.display_order,
+        );
+        setMileageItems(sorted.map(portfolioMileageToItem));
+      })
+      .catch(() => {
+        toast.error('마일리지 목록을 불러오지 못했습니다.');
       });
   }, []);
 

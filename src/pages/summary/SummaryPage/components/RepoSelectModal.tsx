@@ -84,7 +84,7 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
       const merged = mergeRepositories(res.repositories ?? [], githubRepos);
       setRepos(merged);
       toast.success('변경사항이 저장되었습니다.', {
-        position: 'bottom-right',
+        position: 'top-center',
       });
       onClose();
     } catch {

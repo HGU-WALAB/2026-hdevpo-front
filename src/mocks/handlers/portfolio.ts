@@ -4,13 +4,17 @@ import { BASE_URL } from '@/apis/config';
 import { ENDPOINT } from '@/apis/endPoint';
 import type {
   ActivityApiItem,
+  PortfolioMileageItem,
   PortfolioRepositoryItem,
+  PutPortfolioMileageItem,
   PutRepositoryItem,
   UserInfoResponse,
 } from '@/pages/summary/apis/portfolio';
 import { DRAGGABLE_SECTION_ORDER } from '@/pages/summary/constants/constants';
 import { mockActivitiesResponse } from '@/mocks/fixtures/portfolioActivities';
 import { mockGitHubRepos } from '@/mocks/fixtures/portfolioGithubRepos';
+import { mockMileageList } from '@/mocks/fixtures/mileageList';
+import { mockPortfolioMileage } from '@/mocks/fixtures/portfolioMileage';
 import { mockPortfolioRepositories } from '@/mocks/fixtures/portfolioRepositories';
 import { mockTechStackResponse } from '@/mocks/fixtures/portfolioTechStack';
 import { mockUserInfoResponse } from '@/mocks/fixtures/portfolioUserInfo';
@@ -34,6 +38,34 @@ const repositoriesStore: PortfolioRepositoryItem[] = mockPortfolioRepositories.m
   r => ({ ...r }),
 );
 let nextRepoId = Math.max(0, ...repositoriesStore.map(r => r.id)) + 1;
+
+const mileageStore: PortfolioMileageItem[] = mockPortfolioMileage.map(m => ({
+  ...m,
+}));
+let nextMileageId = Math.max(0, ...mileageStore.map(m => m.id)) + 1;
+
+function buildPortfolioMileageItem(
+  id: number,
+  displayOrder: number,
+  putItem: PutPortfolioMileageItem,
+): PortfolioMileageItem | null {
+  const ref = mockMileageList.find(
+    m => (m.mileage_id ?? m.subitemId) === putItem.mileage_id,
+  );
+  if (!ref) return null;
+  return {
+    id,
+    mileage_id: putItem.mileage_id,
+    additional_info: putItem.additional_info ?? '',
+    display_order: displayOrder,
+    subitemId: ref.subitemId,
+    subitemName: ref.subitemName,
+    categoryId: ref.categoryId,
+    categoryName: ref.categoryName,
+    semester: ref.semester,
+    description1: ref.description1 ?? '',
+  };
+}
 
 /** 401/500 랜덤 반환 없이 항상 성공. (개발 시 불필요한 로그아웃·passthrough 방지) */
 export const PortfolioHandlers = [
@@ -212,4 +244,43 @@ export const PortfolioHandlers = [
   http.get(BASE_URL + ENDPOINT.PORTFOLIO_GITHUB_REPOS, () => {
     return HttpResponse.json({ repos: [...mockGitHubRepos] }, { status: 200 });
   }),
+
+  http.get(BASE_URL + ENDPOINT.PORTFOLIO_MILEAGE, () => {
+    const sorted = [...mileageStore].sort(
+      (a, b) => a.display_order - b.display_order,
+    );
+    return HttpResponse.json({ mileage: sorted }, { status: 200 });
+  }),
+
+  http.put(BASE_URL + ENDPOINT.PORTFOLIO_MILEAGE, async ({ request }) => {
+    const body = (await request.json()) as PutPortfolioMileageItem[];
+    mileageStore.length = 0;
+    body.forEach((item, index) => {
+      const built = buildPortfolioMileageItem(nextMileageId++, index, item);
+      if (built) mileageStore.push(built);
+    });
+    const sorted = [...mileageStore].sort(
+      (a, b) => a.display_order - b.display_order,
+    );
+    return HttpResponse.json({ mileage: sorted }, { status: 200 });
+  }),
+
+  http.put(
+    BASE_URL + `${ENDPOINT.PORTFOLIO_MILEAGE}/:id`,
+    async ({ params, request }) => {
+      const id = Number(params.id);
+      const body = (await request.json()) as { additional_info?: string };
+      const idx = mileageStore.findIndex(m => m.id === id);
+      if (idx === -1) {
+        return HttpResponse.json({}, { status: 404 });
+      }
+      if (body.additional_info !== undefined) {
+        mileageStore[idx] = {
+          ...mileageStore[idx],
+          additional_info: body.additional_info,
+        };
+      }
+      return HttpResponse.json(mileageStore[idx], { status: 200 });
+    },
+  ),
 ];

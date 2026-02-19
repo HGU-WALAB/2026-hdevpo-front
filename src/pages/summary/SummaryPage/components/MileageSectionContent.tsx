@@ -6,7 +6,9 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import { useCallback, useMemo, useState } from 'react';
 import { styled, useTheme } from '@mui/material';
+import { toast } from 'react-toastify';
 
+import { putPortfolioMileageItem } from '../../apis/portfolio';
 import {
   type MileageItem,
   useSummaryContext,
@@ -21,7 +23,7 @@ const MileageSectionContent = ({
 }: MileageSectionContentProps) => {
   const theme = useTheme();
   const { mileageItems, setMileageItems } = useSummaryContext();
-  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editingItem, setEditingItem] = useState<MileageItem | null>(null);
   const [editDraft, setEditDraft] = useState('');
 
   const displayItems = useMemo(
@@ -41,24 +43,35 @@ const MileageSectionContent = ({
   );
 
   const handleStartEdit = useCallback((item: MileageItem) => {
-    setEditingId(item.mileage_id);
+    setEditingItem(item);
     setEditDraft(item.additional_info);
   }, []);
 
-  const handleSaveEdit = useCallback(() => {
-    if (editingId == null) return;
+  const handleSaveEdit = useCallback(async () => {
+    if (editingItem == null) return;
     const next = editDraft.trim();
+    const portfolioId = editingItem.id;
+    if (portfolioId != null) {
+      try {
+        await putPortfolioMileageItem(portfolioId, { additional_info: next });
+      } catch {
+        toast.error('추가 설명 저장에 실패했습니다.');
+        return;
+      }
+    }
     setMileageItems(prev =>
       prev.map(m =>
-        m.mileage_id === editingId ? { ...m, additional_info: next } : m,
+        m.mileage_id === editingItem.mileage_id
+          ? { ...m, additional_info: next }
+          : m,
       ),
     );
-    setEditingId(null);
+    setEditingItem(null);
     setEditDraft('');
-  }, [editingId, editDraft, setMileageItems]);
+  }, [editingItem, editDraft, setMileageItems]);
 
   const handleCancelEdit = useCallback(() => {
-    setEditingId(null);
+    setEditingItem(null);
     setEditDraft('');
   }, []);
 
@@ -90,7 +103,7 @@ const MileageSectionContent = ({
           >
             {row.item}
           </Text>
-          {!readOnly && editingId === row.mileage_id ? (
+          {!readOnly && editingItem?.mileage_id === row.mileage_id ? (
             <Flex.Row
               gap="0.5rem"
               align="center"
@@ -138,7 +151,7 @@ const MileageSectionContent = ({
           )}
           {!readOnly && (
             <Flex.Row gap="0.25rem" align="center" style={{ flexShrink: 0 }}>
-              {editingId !== row.mileage_id && (
+              {editingItem?.mileage_id !== row.mileage_id && (
                 <S.EditButton
                   type="button"
                   onClick={() => handleStartEdit(row)}

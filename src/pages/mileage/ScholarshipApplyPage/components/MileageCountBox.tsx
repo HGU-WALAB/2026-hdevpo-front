@@ -51,7 +51,9 @@ const MileageCountBox = () => {
 export default MileageCountBox;
 
 const S = {
-  CountContainer: styled(Flex.Column)<{ isMobile: boolean }>`
+  CountContainer: styled(Flex.Column, {
+    shouldForwardProp: (prop) => prop !== 'isMobile',
+  })<{ isMobile: boolean }>`
     background-color: ${({ theme }) => theme.palette.white};
     border-radius: 1rem;
     color: ${({ theme }) => theme.palette.black};
@@ -63,7 +65,9 @@ const S = {
     width: ${({ isMobile }) => (isMobile ? '100px' : '200px')};
     ${boxShadow}
   `,
-  CountNumber: styled(Flex.Row)<{ isMobile: boolean }>`
+  CountNumber: styled(Flex.Row, {
+    shouldForwardProp: (prop) => prop !== 'isMobile',
+  })<{ isMobile: boolean }>`
     color: ${({ theme }) => theme.palette.primary.main};
     font-size: ${({ isMobile }) => (isMobile ? '2rem' : '2.5rem')};
     font-weight: bold;

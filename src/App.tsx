@@ -45,12 +45,6 @@ const App = () => {
           hideProgressBar={true}
           className="custom-toast-container"
         />
-        <ToastContainer
-          autoClose={2000}
-          position="bottom-right"
-          hideProgressBar={true}
-          className="custom-toast-container"
-        />
         <CssBaseline />
         <RouterProvider router={router} />
       </ThemeProvider>
