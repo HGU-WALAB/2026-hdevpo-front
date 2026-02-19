@@ -136,16 +136,33 @@ const SummaryEditPage = () => {
   };
 
   const handleCopyMarkdown = useCallback(async () => {
-    const markdown = buildSummaryMarkdown({
-      sectionOrder,
-      techStackTags,
-      repos,
-      mileageItems,
-      activities,
-    });
+    let markdown: string;
     try {
-      await navigator.clipboard.writeText(markdown);
-      toast.success('마크다운이 클립보드에 복사되었습니다.');
+      markdown = buildSummaryMarkdown({
+        sectionOrder,
+        techStackTags,
+        repos,
+        mileageItems,
+        activities,
+      });
+    } catch {
+      toast.error('마크다운 생성에 실패했습니다.');
+      return;
+    }
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(markdown);
+      } else {
+        const textArea = document.createElement('textarea');
+        textArea.value = markdown;
+        textArea.style.position = 'fixed';
+        textArea.style.left = '-9999px';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+      }
+      toast.success('프롬프트가 클립보드에 복사되었습니다.');
     } catch {
       toast.error('클립보드 복사에 실패했습니다.');
     }

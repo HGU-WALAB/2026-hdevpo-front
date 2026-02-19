@@ -96,7 +96,9 @@ export function buildSummaryMarkdown(params: BuildSummaryMarkdownParams): string
   const parts: string[] = [sectionUserInfo(), ''];
 
   for (const key of params.sectionOrder) {
-    const block = SECTION_BUILDERS[key](params);
+    const builder = SECTION_BUILDERS[key as DraggableSectionKey];
+    if (!builder) continue;
+    const block = builder(params);
     if (block) {
       parts.push(block, '');
     }
