@@ -8,4 +8,5 @@ export const mockUserInfoResponse: UserInfoResponse = {
   grade: 3,
   semester: 2,
   bio: 'CS student',
+  profile_image_url: null,
 };

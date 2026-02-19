@@ -93,7 +93,13 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
         {paginatedRepos.map(repo => (
           <S.Card key={repo.repo_id} $isMobile={isMobile}>
             <Flex.Column gap="0.5rem">
-              <S.RepoLink href="#">{displayName(repo)}</S.RepoLink>
+              <S.RepoLink
+                href={repo.html_url ?? '#'}
+                target={repo.html_url ? '_blank' : undefined}
+                rel={repo.html_url ? 'noopener noreferrer' : undefined}
+              >
+                {displayName(repo)}
+              </S.RepoLink>
               <Text
                 style={{
                   ...theme.typography.body2,

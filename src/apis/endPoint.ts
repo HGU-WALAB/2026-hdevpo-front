@@ -26,6 +26,8 @@ export const ENDPOINT = {
   PORTFOLIO_TECH_STACK: `/api/portfolio/tech-stack`,
   PORTFOLIO_ACTIVITIES: `/api/portfolio/activities`,
   PORTFOLIO_USER_INFO: `/api/portfolio/user-info`,
+  /** GET /api/portfolio/user-info/image/{filename} - filename에 profile_image_url 사용 */
+  PORTFOLIO_USER_INFO_IMAGE: `/api/portfolio/user-info/image`,
   PORTFOLIO_REPOSITORIES: `/api/portfolio/repositories`,
   PORTFOLIO_GITHUB_REPOS: `/api/portfolio/github/repos`,
   PORTFOLIO_SETTINGS: `/api/portfolio/settings`,

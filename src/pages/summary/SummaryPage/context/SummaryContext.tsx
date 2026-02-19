@@ -57,6 +57,8 @@ export interface RepoItem {
   created_at: string;
   updated_at: string;
   languages: string[];
+  /** GitHub 레포 페이지 URL (제목 클릭 시 이동) */
+  html_url?: string;
 }
 
 export interface MileageItem {
@@ -109,6 +111,7 @@ export function mergeRepositories(
         created_at: gh?.created_at ?? '',
         updated_at: gh?.updated_at ?? '',
         languages: gh?.languages ?? [],
+        html_url: gh?.html_url,
       };
     });
 }

@@ -1,13 +1,20 @@
+import { BASE_URL } from '@/apis/config';
+import { ENDPOINT } from '@/apis/endPoint';
 import { Flex, Text } from '@/components';
 import { boxShadow } from '@/styles/common';
 import { palette } from '@/styles/palette';
 import EditIcon from '@mui/icons-material/Edit';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { styled } from '@mui/material';
 import { toast } from 'react-toastify';
 
 import { patchUserInfo } from '../../apis/portfolio';
 import { useSummaryContext } from '../context/SummaryContext';
+
+const getProfileImageUrl = (filename: string | null | undefined): string | null =>
+  filename?.trim()
+    ? `${BASE_URL}${ENDPOINT.PORTFOLIO_USER_INFO_IMAGE}/${encodeURIComponent(filename.trim())}`
+    : null;
 
 interface UserInfoSectionContentProps {
   readOnly?: boolean;
@@ -49,10 +56,27 @@ const UserInfoSectionContent = ({ readOnly = false }: UserInfoSectionContentProp
   const departmentMajorLine =
     department.trim() !== '' ? `${department} ${majorLine}` : majorLine;
 
+  const profileImageUrl = getProfileImageUrl(userInfo?.profile_image_url ?? null);
+  const [imageError, setImageError] = useState(false);
+
+  useEffect(() => {
+    setImageError(false);
+  }, [userInfo?.profile_image_url]);
+
+  const showProfileImage = Boolean(profileImageUrl && !imageError);
+
   return (
     <S.Card>
       <S.Inner>
-        <S.Avatar />
+        {showProfileImage ? (
+          <S.AvatarImg
+            src={profileImageUrl!}
+            alt="프로필"
+            onError={() => setImageError(true)}
+          />
+        ) : (
+          <S.Avatar />
+        )}
         <Flex.Column gap="0.375rem" style={{ minWidth: 0, flex: 1 }}>
           <Text
             style={{
@@ -140,6 +164,13 @@ const S = {
     height: 6rem;
     border-radius: 0.5rem;
     background-color: ${({ theme }) => theme.palette.grey[300]};
+    flex-shrink: 0;
+  `,
+  AvatarImg: styled('img')`
+    width: 6rem;
+    height: 6rem;
+    border-radius: 0.5rem;
+    object-fit: cover;
     flex-shrink: 0;
   `,
   EditBioButton: styled('button')`

@@ -74,6 +74,7 @@ export interface UserInfoResponse {
   grade: number;
   semester: number;
   bio: string;
+  profile_image_url: string | null;
 }
 
 export interface UserInfoPatchRequest {
@@ -181,6 +182,8 @@ export interface GitHubRepoItem {
   created_at: string;
   updated_at: string;
   languages: string[];
+  /** GitHub 레포 페이지 URL */
+  html_url?: string;
 }
 
 export interface GitHubReposResponse {
@@ -255,6 +258,7 @@ export const fetchGitHubReposByUsername = async (
     created_at: r.created_at ?? '',
     updated_at: r.updated_at ?? '',
     languages: r.language ? [r.language] : [],
+    html_url: r.html_url ?? `https://github.com/${username}/${r.name ?? ''}`,
   }));
 };
 
