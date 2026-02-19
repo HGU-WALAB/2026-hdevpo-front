@@ -1,4 +1,5 @@
 import { Flex, Text } from '@/components';
+import { ROUTE_PATH } from '@/constants/routePath';
 import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { boxShadow } from '@/styles/common';
 import { palette } from '@/styles/palette';
@@ -6,58 +7,75 @@ import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffOutlinedIcon from '@mui/icons-material/VisibilityOffOutlined';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import LinkIcon from '@mui/icons-material/Link';
+import { useCallback, useMemo, useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { styled, useTheme, useMediaQuery } from '@mui/material';
 
 import { useSummaryContext } from '../context/SummaryContext';
 
+const GITHUB_STORAGE_KEY = 'github-storage';
 const ITEMS_PER_PAGE = 4;
 
+function getGithubUsernameFromStorage(): string | null {
+  try {
+    const raw = typeof window !== 'undefined' ? localStorage.getItem(GITHUB_STORAGE_KEY) : null;
+    if (!raw) return null;
+    const data = JSON.parse(raw) as { githubUsername?: string } | null;
+    const name = data?.githubUsername;
+    return typeof name === 'string' && name.trim() ? name.trim() : null;
+  } catch {
+    return null;
+  }
+}
+
 interface RepoSectionContentProps {
-  searchQuery?: string;
   readOnly?: boolean;
 }
 
 /** 깃허브 레포지토리. 추후 PUT /api/portfolio/repositories (repo_id, custom_title, is_visible) 연동 */
-const RepoSectionContent = ({
-  searchQuery = '',
-  readOnly = false,
-}: RepoSectionContentProps) => {
+const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
   const theme = useTheme();
+  const navigate = useNavigate();
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
   const { repos, setRepos } = useSummaryContext();
   const [page, setPage] = useState(0);
 
-  useEffect(() => {
-    setPage(0);
-  }, [searchQuery]);
+  const hasGithubInStorage = useMemo(() => getGithubUsernameFromStorage(), []);
+
+  if (!readOnly && !hasGithubInStorage) {
+    return (
+      <S.ConnectCard>
+        <S.ConnectMessage>
+          깃허브 계정이 연결되어 있지 않습니다. 깃허브 계정 연결을 통해
+          포트폴리오 항목을 추가할 수 있습니다.
+        </S.ConnectMessage>
+        <S.ConnectButton type="button" onClick={() => navigate(ROUTE_PATH.myPage)}>
+          <LinkIcon sx={{ fontSize: 18 }} />
+          깃허브 계정 연결
+        </S.ConnectButton>
+      </S.ConnectCard>
+    );
+  }
 
   const displayRepos = useMemo(() => {
     if (readOnly) return repos.filter(r => r.is_visible);
     return repos;
   }, [repos, readOnly]);
 
-  const filteredRepos = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return displayRepos;
-    return displayRepos.filter(r =>
-      r.name.toLowerCase().includes(q),
-    );
-  }, [displayRepos, searchQuery]);
-
   const visibleRepos = useMemo(
     () => repos.filter(r => r.is_visible).map(r => r.custom_title ?? r.name),
     [repos],
   );
 
-  const totalPages = Math.ceil(filteredRepos.length / ITEMS_PER_PAGE) || 1;
+  const totalPages = Math.ceil(displayRepos.length / ITEMS_PER_PAGE) || 1;
   const paginatedRepos = useMemo(
     () =>
-      filteredRepos.slice(
+      displayRepos.slice(
         page * ITEMS_PER_PAGE,
         page * ITEMS_PER_PAGE + ITEMS_PER_PAGE,
       ),
-    [filteredRepos, page],
+    [displayRepos, page],
   );
 
   const handleToggleVisible = useCallback(
@@ -182,6 +200,43 @@ const RepoSectionContent = ({
 export default RepoSectionContent;
 
 const S = {
+  ConnectCard: styled('div')`
+    padding: 1.5rem;
+    border-radius: 0.75rem;
+    background-color: ${({ theme }) => theme.palette.grey[50]};
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+    width: 100%;
+  `,
+  ConnectMessage: styled('p')`
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.65;
+    letter-spacing: 0.01em;
+    color: ${palette.grey600};
+    font-weight: 500;
+  `,
+  ConnectButton: styled('button')`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 1rem;
+    border-radius: 0.5rem;
+    border: none;
+    background-color: ${palette.blue500};
+    color: ${palette.white};
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    align-self: flex-start;
+    box-shadow: 0 1px 3px rgba(83, 127, 241, 0.25);
+    transition: background-color 0.15s ease, box-shadow 0.15s ease;
+    &:hover {
+      background-color: ${palette.blue600};
+      box-shadow: 0 2px 6px rgba(83, 127, 241, 0.3);
+    }
+  `,
   EyeButton: styled('button')`
     padding: 0;
     border: none;

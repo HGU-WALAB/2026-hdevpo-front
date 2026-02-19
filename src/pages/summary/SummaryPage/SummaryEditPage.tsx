@@ -7,8 +7,7 @@ import CodeIcon from '@mui/icons-material/Code';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FolderIcon from '@mui/icons-material/Folder';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
-import SearchIcon from '@mui/icons-material/Search';
-import { Button as MuiButton, InputBase } from '@mui/material';
+import { Button as MuiButton } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
@@ -48,7 +47,6 @@ const SummaryEditPage = () => {
     activities,
   } = useSummaryContext();
   const [draggedId, setDraggedId] = useState<DraggableSectionKey | null>(null);
-  const [githubSearchQuery, setGithubSearchQuery] = useState('');
   const [dragOverId, setDragOverId] = useState<DraggableSectionKey | null>(
     null,
   );
@@ -97,7 +95,7 @@ const SummaryEditPage = () => {
       case 'tech_stack':
         return <TechStackSectionContent />;
       case 'repo':
-        return <RepoSectionContent searchQuery={githubSearchQuery} />;
+        return <RepoSectionContent />;
       case 'mileage':
         return <MileageSectionContent />;
       case 'activities':
@@ -122,18 +120,6 @@ const SummaryEditPage = () => {
       toast.error('클립보드 복사에 실패했습니다.');
     }
   }, [sectionOrder, techStackTags, repos, mileageItems, activities]);
-
-  const repoHeaderRight = (
-    <S.SearchInputWrap>
-      <SearchIcon sx={{ fontSize: 18, color: palette.grey500 }} />
-      <S.GithubSearchInput
-        placeholder="레포지토리 이름으로 검색"
-        value={githubSearchQuery}
-        onChange={e => setGithubSearchQuery(e.target.value)}
-        inputProps={{ 'aria-label': '레포지토리 이름 검색' }}
-      />
-    </S.SearchInputWrap>
-  );
 
   return (
     <Flex.Column margin="1rem" gap="1.5rem">
@@ -169,7 +155,6 @@ const SummaryEditPage = () => {
             sectionId={key}
             title={SECTION_TITLES[key]}
             icon={SECTION_ICONS[key]}
-            headerRight={key === 'repo' ? repoHeaderRight : undefined}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}
@@ -188,25 +173,6 @@ const SummaryEditPage = () => {
 export default SummaryEditPage;
 
 const S = {
-  SearchInputWrap: styled('div')`
-    display: flex;
-    align-items: center;
-    gap: 0.5rem;
-    min-width: 12rem;
-    padding: 0.4rem 0.75rem;
-    border-radius: 0.5rem;
-    background-color: ${({ theme }) => theme.palette.grey[100]};
-  `,
-  GithubSearchInput: styled(InputBase)`
-    flex: 1;
-    font-size: 0.875rem;
-    & .MuiInputBase-input {
-      padding: 0;
-      &::placeholder {
-        color: ${palette.grey500};
-      }
-    }
-  `,
   TopRow: styled(Flex.Row)`
     margin-bottom: 0.5rem;
     width: 100%;
