@@ -79,19 +79,18 @@ const SummaryPreviewPage = () => {
       <S.ButtonRow justify="flex-end" gap="0.5rem">
         <S.EditButton
           variant="outlined"
-          size="medium"
+          size="large"
           onClick={() => navigate(ROUTE_PATH.summary)}
         >
           편집
         </S.EditButton>
         <Button
-          label="마크다운"
+          label="프롬프트 복사"
           variant="contained"
           color="blue"
-          size="medium"
+          size="large"
           icon={DownloadIcon}
           iconPosition="start"
-          style={{ width: '7.5rem' }}
           onClick={handleCopyMarkdown}
         />
       </S.ButtonRow>
