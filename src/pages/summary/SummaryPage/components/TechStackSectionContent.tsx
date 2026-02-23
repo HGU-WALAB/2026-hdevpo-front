@@ -4,6 +4,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import { useCallback, useState } from 'react';
 import { styled } from '@mui/material';
 
+import { INPUT_MAX_LENGTH } from '../../constants/inputLimits';
 import { useSummaryContext } from '../context/SummaryContext';
 
 interface TechStackSectionContentProps {
@@ -72,7 +73,7 @@ const TechStackSectionContent = ({
             onBlur={handleAdd}
             onKeyDown={handleAddKeyDown}
             placeholder="추가할 기술"
-            maxLength={30}
+            maxLength={INPUT_MAX_LENGTH.TECH_STACK_TAG}
           />
         ) : (
           <S.AddButton type="button" onClick={() => setIsAdding(true)}>

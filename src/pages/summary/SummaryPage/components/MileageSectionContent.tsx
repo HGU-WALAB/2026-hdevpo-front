@@ -8,6 +8,7 @@ import { useCallback, useMemo, useState } from 'react';
 import { styled, useTheme } from '@mui/material';
 import { toast } from 'react-toastify';
 
+import { INPUT_MAX_LENGTH } from '../../constants/inputLimits';
 import { putPortfolioMileageItem } from '../../apis/portfolio';
 import {
   type MileageItem,
@@ -104,31 +105,35 @@ const MileageSectionContent = ({
             {row.item}
           </Text>
           {!readOnly && editingItem?.mileage_id === row.mileage_id ? (
-            <Flex.Row
-              gap="0.5rem"
-              align="center"
-              style={{ flex: 1, minWidth: '12rem' }}
-            >
-              <S.EditInput
-                value={editDraft}
-                onChange={e => setEditDraft(e.target.value)}
-                placeholder="추가 설명"
-                autoFocus
-                onKeyDown={e => {
-                  if (e.key === 'Enter') handleSaveEdit();
-                  if (e.key === 'Escape') handleCancelEdit();
-                }}
-              />
-              <S.SmallButton type="button" onClick={handleSaveEdit}>
-                저장
-              </S.SmallButton>
-              <S.SmallButton
-                type="button"
-                variant="outline"
-                onClick={handleCancelEdit}
-              >
-                취소
-              </S.SmallButton>
+            <Flex.Row gap="0.5rem" align="flex-start" style={{ flex: 1, minWidth: '12rem' }}>
+              <Flex.Column gap="0.25rem" style={{ flex: 1, minWidth: 0 }}>
+                <S.EditTextarea
+                  value={editDraft}
+                  onChange={e => setEditDraft(e.target.value)}
+                  placeholder="추가 설명"
+                  autoFocus
+                  rows={2}
+                  maxLength={INPUT_MAX_LENGTH.MILEAGE_ADDITIONAL_INFO}
+                  onKeyDown={e => {
+                    if (e.key === 'Escape') handleCancelEdit();
+                  }}
+                />
+                <S.CharCount warn={editDraft.length >= INPUT_MAX_LENGTH.MILEAGE_ADDITIONAL_INFO - 20}>
+                  {editDraft.length} / {INPUT_MAX_LENGTH.MILEAGE_ADDITIONAL_INFO}
+                </S.CharCount>
+              </Flex.Column>
+              <Flex.Column gap="0.25rem" style={{ flexShrink: 0 }}>
+                <S.SmallButton type="button" onClick={handleSaveEdit}>
+                  저장
+                </S.SmallButton>
+                <S.SmallButton
+                  type="button"
+                  variant="outline"
+                  onClick={handleCancelEdit}
+                >
+                  취소
+                </S.SmallButton>
+              </Flex.Column>
             </Flex.Row>
           ) : (
             <Text
@@ -230,18 +235,27 @@ const S = {
       background-color: ${palette.blue300};
     }
   `,
-  EditInput: styled('input')`
-    flex: 1;
+  EditTextarea: styled('textarea')`
+    width: 100%;
     min-width: 8rem;
-    padding: 0.25rem 0.5rem;
+    min-height: 4rem;
+    padding: 0.4rem 0.625rem;
     border-radius: 0.375rem;
     border: 1.5px solid ${palette.blue400};
     font-size: 0.875rem;
+    line-height: 1.5;
+    resize: vertical;
     outline: none;
+    font-family: inherit;
     &:focus {
       border-color: ${palette.blue500};
       box-shadow: 0 0 0 2px ${palette.blue300};
     }
+  `,
+  CharCount: styled('span')<{ warn?: boolean }>`
+    font-size: 0.75rem;
+    color: ${({ warn }) => (warn ? palette.pink500 : palette.grey400)};
+    flex-shrink: 0;
   `,
   SmallButton: styled('button')<{ variant?: 'outline' }>`
     padding: 0.25rem 0.5rem;

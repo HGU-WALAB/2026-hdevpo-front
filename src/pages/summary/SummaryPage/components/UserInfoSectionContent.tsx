@@ -9,6 +9,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { styled } from '@mui/material';
 import { toast } from 'react-toastify';
 
+import { INPUT_MAX_LENGTH } from '../../constants/inputLimits';
 import { patchUserInfo, patchUserInfoWithImage } from '../../apis/portfolio';
 import { useSummaryContext } from '../context/SummaryContext';
 
@@ -167,19 +168,25 @@ const UserInfoSectionContent = ({ readOnly = false }: UserInfoSectionContentProp
                 value={bioDraft}
                 onChange={e => setBioDraft(e.target.value)}
                 placeholder="한 줄 소개를 입력하세요"
-                rows={2}
+                rows={3}
+                maxLength={INPUT_MAX_LENGTH.BIO}
               />
-              <Flex.Row gap="0.5rem">
-                <S.SmallButton type="button" onClick={handleSaveBio}>
-                  저장
-                </S.SmallButton>
-                <S.SmallButton
-                  type="button"
-                  variant="outline"
-                  onClick={handleCancelEditBio}
-                >
-                  취소
-                </S.SmallButton>
+              <Flex.Row align="center" justify="space-between">
+                <Flex.Row gap="0.5rem">
+                  <S.SmallButton type="button" onClick={handleSaveBio}>
+                    저장
+                  </S.SmallButton>
+                  <S.SmallButton
+                    type="button"
+                    variant="outline"
+                    onClick={handleCancelEditBio}
+                  >
+                    취소
+                  </S.SmallButton>
+                </Flex.Row>
+                <S.CharCount warn={bioDraft.length >= INPUT_MAX_LENGTH.BIO - 20}>
+                  {bioDraft.length} / {INPUT_MAX_LENGTH.BIO}
+                </S.CharCount>
               </Flex.Row>
             </Flex.Column>
           ) : null}
@@ -275,11 +282,12 @@ const S = {
   BioTextarea: styled('textarea')`
     width: 100%;
     min-width: 0;
-    padding: 0.5rem 0.75rem;
+    min-height: 5rem;
+    padding: 0.625rem 0.875rem;
     border: 1.5px solid ${palette.blue400};
     border-radius: 0.5rem;
     font-size: 1rem;
-    line-height: 1.5;
+    line-height: 1.6;
     color: ${palette.nearBlack};
     resize: vertical;
     outline: none;
@@ -287,6 +295,11 @@ const S = {
       border-color: ${palette.blue500};
       box-shadow: 0 0 0 2px ${palette.blue300};
     }
+  `,
+  CharCount: styled('span')<{ warn?: boolean }>`
+    font-size: 0.75rem;
+    color: ${({ warn }) => (warn ? palette.pink500 : palette.grey400)};
+    flex-shrink: 0;
   `,
   SmallButton: styled('button')<{ variant?: 'outline' }>`
     padding: 0.25rem 0.5rem;

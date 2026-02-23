@@ -7,6 +7,7 @@ import EditIcon from '@mui/icons-material/Edit';
 import { useCallback, useState } from 'react';
 import { styled, useTheme } from '@mui/material';
 
+import { INPUT_MAX_LENGTH } from '../../constants/inputLimits';
 import {
   type ActivityItem,
   useSummaryContext,
@@ -97,52 +98,63 @@ const ActivitiesSectionContent = ({
       )}
       <S.List>
         {activities.map(item => (
-          <S.Row key={item.id} align="center" gap="0.75rem" wrap="wrap">
+          <S.Row key={item.id} align={editingId === item.id ? 'flex-start' : 'center'} gap="0.75rem" wrap="wrap">
             {!readOnly && editingId === item.id ? (
-              <S.EditForm align="center" gap="0.5rem" wrap="wrap">
-                <S.DateInput
-                  type="date"
-                  value={editDraft.start_date ?? ''}
-                  onChange={e =>
-                    setEditDraft(prev => ({
-                      ...prev,
-                      start_date: e.target.value,
-                    }))
-                  }
-                />
-                <Text as="span" style={{ margin: 0, flexShrink: 0 }}>
-                  ~
-                </Text>
-                <S.DateInput
-                  type="date"
-                  value={editDraft.end_date ?? ''}
-                  onChange={e =>
-                    setEditDraft(prev => ({
-                      ...prev,
-                      end_date: e.target.value,
-                    }))
-                  }
-                />
-                <S.EditInput
-                  value={editDraft.title ?? ''}
-                  onChange={e =>
-                    setEditDraft(prev => ({ ...prev, title: e.target.value }))
-                  }
-                  placeholder="제목"
-                  style={{ flex: '1 1 6rem', minWidth: '5rem' }}
-                />
-                <S.EditInput
-                  value={editDraft.description ?? ''}
-                  onChange={e =>
-                    setEditDraft(prev => ({
-                      ...prev,
-                      description: e.target.value,
-                    }))
-                  }
-                  placeholder="설명"
-                  style={{ flex: '1 1 6rem', minWidth: '5rem' }}
-                />
-                <Flex.Row gap="0.25rem" align="center" style={{ flexShrink: 0 }}>
+              <S.EditForm gap="0.5rem">
+                <Flex.Column gap="0.5rem" style={{ flex: 1, minWidth: 0 }}>
+                  <Flex.Row gap="0.5rem" align="center" wrap="wrap">
+                    <S.DateInput
+                      type="date"
+                      value={editDraft.start_date ?? ''}
+                      onChange={e =>
+                        setEditDraft(prev => ({
+                          ...prev,
+                          start_date: e.target.value,
+                        }))
+                      }
+                    />
+                    <Text as="span" style={{ margin: 0, flexShrink: 0 }}>
+                      ~
+                    </Text>
+                    <S.DateInput
+                      type="date"
+                      value={editDraft.end_date ?? ''}
+                      onChange={e =>
+                        setEditDraft(prev => ({
+                          ...prev,
+                          end_date: e.target.value,
+                        }))
+                      }
+                    />
+                    <S.EditInput
+                      value={editDraft.title ?? ''}
+                      onChange={e =>
+                        setEditDraft(prev => ({ ...prev, title: e.target.value }))
+                      }
+                      placeholder="제목"
+                      maxLength={INPUT_MAX_LENGTH.ACTIVITY_TITLE}
+                      style={{ flex: '1 1 8rem', minWidth: '6rem' }}
+                    />
+                  </Flex.Row>
+                  <Flex.Column gap="0.25rem">
+                    <S.EditTextarea
+                      value={editDraft.description ?? ''}
+                      onChange={e =>
+                        setEditDraft(prev => ({
+                          ...prev,
+                          description: e.target.value,
+                        }))
+                      }
+                      placeholder="설명"
+                      rows={2}
+                      maxLength={INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION}
+                    />
+                    <S.CharCount warn={(editDraft.description?.length ?? 0) >= INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION - 20}>
+                      {editDraft.description?.length ?? 0} / {INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION}
+                    </S.CharCount>
+                  </Flex.Column>
+                </Flex.Column>
+                <Flex.Column gap="0.25rem" style={{ flexShrink: 0 }}>
                   <S.SmallButton
                     type="button"
                     onClick={handleSaveEdit}
@@ -157,7 +169,7 @@ const ActivitiesSectionContent = ({
                   >
                     취소
                   </S.SmallButton>
-                </Flex.Row>
+                </Flex.Column>
               </S.EditForm>
             ) : (
               <>
@@ -194,10 +206,10 @@ const ActivitiesSectionContent = ({
                   }}
                 >
                   {item.description ? (
-                    <>· {item.description}</>
+                    <>{item.description}</>
                   ) : (
                     <span style={{ color: theme.palette.grey[400] }}>
-                      · 설명 없음
+                      추가 설명을 통해 더 나은 프롬프트 결과를 얻을 수 있습니다.
                     </span>
                   )}
                 </Text>
@@ -273,23 +285,46 @@ const S = {
   EditForm: styled(Flex.Row)`
     flex: 1;
     min-width: 0;
+    align-items: flex-start;
   `,
   EditInput: styled('input')`
-    padding: 0.25rem 0.5rem;
+    padding: 0.4rem 0.625rem;
     border-radius: 0.375rem;
     border: 1.5px solid ${palette.blue400};
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
     outline: none;
     &:focus {
       border-color: ${palette.blue500};
       box-shadow: 0 0 0 2px ${palette.blue300};
     }
   `,
-  DateInput: styled('input')`
-    padding: 0.25rem 0.4rem;
+  EditTextarea: styled('textarea')`
+    width: 100%;
+    min-height: 4rem;
+    padding: 0.4rem 0.625rem;
     border-radius: 0.375rem;
     border: 1.5px solid ${palette.blue400};
-    font-size: 0.8125rem;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+    &:focus {
+      border-color: ${palette.blue500};
+      box-shadow: 0 0 0 2px ${palette.blue300};
+    }
+  `,
+  CharCount: styled('span')<{ warn?: boolean }>`
+    font-size: 0.75rem;
+    color: ${({ warn }) => (warn ? palette.pink500 : palette.grey400)};
+    text-align: right;
+  `,
+  DateInput: styled('input')`
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.375rem;
+    border: 1.5px solid ${palette.blue400};
+    font-size: 0.875rem;
     outline: none;
     flex-shrink: 0;
     &:focus {
