@@ -19,8 +19,8 @@ import {
   getRepositories,
   getTechStack,
   getUserInfo,
+  patchActivities,
   postActivity,
-  putActivity as putActivityApi,
   putTechStack,
 } from '../../apis/portfolio';
 import type {
@@ -79,9 +79,14 @@ export interface ActivityItem {
   description: string;
   start_date: string;
   end_date: string;
+  /** 활동 섹션에는 category === 0 인 것만 표시 */
+  category?: number;
   /** API 응답용. 0이 맨 위. 로컬 추가분은 없을 수 있음 */
   display_order?: number;
 }
+
+const ACTIVITY_SECTION_CATEGORY = 0;
+const CERTIFICATE_SECTION_CATEGORY = 1;
 
 function apiActivityToItem(
   a: import('../../apis/portfolio').ActivityApiItem,
@@ -92,6 +97,7 @@ function apiActivityToItem(
     description: a.description,
     start_date: a.start_date,
     end_date: a.end_date,
+    category: a.category,
     display_order: a.display_order,
   };
 }
@@ -152,6 +158,12 @@ export interface SummaryState {
   deleteActivity: (id: number) => void;
   activitiesNextId: number;
   setActivitiesNextId: (v: number | ((p: number) => number)) => void;
+  /** 자격증 섹션 (동일 activities API, category 1) */
+  certificates: ActivityItem[];
+  setCertificates: (v: ActivityItem[] | ((p: ActivityItem[]) => ActivityItem[])) => void;
+  deleteCertificate: (id: number) => void;
+  certificatesNextId: number;
+  setCertificatesNextId: (v: number | ((p: number) => number)) => void;
 }
 
 const SummaryContext = createContext<SummaryState | null>(null);
@@ -178,10 +190,14 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
   const [mileageItems, setMileageItems] = useState<MileageItem[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [activitiesNextId, setActivitiesNextId] = useState(-1);
+  const [certificates, setCertificates] = useState<ActivityItem[]>([]);
+  const [certificatesNextId, setCertificatesNextId] = useState(-1);
 
   const techStackUserModifiedRef = useRef(false);
   const activitiesDeletedIdsRef = useRef<Set<number>>(new Set());
   const activitiesFirstRunAfterLoadRef = useRef(true);
+  const certificatesDeletedIdsRef = useRef<Set<number>>(new Set());
+  const certificatesFirstRunAfterLoadRef = useRef(true);
 
   const setTechStackTags = useCallback(
     (v: string[] | ((p: string[]) => string[])) => {
@@ -197,6 +213,14 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       activitiesDeletedIdsRef.current.add(id);
     }
     setActivities(prev => prev.filter(a => a.id !== id));
+  }, []);
+
+  /** 서버 id인 자격증 삭제 시 디바운스 flush에서 DELETE 호출하도록 기록 */
+  const deleteCertificate = useCallback((id: number) => {
+    if (id > 0) {
+      certificatesDeletedIdsRef.current.add(id);
+    }
+    setCertificates(prev => prev.filter(a => a.id !== id));
   }, []);
 
   /** 활동 요약 페이지 진입 시 GET 1회 */
@@ -224,9 +248,11 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
         toast.error('기술 스택을 불러오지 못했습니다.');
       });
 
-    getActivities()
+    getActivities({ category: [ACTIVITY_SECTION_CATEGORY] })
       .then(res => {
-        const list = res.activities ?? [];
+        const list = (res.activities ?? []).filter(
+          a => a.category === ACTIVITY_SECTION_CATEGORY,
+        );
         const sorted = [...list].sort(
           (a, b) => a.display_order - b.display_order,
         );
@@ -235,6 +261,21 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       })
       .catch(() => {
         toast.error('활동 목록을 불러오지 못했습니다.');
+      });
+
+    getActivities({ category: [CERTIFICATE_SECTION_CATEGORY] })
+      .then(res => {
+        const list = (res.activities ?? []).filter(
+          a => a.category === CERTIFICATE_SECTION_CATEGORY,
+        );
+        const sorted = [...list].sort(
+          (a, b) => a.display_order - b.display_order,
+        );
+        setCertificates(sorted.map(apiActivityToItem));
+        certificatesFirstRunAfterLoadRef.current = true;
+      })
+      .catch(() => {
+        toast.error('자격증 목록을 불러오지 못했습니다.');
       });
 
     getUserInfo()
@@ -334,6 +375,7 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
                   description: a.description,
                   start_date: a.start_date,
                   end_date: a.end_date,
+                  category: ACTIVITY_SECTION_CATEGORY,
                 }),
               ),
             );
@@ -350,14 +392,18 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
         }
       }
 
-      for (const a of toPut) {
+      if (toPut.length > 0) {
         try {
-          await putActivityApi(a.id, {
-            title: a.title,
-            description: a.description,
-            start_date: a.start_date,
-            end_date: a.end_date,
-          });
+          await patchActivities(
+            toPut.map(a => ({
+              id: a.id,
+              title: a.title,
+              description: a.description,
+              start_date: a.start_date,
+              end_date: a.end_date,
+              category: ACTIVITY_SECTION_CATEGORY,
+            })),
+          );
         } catch {
           toast.error('활동 수정에 실패했습니다.');
           hasError = true;
@@ -371,6 +417,84 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
 
     return () => window.clearTimeout(id);
   }, [activities]);
+
+  /** 자격증 변경 시 디바운스 후 DELETE → POST → PATCH (category 1) */
+  useEffect(() => {
+    if (certificatesFirstRunAfterLoadRef.current) {
+      certificatesFirstRunAfterLoadRef.current = false;
+      return;
+    }
+
+    const id = window.setTimeout(async () => {
+      let hasError = false;
+      const deletedIds = new Set(certificatesDeletedIdsRef.current);
+      certificatesDeletedIdsRef.current.clear();
+
+      for (const certId of deletedIds) {
+        try {
+          await deleteActivityApi(certId);
+        } catch {
+          toast.error('자격증 삭제에 실패했습니다.');
+          hasError = true;
+        }
+      }
+
+      const current = certificates;
+      const toPost = current.filter(a => a.id < 0);
+      const toPut = current.filter(a => a.id > 0);
+
+      if (toPost.length > 0) {
+        try {
+          const posted: import('../../apis/portfolio').ActivityApiItem[] =
+            await Promise.all(
+              toPost.map(a =>
+                postActivity({
+                  title: a.title,
+                  description: a.description,
+                  start_date: a.start_date,
+                  end_date: a.end_date,
+                  category: CERTIFICATE_SECTION_CATEGORY,
+                }),
+              ),
+            );
+          const newIds = new Set(toPost.map(a => a.id));
+          let i = 0;
+          setCertificates(prev =>
+            prev.map(x =>
+              newIds.has(x.id) ? apiActivityToItem(posted[i++]) : x,
+            ),
+          );
+        } catch {
+          toast.error('자격증 추가에 실패했습니다.');
+          hasError = true;
+        }
+      }
+
+      if (toPut.length > 0) {
+        try {
+          await patchActivities(
+            toPut.map(a => ({
+              id: a.id,
+              title: a.title,
+              description: a.description,
+              start_date: a.start_date,
+              end_date: a.end_date,
+              category: CERTIFICATE_SECTION_CATEGORY,
+            })),
+          );
+        } catch {
+          toast.error('자격증 수정에 실패했습니다.');
+          hasError = true;
+        }
+      }
+
+      if (!hasError) {
+        toast.success('변경사항이 저장되었습니다.', SAVED_TOAST_OPTIONS);
+      }
+    }, DEBOUNCE_PUT_MS);
+
+    return () => window.clearTimeout(id);
+  }, [certificates]);
 
   const value = useMemo<SummaryState>(
     () => ({
@@ -389,6 +513,11 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       deleteActivity,
       activitiesNextId,
       setActivitiesNextId,
+      certificates,
+      setCertificates,
+      deleteCertificate,
+      certificatesNextId,
+      setCertificatesNextId,
     }),
     [
       userInfo,
@@ -400,6 +529,9 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       activities,
       deleteActivity,
       activitiesNextId,
+      certificates,
+      deleteCertificate,
+      certificatesNextId,
     ],
   );
 

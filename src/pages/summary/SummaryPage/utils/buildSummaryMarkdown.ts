@@ -19,6 +19,8 @@ export interface BuildSummaryMarkdownParams {
   repos: RepoItem[];
   mileageItems: MileageItem[];
   activities: ActivityItem[];
+  /** 자격증 섹션 (activities API category 1) */
+  certificates: ActivityItem[];
 }
 
 function escapeMarkdown(text: string): string {
@@ -91,6 +93,16 @@ function sectionActivities(activities: ActivityItem[]): string {
   return `## ${escapeMarkdown(title)}\n\n${lines.join('\n')}`;
 }
 
+function sectionCertificates(certificates: ActivityItem[]): string {
+  if (certificates.length === 0) return '';
+  const title = SECTION_TITLES.certificates;
+  const lines = certificates.map(a => {
+    const desc = a.description ? ` · ${a.description}` : '';
+    return `- **${escapeMarkdown(a.title)}** (${a.start_date} ~ ${a.end_date})${escapeMarkdown(desc)}`;
+  });
+  return `## ${escapeMarkdown(title)}\n\n${lines.join('\n')}`;
+}
+
 const SECTION_BUILDERS: Record<
   DraggableSectionKey,
   (params: BuildSummaryMarkdownParams) => string
@@ -99,6 +111,7 @@ const SECTION_BUILDERS: Record<
   repo: p => sectionRepos(p.repos),
   mileage: p => sectionMileage(p.mileageItems),
   activities: p => sectionActivities(p.activities),
+  certificates: p => sectionCertificates(p.certificates),
 };
 
 /**

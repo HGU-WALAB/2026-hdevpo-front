@@ -8,6 +8,7 @@ export const mockGitHubRepos: GitHubRepoItem[] = [
     created_at: '2024-01-15',
     updated_at: '2025-02-10',
     languages: ['TypeScript', 'React'],
+    html_url: 'https://github.com/user/portfolio-website',
   },
   {
     repo_id: 101,
@@ -16,6 +17,7 @@ export const mockGitHubRepos: GitHubRepoItem[] = [
     created_at: '2024-03-01',
     updated_at: '2025-01-20',
     languages: ['Java'],
+    html_url: 'https://github.com/user/spring-boot-api',
   },
   {
     repo_id: 102,
@@ -24,6 +26,7 @@ export const mockGitHubRepos: GitHubRepoItem[] = [
     created_at: '2024-05-10',
     updated_at: '2025-02-05',
     languages: ['JavaScript'],
+    html_url: 'https://github.com/user/react-dashboard',
   },
   {
     repo_id: 103,
@@ -32,6 +35,7 @@ export const mockGitHubRepos: GitHubRepoItem[] = [
     created_at: '2024-02-20',
     updated_at: '2025-01-15',
     languages: ['Python'],
+    html_url: 'https://github.com/user/machine-learning-study',
   },
   {
     repo_id: 104,
@@ -40,6 +44,7 @@ export const mockGitHubRepos: GitHubRepoItem[] = [
     created_at: '2024-06-01',
     updated_at: '2025-02-01',
     languages: ['Kotlin'],
+    html_url: 'https://github.com/user/mobile-app',
   },
   {
     repo_id: 105,
@@ -48,5 +53,6 @@ export const mockGitHubRepos: GitHubRepoItem[] = [
     created_at: '2024-04-12',
     updated_at: '2025-01-08',
     languages: ['C++'],
+    html_url: 'https://github.com/user/algorithm-practice',
   },
 ];

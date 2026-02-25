@@ -3,6 +3,7 @@ import { Button, Flex, Footer, Text } from '@/components';
 import { ROUTE_PATH } from '@/constants/routePath';
 import { palette } from '@/styles/palette';
 import { useTrackPageView } from '@/service/amplitude/useTrackPageView';
+import CardMembershipIcon from '@mui/icons-material/CardMembership';
 import CodeIcon from '@mui/icons-material/Code';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FolderIcon from '@mui/icons-material/Folder';
@@ -22,6 +23,7 @@ import { useSummaryContext } from './context/SummaryContext';
 import { buildSummaryMarkdown } from './utils/buildSummaryMarkdown';
 import {
   ActivitiesSectionContent,
+  CertificatesSectionContent,
   DraggableSection,
   MileageSectionContent,
   MileageSelectModal,
@@ -55,6 +57,7 @@ const SECTION_ICONS: Record<DraggableSectionKey, React.ReactNode> = {
   repo: <FolderIcon sx={{ fontSize: 20, color: palette.grey500 }} />,
   mileage: <MenuBookIcon sx={{ fontSize: 20, color: palette.grey500 }} />,
   activities: <EmojiEventsIcon sx={{ fontSize: 20, color: palette.grey500 }} />,
+  certificates: <CardMembershipIcon sx={{ fontSize: 20, color: palette.grey500 }} />,
 };
 
 const SummaryEditPage = () => {
@@ -68,6 +71,7 @@ const SummaryEditPage = () => {
     repos,
     mileageItems,
     activities,
+    certificates,
   } = useSummaryContext();
   const [draggedId, setDraggedId] = useState<DraggableSectionKey | null>(null);
   const [dragOverId, setDragOverId] = useState<DraggableSectionKey | null>(null);
@@ -133,6 +137,8 @@ const SummaryEditPage = () => {
         return <MileageSectionContent />;
       case 'activities':
         return <ActivitiesSectionContent />;
+      case 'certificates':
+        return <CertificatesSectionContent />;
       default:
         return null;
     }
@@ -148,6 +154,7 @@ const SummaryEditPage = () => {
         repos,
         mileageItems,
         activities,
+        certificates,
       });
     } catch {
       toast.error('마크다운 생성에 실패했습니다.');
@@ -170,7 +177,7 @@ const SummaryEditPage = () => {
     } catch {
       toast.error('클립보드 복사에 실패했습니다.');
     }
-  }, [userInfo, sectionOrder, techStackTags, repos, mileageItems, activities]);
+  }, [userInfo, sectionOrder, techStackTags, repos, mileageItems, activities, certificates]);
 
   const repoHeaderRight =
     hasGithub ? (

@@ -13,38 +13,38 @@ import {
   useSummaryContext,
 } from '../context/SummaryContext';
 
-interface ActivitiesSectionContentProps {
+interface CertificatesSectionContentProps {
   readOnly?: boolean;
 }
 
-const ActivitiesSectionContent = ({
+const CertificatesSectionContent = ({
   readOnly = false,
-}: ActivitiesSectionContentProps) => {
+}: CertificatesSectionContentProps) => {
   const theme = useTheme();
   const {
-    activities,
-    setActivities,
-    deleteActivity,
-    activitiesNextId,
-    setActivitiesNextId,
+    certificates,
+    setCertificates,
+    deleteCertificate,
+    certificatesNextId,
+    setCertificatesNextId,
   } = useSummaryContext();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<Partial<ActivityItem>>({});
 
   const handleAdd = useCallback(() => {
     const newItem: ActivityItem = {
-      id: activitiesNextId,
-      title: '새 활동',
+      id: certificatesNextId,
+      title: '새 자격증',
       description: '',
       start_date: new Date().toISOString().slice(0, 10),
       end_date: new Date().toISOString().slice(0, 10),
-      category: 0,
+      category: 1,
     };
-    setActivities(prev => [newItem, ...prev]);
-    setActivitiesNextId(prev => prev - 1);
+    setCertificates(prev => [newItem, ...prev]);
+    setCertificatesNextId(prev => prev - 1);
     setEditingId(newItem.id);
     setEditDraft(newItem);
-  }, [activitiesNextId, setActivities, setActivitiesNextId]);
+  }, [certificatesNextId, setCertificates, setCertificatesNextId]);
 
   const handleStartEdit = useCallback((item: ActivityItem) => {
     setEditingId(item.id);
@@ -53,7 +53,7 @@ const ActivitiesSectionContent = ({
 
   const handleSaveEdit = useCallback(() => {
     if (editingId == null || !editDraft.title?.trim()) return;
-    setActivities(prev =>
+    setCertificates(prev =>
       prev.map(a =>
         a.id === editingId
           ? {
@@ -68,25 +68,25 @@ const ActivitiesSectionContent = ({
     );
     setEditingId(null);
     setEditDraft({});
-  }, [editingId, editDraft, setActivities]);
+  }, [editingId, editDraft, setCertificates]);
 
   const handleCancelEdit = useCallback(() => {
     if (editingId != null && editingId < 0) {
-      setActivities(prev => prev.filter(a => a.id !== editingId));
+      setCertificates(prev => prev.filter(a => a.id !== editingId));
     }
     setEditingId(null);
     setEditDraft({});
-  }, [editingId, setActivities]);
+  }, [editingId, setCertificates]);
 
   const handleDelete = useCallback(
     (id: number) => {
-      deleteActivity(id);
+      deleteCertificate(id);
       if (editingId === id) {
         setEditingId(null);
         setEditDraft({});
       }
     },
-    [editingId, deleteActivity],
+    [editingId, deleteCertificate],
   );
 
   return (
@@ -94,11 +94,11 @@ const ActivitiesSectionContent = ({
       {!readOnly && (
         <S.AddButton type="button" onClick={handleAdd}>
           <AddIcon sx={{ fontSize: 18 }} />
-          활동 추가
+          자격증 추가
         </S.AddButton>
       )}
       <S.List>
-        {activities.map(item => (
+        {certificates.map(item => (
           <S.Row key={item.id}>
             {!readOnly && editingId === item.id ? (
               <S.EditForm gap="0.5rem">
@@ -184,7 +184,6 @@ const ActivitiesSectionContent = ({
               </S.EditForm>
             ) : (
               <>
-                {/* 메타 행: 날짜 + 제목 */}
                 <Flex.Row align="center" gap="0.5rem" wrap="wrap">
                   <Text
                     as="span"
@@ -209,7 +208,6 @@ const ActivitiesSectionContent = ({
                     {item.title}
                   </Text>
                 </Flex.Row>
-                {/* 내용 행: 설명 + 버튼 */}
                 <Flex.Row align="center" justify="space-between" gap="0.5rem" style={{ width: '100%' }}>
                   <Text
                     as="span"
@@ -258,7 +256,7 @@ const ActivitiesSectionContent = ({
   );
 };
 
-export default ActivitiesSectionContent;
+export default CertificatesSectionContent;
 
 const S = {
   AddButton: styled('button')`
