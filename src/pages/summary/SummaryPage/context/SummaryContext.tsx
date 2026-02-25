@@ -19,8 +19,8 @@ import {
   getRepositories,
   getTechStack,
   getUserInfo,
-  patchActivities,
   postActivity,
+  putActivity,
   putTechStack,
 } from '../../apis/portfolio';
 import type {
@@ -33,20 +33,9 @@ import {
   type DraggableSectionKey,
 } from '../../constants/constants';
 
-/** 변경사항 반영 대기 시간 (ms). 이 시간 동안 추가 변경이 없으면 모아둔 변경사항을 한꺼번에 API로 전송 */
-const DEBOUNCE_PUT_MS = 5_000;
-
 const SAVED_TOAST_OPTIONS = {
   position: 'top-center' as const,
 };
-
-/**
- * 활동 요약 API 패턴:
- * - GET: 페이지 진입 시(SummaryProvider 마운트) 1회만 호출
- * - PUT/DELETE/POST: 변경사항이 있을 때 DEBOUNCE_PUT_MS(5초) 동안 추가 변경이 없으면,
- *   그때 모아둔 변경사항을 한꺼번에 API로 전송 (DELETE → POST → PUT 순)
- * - 새 리소스 추가 시: apis/portfolio.ts에 함수 추가 → 여기서 진입 시 GET, 디바운스 후 flush에서 함께 호출
- */
 
 export interface RepoItem {
   repo_id: number;
@@ -154,14 +143,22 @@ export interface SummaryState {
   setMileageItems: (v: MileageItem[] | ((p: MileageItem[]) => MileageItem[])) => void;
   activities: ActivityItem[];
   setActivities: (v: ActivityItem[] | ((p: ActivityItem[]) => ActivityItem[])) => void;
-  /** 서버에 반영할 삭제는 deleteActivity로 호출 (디바운스 후 DELETE API) */
+  /** 활동 삭제 (즉시 DELETE API 호출) */
   deleteActivity: (id: number) => void;
+  /** 새 활동(id<0) 저장 버튼 클릭 시 POST. 실패 시 throw */
+  postNewActivity: (item: ActivityItem) => Promise<void>;
+  /** 기존 활동(id>0) 저장 버튼 클릭 시 PUT. 실패 시 throw */
+  saveExistingActivity: (item: ActivityItem) => Promise<void>;
   activitiesNextId: number;
   setActivitiesNextId: (v: number | ((p: number) => number)) => void;
   /** 자격증 섹션 (동일 activities API, category 1) */
   certificates: ActivityItem[];
   setCertificates: (v: ActivityItem[] | ((p: ActivityItem[]) => ActivityItem[])) => void;
   deleteCertificate: (id: number) => void;
+  /** 새 자격증(id<0) 저장 버튼 클릭 시 POST. 실패 시 throw */
+  postNewCertificate: (item: ActivityItem) => Promise<void>;
+  /** 기존 자격증(id>0) 저장 버튼 클릭 시 PUT. 실패 시 throw */
+  saveExistingCertificate: (item: ActivityItem) => Promise<void>;
   certificatesNextId: number;
   setCertificatesNextId: (v: number | ((p: number) => number)) => void;
 }
@@ -194,10 +191,6 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
   const [certificatesNextId, setCertificatesNextId] = useState(-1);
 
   const techStackUserModifiedRef = useRef(false);
-  const activitiesDeletedIdsRef = useRef<Set<number>>(new Set());
-  const activitiesFirstRunAfterLoadRef = useRef(true);
-  const certificatesDeletedIdsRef = useRef<Set<number>>(new Set());
-  const certificatesFirstRunAfterLoadRef = useRef(true);
 
   const setTechStackTags = useCallback(
     (v: string[] | ((p: string[]) => string[])) => {
@@ -207,20 +200,112 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
     [],
   );
 
-  /** 서버 id인 활동 삭제 시 디바운스 flush에서 DELETE 호출하도록 기록 */
-  const deleteActivity = useCallback((id: number) => {
+  /** 활동 삭제 (즉시 DELETE API 호출) */
+  const deleteActivity = useCallback(async (id: number) => {
     if (id > 0) {
-      activitiesDeletedIdsRef.current.add(id);
+      try {
+        await deleteActivityApi(id);
+      } catch {
+        toast.error('활동 삭제에 실패했습니다.');
+        return;
+      }
     }
     setActivities(prev => prev.filter(a => a.id !== id));
   }, []);
 
-  /** 서버 id인 자격증 삭제 시 디바운스 flush에서 DELETE 호출하도록 기록 */
-  const deleteCertificate = useCallback((id: number) => {
+  /** 자격증 삭제 (즉시 DELETE API 호출) */
+  const deleteCertificate = useCallback(async (id: number) => {
     if (id > 0) {
-      certificatesDeletedIdsRef.current.add(id);
+      try {
+        await deleteActivityApi(id);
+      } catch {
+        toast.error('자격증 삭제에 실패했습니다.');
+        return;
+      }
     }
     setCertificates(prev => prev.filter(a => a.id !== id));
+  }, []);
+
+  /** 새 활동(id<0) 저장 버튼 클릭 시에만 POST. 성공 시 목록에 서버 응답으로 교체, 실패 시 throw */
+  const postNewActivity = useCallback(async (item: ActivityItem) => {
+    if (item.id >= 0) return;
+    try {
+      const posted = await postActivity({
+        title: item.title,
+        description: item.description,
+        start_date: item.start_date,
+        end_date: item.end_date,
+        category: ACTIVITY_SECTION_CATEGORY,
+      });
+      setActivities(prev =>
+        prev.map(a => (a.id === item.id ? apiActivityToItem(posted) : a)),
+      );
+    } catch {
+      toast.error('활동 추가에 실패했습니다.');
+      throw new Error('활동 추가 실패');
+    }
+  }, []);
+
+  /** 새 자격증(id<0) 저장 버튼 클릭 시에만 POST. 성공 시 목록에 서버 응답으로 교체, 실패 시 throw */
+  const postNewCertificate = useCallback(async (item: ActivityItem) => {
+    if (item.id >= 0) return;
+    try {
+      const posted = await postActivity({
+        title: item.title,
+        description: item.description,
+        start_date: item.start_date,
+        end_date: item.end_date,
+        category: CERTIFICATE_SECTION_CATEGORY,
+      });
+      setCertificates(prev =>
+        prev.map(a => (a.id === item.id ? apiActivityToItem(posted) : a)),
+      );
+    } catch {
+      toast.error('자격증 추가에 실패했습니다.');
+      throw new Error('자격증 추가 실패');
+    }
+  }, []);
+
+  /** 기존 활동(id>0) 저장 버튼 클릭 시 즉시 PUT. 실패 시 throw */
+  const saveExistingActivity = useCallback(async (item: ActivityItem) => {
+    if (item.id <= 0) return;
+    try {
+      const updated = await putActivity(item.id, {
+        title: item.title,
+        description: item.description,
+        start_date: item.start_date,
+        end_date: item.end_date,
+        category: ACTIVITY_SECTION_CATEGORY,
+      });
+      setActivities(prev =>
+        prev.map(a => (a.id === item.id ? apiActivityToItem(updated) : a)),
+      );
+      toast.success('변경사항이 저장되었습니다.', SAVED_TOAST_OPTIONS);
+    } catch {
+      toast.error('활동 수정에 실패했습니다.');
+      throw new Error('활동 수정 실패');
+    }
+  }, []);
+
+  /** 기존 자격증(id>0) 저장 버튼 클릭 시 즉시 PUT. 실패 시 throw */
+  const saveExistingCertificate = useCallback(async (item: ActivityItem) => {
+    if (item.id <= 0) return;
+    try {
+      const updated = await putActivity(item.id, {
+        title: item.title,
+        description: item.description,
+        start_date: item.start_date,
+        end_date: item.end_date,
+        category: CERTIFICATE_SECTION_CATEGORY,
+      });
+      setCertificates(prev =>
+        prev.map(a => (a.id === item.id ? apiActivityToItem(updated) : a)),
+      );
+      toast.success('변경사항이 저장되었습니다.', SAVED_TOAST_OPTIONS);
+    } catch {
+      toast.error('자격증 수정에 실패했습니다.');
+      throw new Error('자격증 수정 실패');
+    }
   }, []);
 
   /** 활동 요약 페이지 진입 시 GET 1회 */
@@ -257,7 +342,6 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
           (a, b) => a.display_order - b.display_order,
         );
         setActivities(sorted.map(apiActivityToItem));
-        activitiesFirstRunAfterLoadRef.current = true;
       })
       .catch(() => {
         toast.error('활동 목록을 불러오지 못했습니다.');
@@ -272,7 +356,6 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
           (a, b) => a.display_order - b.display_order,
         );
         setCertificates(sorted.map(apiActivityToItem));
-        certificatesFirstRunAfterLoadRef.current = true;
       })
       .catch(() => {
         toast.error('자격증 목록을 불러오지 못했습니다.');
@@ -323,178 +406,18 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       });
   }, []);
 
-  /** 기술 스택 변경 시 디바운스 후 PUT */
+  /** 기술 스택 변경 시 즉시 PUT */
   useEffect(() => {
     if (!techStackUserModifiedRef.current) return;
 
-    const id = window.setTimeout(() => {
-      putTechStack({ tech_stack: techStackTags })
-        .then(() => {
-          toast.success('변경사항이 저장되었습니다.', SAVED_TOAST_OPTIONS);
-        })
-        .catch(() => {
-          toast.error('기술 스택 저장에 실패했습니다.');
-        });
-    }, DEBOUNCE_PUT_MS);
-
-    return () => window.clearTimeout(id);
+    putTechStack({ tech_stack: techStackTags })
+      .then(() => {
+        toast.success('변경사항이 저장되었습니다.', SAVED_TOAST_OPTIONS);
+      })
+      .catch(() => {
+        toast.error('기술 스택 저장에 실패했습니다.');
+      });
   }, [techStackTags]);
-
-  /** 활동 변경 시 10초 디바운스 후 DELETE → POST(신규) → PUT(기존) */
-  useEffect(() => {
-    if (activitiesFirstRunAfterLoadRef.current) {
-      activitiesFirstRunAfterLoadRef.current = false;
-      return;
-    }
-
-    const id = window.setTimeout(async () => {
-      let hasError = false;
-      const deletedIds = new Set(activitiesDeletedIdsRef.current);
-      activitiesDeletedIdsRef.current.clear();
-
-      for (const activityId of deletedIds) {
-        try {
-          await deleteActivityApi(activityId);
-        } catch {
-          toast.error('활동 삭제에 실패했습니다.');
-          hasError = true;
-        }
-      }
-
-      const current = activities;
-      const toPost = current.filter(a => a.id < 0);
-      const toPut = current.filter(a => a.id > 0);
-
-      if (toPost.length > 0) {
-        try {
-          const posted: import('../../apis/portfolio').ActivityApiItem[] =
-            await Promise.all(
-              toPost.map(a =>
-                postActivity({
-                  title: a.title,
-                  description: a.description,
-                  start_date: a.start_date,
-                  end_date: a.end_date,
-                  category: ACTIVITY_SECTION_CATEGORY,
-                }),
-              ),
-            );
-          const newIds = new Set(toPost.map(a => a.id));
-          let i = 0;
-          setActivities(prev =>
-            prev.map(x =>
-              newIds.has(x.id) ? apiActivityToItem(posted[i++]) : x,
-            ),
-          );
-        } catch {
-          toast.error('활동 추가에 실패했습니다.');
-          hasError = true;
-        }
-      }
-
-      if (toPut.length > 0) {
-        try {
-          await patchActivities(
-            toPut.map(a => ({
-              id: a.id,
-              title: a.title,
-              description: a.description,
-              start_date: a.start_date,
-              end_date: a.end_date,
-              category: ACTIVITY_SECTION_CATEGORY,
-            })),
-          );
-        } catch {
-          toast.error('활동 수정에 실패했습니다.');
-          hasError = true;
-        }
-      }
-
-      if (!hasError) {
-        toast.success('변경사항이 저장되었습니다.', SAVED_TOAST_OPTIONS);
-      }
-    }, DEBOUNCE_PUT_MS);
-
-    return () => window.clearTimeout(id);
-  }, [activities]);
-
-  /** 자격증 변경 시 디바운스 후 DELETE → POST → PATCH (category 1) */
-  useEffect(() => {
-    if (certificatesFirstRunAfterLoadRef.current) {
-      certificatesFirstRunAfterLoadRef.current = false;
-      return;
-    }
-
-    const id = window.setTimeout(async () => {
-      let hasError = false;
-      const deletedIds = new Set(certificatesDeletedIdsRef.current);
-      certificatesDeletedIdsRef.current.clear();
-
-      for (const certId of deletedIds) {
-        try {
-          await deleteActivityApi(certId);
-        } catch {
-          toast.error('자격증 삭제에 실패했습니다.');
-          hasError = true;
-        }
-      }
-
-      const current = certificates;
-      const toPost = current.filter(a => a.id < 0);
-      const toPut = current.filter(a => a.id > 0);
-
-      if (toPost.length > 0) {
-        try {
-          const posted: import('../../apis/portfolio').ActivityApiItem[] =
-            await Promise.all(
-              toPost.map(a =>
-                postActivity({
-                  title: a.title,
-                  description: a.description,
-                  start_date: a.start_date,
-                  end_date: a.end_date,
-                  category: CERTIFICATE_SECTION_CATEGORY,
-                }),
-              ),
-            );
-          const newIds = new Set(toPost.map(a => a.id));
-          let i = 0;
-          setCertificates(prev =>
-            prev.map(x =>
-              newIds.has(x.id) ? apiActivityToItem(posted[i++]) : x,
-            ),
-          );
-        } catch {
-          toast.error('자격증 추가에 실패했습니다.');
-          hasError = true;
-        }
-      }
-
-      if (toPut.length > 0) {
-        try {
-          await patchActivities(
-            toPut.map(a => ({
-              id: a.id,
-              title: a.title,
-              description: a.description,
-              start_date: a.start_date,
-              end_date: a.end_date,
-              category: CERTIFICATE_SECTION_CATEGORY,
-            })),
-          );
-        } catch {
-          toast.error('자격증 수정에 실패했습니다.');
-          hasError = true;
-        }
-      }
-
-      if (!hasError) {
-        toast.success('변경사항이 저장되었습니다.', SAVED_TOAST_OPTIONS);
-      }
-    }, DEBOUNCE_PUT_MS);
-
-    return () => window.clearTimeout(id);
-  }, [certificates]);
 
   const value = useMemo<SummaryState>(
     () => ({
@@ -511,11 +434,15 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       activities,
       setActivities,
       deleteActivity,
+      postNewActivity,
+      saveExistingActivity,
       activitiesNextId,
       setActivitiesNextId,
       certificates,
       setCertificates,
       deleteCertificate,
+      postNewCertificate,
+      saveExistingCertificate,
       certificatesNextId,
       setCertificatesNextId,
     }),
@@ -528,9 +455,13 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       mileageItems,
       activities,
       deleteActivity,
+      postNewActivity,
+      saveExistingActivity,
       activitiesNextId,
       certificates,
       deleteCertificate,
+      postNewCertificate,
+      saveExistingCertificate,
       certificatesNextId,
     ],
   );

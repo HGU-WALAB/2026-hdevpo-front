@@ -25,6 +25,8 @@ const ActivitiesSectionContent = ({
     activities,
     setActivities,
     deleteActivity,
+    postNewActivity,
+    saveExistingActivity,
     activitiesNextId,
     setActivitiesNextId,
   } = useSummaryContext();
@@ -51,24 +53,44 @@ const ActivitiesSectionContent = ({
     setEditDraft({ ...item });
   }, []);
 
-  const handleSaveEdit = useCallback(() => {
+  const handleSaveEdit = useCallback(async () => {
     if (editingId == null || !editDraft.title?.trim()) return;
-    setActivities(prev =>
-      prev.map(a =>
-        a.id === editingId
-          ? {
-              ...a,
-              title: editDraft.title ?? a.title,
-              description: editDraft.description ?? a.description,
-              start_date: editDraft.start_date ?? a.start_date,
-              end_date: editDraft.end_date ?? a.end_date,
-            }
-          : a,
-      ),
-    );
-    setEditingId(null);
-    setEditDraft({});
-  }, [editingId, editDraft, setActivities]);
+    if (editingId < 0) {
+      const item = activities.find(a => a.id === editingId);
+      if (!item) return;
+      const toSave: ActivityItem = {
+        ...item,
+        title: editDraft.title ?? item.title,
+        description: editDraft.description ?? item.description,
+        start_date: editDraft.start_date ?? item.start_date,
+        end_date: editDraft.end_date ?? item.end_date,
+      };
+      try {
+        await postNewActivity(toSave);
+        setEditingId(null);
+        setEditDraft({});
+      } catch {
+        /* 토스트는 context에서 처리, 폼 유지 */
+      }
+      return;
+    }
+    const item = activities.find(a => a.id === editingId);
+    if (!item) return;
+    const toSave: ActivityItem = {
+      ...item,
+      title: editDraft.title ?? item.title,
+      description: editDraft.description ?? item.description,
+      start_date: editDraft.start_date ?? item.start_date,
+      end_date: editDraft.end_date ?? item.end_date,
+    };
+    try {
+      await saveExistingActivity(toSave);
+      setEditingId(null);
+      setEditDraft({});
+    } catch {
+      /* 토스트는 context에서 처리, 폼 유지 */
+    }
+  }, [editingId, editDraft, activities, postNewActivity, saveExistingActivity]);
 
   const handleCancelEdit = useCallback(() => {
     if (editingId != null && editingId < 0) {
@@ -79,8 +101,8 @@ const ActivitiesSectionContent = ({
   }, [editingId, setActivities]);
 
   const handleDelete = useCallback(
-    (id: number) => {
-      deleteActivity(id);
+    async (id: number) => {
+      await deleteActivity(id);
       if (editingId === id) {
         setEditingId(null);
         setEditDraft({});
@@ -156,7 +178,7 @@ const ActivitiesSectionContent = ({
                           description: e.target.value,
                         }))
                       }
-                      placeholder="설명"
+                      placeholder="교내·외 수상 경력, 동아리, 대외활동 등을 추가하면 더 풍부한 포트폴리오 설명을 생성할 수 있습니다."
                       rows={2}
                       maxLength={INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION}
                     />

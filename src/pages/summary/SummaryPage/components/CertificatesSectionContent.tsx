@@ -25,6 +25,8 @@ const CertificatesSectionContent = ({
     certificates,
     setCertificates,
     deleteCertificate,
+    postNewCertificate,
+    saveExistingCertificate,
     certificatesNextId,
     setCertificatesNextId,
   } = useSummaryContext();
@@ -51,24 +53,44 @@ const CertificatesSectionContent = ({
     setEditDraft({ ...item });
   }, []);
 
-  const handleSaveEdit = useCallback(() => {
+  const handleSaveEdit = useCallback(async () => {
     if (editingId == null || !editDraft.title?.trim()) return;
-    setCertificates(prev =>
-      prev.map(a =>
-        a.id === editingId
-          ? {
-              ...a,
-              title: editDraft.title ?? a.title,
-              description: editDraft.description ?? a.description,
-              start_date: editDraft.start_date ?? a.start_date,
-              end_date: editDraft.end_date ?? a.end_date,
-            }
-          : a,
-      ),
-    );
-    setEditingId(null);
-    setEditDraft({});
-  }, [editingId, editDraft, setCertificates]);
+    if (editingId < 0) {
+      const item = certificates.find(a => a.id === editingId);
+      if (!item) return;
+      const toSave: ActivityItem = {
+        ...item,
+        title: editDraft.title ?? item.title,
+        description: editDraft.description ?? item.description,
+        start_date: editDraft.start_date ?? item.start_date,
+        end_date: editDraft.end_date ?? item.end_date,
+      };
+      try {
+        await postNewCertificate(toSave);
+        setEditingId(null);
+        setEditDraft({});
+      } catch {
+        /* 토스트는 context에서 처리, 폼 유지 */
+      }
+      return;
+    }
+    const item = certificates.find(a => a.id === editingId);
+    if (!item) return;
+    const toSave: ActivityItem = {
+      ...item,
+      title: editDraft.title ?? item.title,
+      description: editDraft.description ?? item.description,
+      start_date: editDraft.start_date ?? item.start_date,
+      end_date: editDraft.end_date ?? item.end_date,
+    };
+    try {
+      await saveExistingCertificate(toSave);
+      setEditingId(null);
+      setEditDraft({});
+    } catch {
+      /* 토스트는 context에서 처리, 폼 유지 */
+    }
+  }, [editingId, editDraft, certificates, postNewCertificate, saveExistingCertificate]);
 
   const handleCancelEdit = useCallback(() => {
     if (editingId != null && editingId < 0) {
@@ -79,8 +101,8 @@ const CertificatesSectionContent = ({
   }, [editingId, setCertificates]);
 
   const handleDelete = useCallback(
-    (id: number) => {
-      deleteCertificate(id);
+    async (id: number) => {
+      await deleteCertificate(id);
       if (editingId === id) {
         setEditingId(null);
         setEditDraft({});
@@ -156,7 +178,7 @@ const CertificatesSectionContent = ({
                           description: e.target.value,
                         }))
                       }
-                      placeholder="설명"
+                      placeholder="운전면허증, 정보처리기사, SQLD 등 보유 자격증을 추가하여 포트폴리오를 더욱 풍부하게 구성할 수 있습니다."
                       rows={2}
                       maxLength={INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION}
                     />
