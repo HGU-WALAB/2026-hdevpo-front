@@ -36,9 +36,12 @@ const SAVED_TOAST_OPTIONS = {
 };
 
 export interface RepoItem {
+  /** PATCH /api/portfolio/repositories/:id 시 사용. API가 null 반환 시 없을 수 있음 */
+  id?: number;
   repo_id: number;
   custom_title: string | null;
   is_visible: boolean;
+  display_order?: number;
   name: string;
   owner?: string;
   description: string;
@@ -96,9 +99,11 @@ function nonEmpty(s: string | null | undefined): string | null {
 
 export function portfolioRepoToRepoItem(p: PortfolioRepositoryItem): RepoItem {
   return {
+    id: p.id ?? undefined,
     repo_id: p.repo_id,
     custom_title: p.custom_title,
     is_visible: p.is_visible,
+    display_order: p.display_order,
     name: nonEmpty(p.name) ?? nonEmpty(p.custom_title) ?? String(p.repo_id),
     description: p.description ?? '',
     created_at: p.created_at ?? '',

@@ -1,14 +1,22 @@
-import { Flex, Text } from '@/components';
+import { Button, Flex, Text } from '@/components';
 import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { boxShadow } from '@/styles/common';
 import { palette } from '@/styles/palette';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
-import { useMemo, useState } from 'react';
+import EditIcon from '@mui/icons-material/Edit';
+import { useCallback, useMemo, useState } from 'react';
 import { styled, useTheme, useMediaQuery } from '@mui/material';
+import { toast } from 'react-toastify';
 
+import { INPUT_MAX_LENGTH } from '../../constants/inputLimits';
+import { patchRepository } from '../../apis/repositories';
 import { formatDateRange } from '../../utils/date';
-import { useSummaryContext } from '../context/SummaryContext';
+import {
+  type RepoItem,
+  portfolioRepoToRepoItem,
+  useSummaryContext,
+} from '../context/SummaryContext';
 
 const ITEMS_PER_PAGE = 4;
 
@@ -20,9 +28,55 @@ interface RepoSectionContentProps {
 const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
-  const { repos: contextRepos } = useSummaryContext();
+  const { repos: contextRepos, setRepos } = useSummaryContext();
   const repos = Array.isArray(contextRepos) ? contextRepos : [];
   const [page, setPage] = useState(0);
+  const [editingRepo, setEditingRepo] = useState<RepoItem | null>(null);
+  const [editTitle, setEditTitle] = useState('');
+  const [editDescription, setEditDescription] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const openEdit = useCallback((repo: RepoItem) => {
+    setEditingRepo(repo);
+    setEditTitle(
+      (repo.custom_title != null && repo.custom_title.trim() !== '')
+        ? repo.custom_title.trim()
+        : repo.name,
+    );
+    setEditDescription(repo.description ?? '');
+  }, []);
+
+  const closeEdit = useCallback(() => {
+    setEditingRepo(null);
+    setEditTitle('');
+    setEditDescription('');
+  }, []);
+
+  const handleSaveEdit = useCallback(async () => {
+    if (editingRepo?.id == null) return;
+    setSubmitting(true);
+    try {
+      const res = await patchRepository(editingRepo.id, {
+        custom_title: editTitle.trim() || editingRepo.name,
+        description: editDescription.trim(),
+        is_visible: editingRepo.is_visible,
+        display_order: editingRepo.display_order ?? 0,
+      });
+      setRepos(prev =>
+        prev.map(r =>
+          r.repo_id === res.repo_id ? portfolioRepoToRepoItem(res) : r,
+        ),
+      );
+      toast.success('레포지토리 정보가 수정되었습니다.', {
+        position: 'top-center',
+      });
+      closeEdit();
+    } catch {
+      toast.error('레포지토리 수정에 실패했습니다.');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [editingRepo, editTitle, editDescription, setRepos, closeEdit]);
 
   const displayRepos = useMemo(
     () => repos.filter(r => r.is_visible),
@@ -61,42 +115,148 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
   return (
     <Flex.Column gap="1rem">
       <S.Grid $isMobile={isMobile}>
-        {paginatedRepos.map(repo => (
-          <S.Card key={repo.repo_id} $isMobile={isMobile}>
-            <Flex.Column gap="0.5rem">
-              <S.RepoLink
-                href={repo.html_url ?? '#'}
-                target={repo.html_url ? '_blank' : undefined}
-                rel={repo.html_url ? 'noopener noreferrer' : undefined}
-              >
-                {displayName(repo)}
-              </S.RepoLink>
-              {(repo.description?.trim() ?? '') !== '' && (
-                <Text
-                  style={{
-                    ...theme.typography.body2,
-                    color: theme.palette.grey[600],
-                  }}
-                >
-                  {repo.description}
-                </Text>
+        {paginatedRepos.map(repo => {
+          const isEditing = editingRepo?.repo_id === repo.repo_id;
+          return (
+            <S.Card key={repo.repo_id} $isMobile={isMobile}>
+              {isEditing ? (
+                <Flex.Column gap="0.75rem">
+                  <Flex.Column gap="0.5rem">
+                    <Text
+                      style={{
+                        ...theme.typography.body2,
+                        fontWeight: 600,
+                        margin: 0,
+                        color: theme.palette.text.primary,
+                      }}
+                    >
+                      제목
+                    </Text>
+                    <input
+                      type="text"
+                      value={editTitle}
+                      onChange={e => setEditTitle(e.target.value)}
+                      placeholder={displayName(repo)}
+                      maxLength={INPUT_MAX_LENGTH.REPO_TITLE}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '0.5rem',
+                        border: `1px solid ${theme.palette.grey[300]}`,
+                        fontSize: '0.875rem',
+                        boxSizing: 'border-box',
+                      }}
+                      aria-label="레포지토리 제목"
+                    />
+                  </Flex.Column>
+                  <Flex.Column gap="0.5rem">
+                    <Text
+                      style={{
+                        ...theme.typography.body2,
+                        fontWeight: 600,
+                        margin: 0,
+                        color: theme.palette.text.primary,
+                      }}
+                    >
+                      설명
+                    </Text>
+                    <textarea
+                      value={editDescription}
+                      onChange={e => setEditDescription(e.target.value)}
+                      placeholder="설명을 입력하세요"
+                      maxLength={INPUT_MAX_LENGTH.REPO_DESCRIPTION}
+                      rows={3}
+                      style={{
+                        width: '100%',
+                        padding: '0.5rem 0.75rem',
+                        borderRadius: '0.5rem',
+                        border: `1px solid ${theme.palette.grey[300]}`,
+                        fontSize: '0.875rem',
+                        resize: 'vertical',
+                        boxSizing: 'border-box',
+                      }}
+                      aria-label="레포지토리 설명"
+                    />
+                  </Flex.Column>
+                  <Flex.Row
+                    gap="0.5rem"
+                    justify="flex-end"
+                    style={{ marginTop: '0.25rem' }}
+                  >
+                    <Button
+                      label="취소"
+                      variant="outlined"
+                      size="large"
+                      onClick={closeEdit}
+                    />
+                    <Button
+                      label="저장"
+                      variant="contained"
+                      color="blue"
+                      size="large"
+                      disabled={submitting}
+                      onClick={handleSaveEdit}
+                    />
+                  </Flex.Row>
+                </Flex.Column>
+              ) : (
+                <Flex.Column gap="0.5rem">
+                  <Flex.Row
+                    align="center"
+                    gap="0.5rem"
+                    wrap="wrap"
+                    style={{ flex: 1, minWidth: 0 }}
+                  >
+                    <S.RepoLink
+                      href={repo.html_url ?? '#'}
+                      target={repo.html_url ? '_blank' : undefined}
+                      rel={repo.html_url ? 'noopener noreferrer' : undefined}
+                      style={{ flex: '1 1 auto', minWidth: 0 }}
+                    >
+                      {displayName(repo)}
+                    </S.RepoLink>
+                    {!readOnly && repo.id != null && (
+                      <S.EditButton
+                        type="button"
+                        onClick={e => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          openEdit(repo);
+                        }}
+                        aria-label="제목·설명 수정"
+                      >
+                        <EditIcon sx={{ fontSize: 18 }} />
+                      </S.EditButton>
+                    )}
+                  </Flex.Row>
+                  {(repo.description?.trim() ?? '') !== '' && (
+                    <Text
+                      style={{
+                        ...theme.typography.body2,
+                        color: theme.palette.grey[600],
+                      }}
+                    >
+                      {repo.description}
+                    </Text>
+                  )}
+                  <Text
+                    style={{
+                      ...theme.typography.caption,
+                      color: theme.palette.grey[500],
+                    }}
+                  >
+                    {formatDateRange(repo.created_at, repo.updated_at)}
+                  </Text>
+                  <Flex.Row gap="0.5rem" wrap="wrap">
+                    {repo.languages.map(lang => (
+                      <S.LangTag key={lang}>{lang}</S.LangTag>
+                    ))}
+                  </Flex.Row>
+                </Flex.Column>
               )}
-              <Text
-                style={{
-                  ...theme.typography.caption,
-                  color: theme.palette.grey[500],
-                }}
-              >
-                {formatDateRange(repo.created_at, repo.updated_at)}
-              </Text>
-              <Flex.Row gap="0.5rem" wrap="wrap">
-                {repo.languages.map(lang => (
-                  <S.LangTag key={lang}>{lang}</S.LangTag>
-                ))}
-              </Flex.Row>
-            </Flex.Column>
-          </S.Card>
-        ))}
+            </S.Card>
+          );
+        })}
       </S.Grid>
       {totalPages > 1 && (
         <S.Pagination align="center" gap="0.5rem">
@@ -177,6 +337,23 @@ const S = {
     transition: color 0.2s ease;
     &:hover {
       color: ${palette.blue600};
+    }
+  `,
+  EditButton: styled('button')`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.35rem;
+    border: none;
+    border-radius: 0.375rem;
+    background: none;
+    color: ${palette.grey500};
+    cursor: pointer;
+    flex-shrink: 0;
+    transition: color 0.2s ease, background-color 0.2s ease;
+    &:hover {
+      color: ${palette.blue500};
+      background-color: ${palette.blue300};
     }
   `,
   LangTag: styled('span')`

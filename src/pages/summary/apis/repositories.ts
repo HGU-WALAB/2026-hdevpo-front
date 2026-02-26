@@ -1,7 +1,7 @@
 import { ENDPOINT } from '@/apis/endPoint';
 import { http } from '@/apis/http';
 
-/** 활동 요약 - 포트폴리오 레포지토리 한 건 (GET 응답) */
+/** 활동 요약 - 포트폴리오 레포지토리 한 건 (GET/PATCH 응답) */
 export interface PortfolioRepositoryItem {
   id: number;
   repo_id: number;
@@ -14,6 +14,14 @@ export interface PortfolioRepositoryItem {
   language: string;
   created_at: string;
   updated_at: string;
+}
+
+/** PATCH /api/portfolio/repositories/:id 요청 body */
+export interface PatchRepositoryBody {
+  custom_title: string;
+  description: string;
+  is_visible: boolean;
+  display_order: number;
 }
 
 export interface RepositoriesResponse {
@@ -67,5 +75,17 @@ export const putRepositories = async (body: PutRepositoryItem[]) => {
     ENDPOINT.PORTFOLIO_REPOSITORIES,
     body,
   );
+  return response;
+};
+
+/** 활동 요약 - 포트폴리오 레포지토리 한 건 수정 (PATCH) */
+export const patchRepository = async (
+  id: number,
+  body: PatchRepositoryBody,
+) => {
+  const response = await http.patch<
+    PatchRepositoryBody,
+    PortfolioRepositoryItem
+  >(`${ENDPOINT.PORTFOLIO_REPOSITORIES}/${id}`, body);
   return response;
 };

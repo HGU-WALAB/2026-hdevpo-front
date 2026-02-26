@@ -10,6 +10,7 @@ import type {
   PutRepositoryItem,
   UserInfoResponse,
 } from '@/pages/summary/apis/portfolio';
+import type { PatchRepositoryBody } from '@/pages/summary/apis/repositories';
 import { DRAGGABLE_SECTION_ORDER } from '@/pages/summary/constants/constants';
 import { mockActivitiesResponse } from '@/mocks/fixtures/portfolioActivities';
 import { mockMileageList } from '@/mocks/fixtures/mileageList';
@@ -298,6 +299,27 @@ export const PortfolioHandlers = [
     );
     return HttpResponse.json({ repositories: sorted }, { status: 200 });
   }),
+
+  http.patch(
+    BASE_URL + `${ENDPOINT.PORTFOLIO_REPOSITORIES}/:id`,
+    async ({ params, request }) => {
+      const id = Number(params.id);
+      const body = (await request.json()) as PatchRepositoryBody;
+      const idx = repositoriesStore.findIndex(r => r.id === id);
+      if (idx === -1) {
+        return HttpResponse.json({}, { status: 404 });
+      }
+      const prev = repositoriesStore[idx];
+      repositoriesStore[idx] = {
+        ...prev,
+        custom_title: body.custom_title ?? prev.custom_title,
+        description: body.description ?? prev.description,
+        is_visible: body.is_visible ?? prev.is_visible,
+        display_order: body.display_order ?? prev.display_order,
+      };
+      return HttpResponse.json(repositoriesStore[idx], { status: 200 });
+    },
+  ),
 
   http.get(BASE_URL + ENDPOINT.PORTFOLIO_MILEAGE, () => {
     const sorted = [...mileageStore].sort(
