@@ -53,7 +53,7 @@ export const getRepositories = async (params?: GetRepositoriesParams) => {
   const searchParams = new URLSearchParams();
   if (params?.page != null) searchParams.set('page', String(params.page));
   if (params?.per_page != null) searchParams.set('per_page', String(params.per_page));
-   if (params?.selected_only != null) {
+  if (params?.selected_only != null) {
     searchParams.set('selected_only', String(params.selected_only));
   }
   if (params?.visible_only != null) {
@@ -70,12 +70,13 @@ export const getRepositories = async (params?: GetRepositoriesParams) => {
 
 /** 빈 배열 나올 때까지 모든 페이지 조회 */
 export const getAllRepositories = async (
-  perPage = 20,
+  options: GetRepositoriesParams & { perPage?: number } = {},
 ): Promise<PortfolioRepositoryItem[]> => {
+  const { perPage = 20, ...baseParams } = options;
   const all: PortfolioRepositoryItem[] = [];
   let page = 1;
   for (;;) {
-    const res = await getRepositories({ page, per_page: perPage });
+    const res = await getRepositories({ ...baseParams, page, per_page: perPage });
     const list = res.repositories ?? [];
     if (list.length === 0) break;
     all.push(...list);

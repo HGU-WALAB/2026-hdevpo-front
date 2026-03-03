@@ -256,15 +256,49 @@ export const PortfolioHandlers = [
   }),
 
   http.get(BASE_URL + ENDPOINT.PORTFOLIO_REPOSITORIES, ({ request }) => {
-    const sorted = [...repositoriesStore].sort(
-      (a, b) => a.display_order - b.display_order,
-    );
     const url = new URL(request.url);
     const page = Math.max(1, parseInt(url.searchParams.get('page') ?? '1', 10));
     const perPage = Math.min(
       100,
       Math.max(1, parseInt(url.searchParams.get('per_page') ?? '20', 10)),
     );
+    const visibleOnly =
+      url.searchParams.get('visible_only') === 'true' ? true : undefined;
+    const sortParam = url.searchParams.get('sort') ?? 'updated';
+    const visibilityParam = url.searchParams.get('visibility') ?? 'all';
+    const affiliationParam = url.searchParams.get('affiliation') ?? 'owner';
+
+    let list = [...repositoriesStore];
+
+    if (visibleOnly) {
+      list = list.filter(r => r.is_visible);
+    }
+
+    if (visibilityParam !== 'all') {
+      list = list.filter(r => r.visibility === visibilityParam);
+    }
+
+    // affiliationParam 은 실제로는 GitHub API에서만 의미가 있지만,
+    // 목 환경에서는 모든 레포지토리를 동일하게 취급합니다.
+    if (affiliationParam === 'owner') {
+      // 기본 mock 데이터가 모두 owner 라고 가정하고 추가 필터는 적용하지 않습니다.
+    }
+
+    const sorted = [...list].sort((a, b) => {
+      switch (sortParam) {
+        case 'created':
+          return b.created_at.localeCompare(a.created_at);
+        case 'pushed':
+          // mock 데이터에는 pushed_at 이 없으므로 updated_at 기준으로 정렬
+          return b.updated_at.localeCompare(a.updated_at);
+        case 'full_name':
+          return a.name.localeCompare(b.name);
+        case 'updated':
+        default:
+          return b.updated_at.localeCompare(a.updated_at);
+      }
+    });
+
     const start = (page - 1) * perPage;
     const slice = sorted.slice(start, start + perPage);
     return HttpResponse.json({ repositories: slice }, { status: 200 });

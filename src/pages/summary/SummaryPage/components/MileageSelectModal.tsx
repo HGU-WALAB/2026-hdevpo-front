@@ -400,7 +400,7 @@ const S = {
     background-color: ${({ theme }) => theme.palette.primary.main};
     border: none;
     border-radius: 0.4rem;
-    padding: 0.5rem 1rem;
+    padding: 0.8rem 1rem;
     cursor: pointer;
     color: ${palette.white};
     &:hover,

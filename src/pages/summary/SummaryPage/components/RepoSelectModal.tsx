@@ -1,5 +1,5 @@
 import { SearchIcon } from '@/assets';
-import { Button, Flex, Input, Modal, Text } from '@/components';
+import { Button, Dropdown, Flex, Input, Modal, Text } from '@/components';
 import { palette } from '@/styles/palette';
 import type { PortfolioRepositoryItem, PutRepositoryItem } from '../../apis/portfolio';
 import { getAllRepositories, putRepositories } from '../../apis/portfolio';
@@ -17,29 +17,73 @@ interface RepoSelectModalProps {
 }
 
 /** 포트폴리오 레포지토리 선택 모달. GET /api/portfolio/repositories 전체 페이지 조회, is_visible true 체크, 확인 시 PUT */
+const SORT_OPTIONS = [
+  { label: '최근 업데이트순', value: 'updated' },
+  { label: '생성일순', value: 'created' },
+  { label: '최근 푸시순', value: 'pushed' },
+  { label: '이름순', value: 'full_name' },
+] as const;
+
+const VISIBILITY_OPTIONS = [
+  { label: 'all', value: 'all' },
+  { label: 'Public', value: 'public' },
+  { label: 'Private', value: 'private' },
+] as const;
+
+const AFFILIATION_OPTIONS = [
+  { label: 'owner', value: 'owner' },
+  { label: '협업 레포', value: 'collaborator' },
+  { label: '조직 레포', value: 'organization_member' },
+] as const;
+
 const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
   const theme = useTheme();
   const { setRepos } = useSummaryContext();
   const [allRepos, setAllRepos] = useState<PortfolioRepositoryItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortFilter, setSortFilter] = useState<string>(SORT_OPTIONS[0].label);
+  const [visibilityFilter, setVisibilityFilter] = useState<string>(
+    VISIBILITY_OPTIONS[0].label,
+  );
+  const [affiliationFilter, setAffiliationFilter] = useState<string>(
+    AFFILIATION_OPTIONS[0].label,
+  );
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    getAllRepositories()
+    const sort =
+      SORT_OPTIONS.find(option => option.label === sortFilter)?.value ??
+      SORT_OPTIONS[0].value;
+    const visibility =
+      VISIBILITY_OPTIONS.find(option => option.label === visibilityFilter)
+        ?.value ?? VISIBILITY_OPTIONS[0].value;
+    const affiliation =
+      AFFILIATION_OPTIONS.find(option => option.label === affiliationFilter)
+        ?.value ?? AFFILIATION_OPTIONS[0].value;
+
+    getAllRepositories({
+      sort,
+      visibility,
+      affiliation,
+    })
       .then(list => {
         setAllRepos(list);
-        setSelectedIds(new Set(list.filter(r => r.is_visible).map(r => r.repo_id)));
+        setSelectedIds(prev =>
+          prev.size > 0
+            ? prev
+            : new Set(list.filter(r => r.is_visible).map(r => r.repo_id)),
+        );
       })
       .catch(() => {
         toast.error('레포지토리 목록을 불러오지 못했습니다.');
         onClose();
       })
       .finally(() => setLoading(false));
-  }, [open, onClose]);
+  }, [open, onClose, sortFilter, visibilityFilter, affiliationFilter]);
 
   const toggleRepo = useCallback((repoId: number) => {
     setSelectedIds(prev => {
@@ -110,22 +154,84 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
           포트폴리오에 추가할 레포지토리를 선택하세요.
         </Text>
         {!loading && (
-          <Flex.Row gap="0.5rem">
-            <Input
-              placeholder="레포지토리 검색..."
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              style={{
-                width: '100%',
-                maxWidth: '20rem',
-                backgroundColor: theme.palette.variant?.default ?? theme.palette.grey[50],
-              }}
-              inputProps={{ 'aria-label': '레포지토리 검색' }}
-            />
-            <S.SearchButton type="button" aria-label="검색">
-              <SearchIcon />
-            </S.SearchButton>
-          </Flex.Row>
+          <S.FilterBar>
+            <Flex.Row gap="0.5rem" align="center">
+              <Input
+                placeholder="레포지토리 검색..."
+                value={searchQuery}
+                onChange={e => setSearchQuery(e.target.value)}
+                style={{
+                  width: '100%',
+                  maxWidth: '20rem',
+                  backgroundColor:
+                    theme.palette.variant?.default ?? theme.palette.grey[50],
+                }}
+                inputProps={{ 'aria-label': '레포지토리 검색' }}
+              />
+              <S.SearchButton type="button" aria-label="검색">
+                <SearchIcon />
+              </S.SearchButton>
+            </Flex.Row>
+            <S.FilterRight>
+              <S.FilterGroup>
+                <Text
+                  style={{
+                    ...theme.typography.body2,
+                    color: theme.palette.grey[600],
+                    margin: 0,
+                    flexShrink: 0,
+                  }}
+                >
+                  정렬
+                </Text>
+                <Dropdown
+                  label="정렬"
+                  items={SORT_OPTIONS.map(option => option.label)}
+                  selectedItem={sortFilter}
+                  setSelectedItem={setSortFilter}
+                  width="10rem"
+                />
+              </S.FilterGroup>
+              <S.FilterGroup>
+                <Text
+                  style={{
+                    ...theme.typography.body2,
+                    color: theme.palette.grey[600],
+                    margin: 0,
+                    flexShrink: 0,
+                  }}
+                >
+                  접근 권한
+                </Text>
+                <Dropdown
+                  label="접근 권한"
+                  items={VISIBILITY_OPTIONS.map(option => option.label)}
+                  selectedItem={visibilityFilter}
+                  setSelectedItem={setVisibilityFilter}
+                  width="5rem"
+                />
+              </S.FilterGroup>
+              <S.FilterGroup>
+                <Text
+                  style={{
+                    ...theme.typography.body2,
+                    color: theme.palette.grey[600],
+                    margin: 0,
+                    flexShrink: 0,
+                  }}
+                >
+                  소유 유형
+                </Text>
+                <Dropdown
+                  label="소유 유형"
+                  items={AFFILIATION_OPTIONS.map(option => option.label)}
+                  selectedItem={affiliationFilter}
+                  setSelectedItem={setAffiliationFilter}
+                  width="7rem"
+                />
+              </S.FilterGroup>
+            </S.FilterRight>
+          </S.FilterBar>
         )}
         {!loading && selectedRepos.length > 0 && (
           <S.SelectedTags wrap="wrap" gap="0.5rem">
@@ -297,6 +403,29 @@ export default RepoSelectModal;
 const LIST_AREA_HEIGHT = '28rem';
 
 const S = {
+  FilterBar: styled('div')`
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 100%;
+    gap: 0.5rem;
+    @media (max-width: 1024px) {
+      flex-direction: column;
+      align-items: stretch;
+    }
+  `,
+  FilterRight: styled('div')`
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+  `,
+  FilterGroup: styled('div')`
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    flex-wrap: nowrap;
+  `,
   SearchButton: styled('button')`
     display: flex;
     align-items: center;
@@ -304,7 +433,7 @@ const S = {
     background-color: ${({ theme }) => theme.palette.primary.main};
     border: none;
     border-radius: 0.4rem;
-    padding: 0.5rem 1rem;
+    padding: 0.8rem 1rem;
     cursor: pointer;
     color: ${palette.white};
     &:hover,
