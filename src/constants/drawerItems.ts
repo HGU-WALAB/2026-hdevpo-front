@@ -1,6 +1,6 @@
 import {
-  BuildingBlueIcon,
-  BuildingIcon,
+  // BuildingBlueIcon,
+  // BuildingIcon,
   DashboardBlueIcon,
   DashboardIcon,
   MileageAddBlueIcon,
@@ -47,14 +47,14 @@ export const drawerItems = [
     selectedIcon: ScholarshipBlueIcon,
     route: ROUTE_PATH.scholarship,
   },
-  {
-    id: 5,
-    text: '포트폴리오 생성',
-    shortText: '포폴생성',
-    icon: BuildingIcon,
-    selectedIcon: BuildingBlueIcon,
-    route: ROUTE_PATH.summary,
-  },
+  // {
+  //   id: 5,
+  //   text: '포트폴리오 생성',
+  //   shortText: '포폴생성',
+  //   icon: BuildingIcon,
+  //   selectedIcon: BuildingBlueIcon,
+  //   route: ROUTE_PATH.summary,
+  // },
   {
     id: 6,
     text: '마이페이지',

@@ -14,15 +14,15 @@ const ScholarshipApplyPage = React.lazy(
   () => import('@/pages/mileage/ScholarshipApplyPage'),
 );
 const MyPage = React.lazy(() => import('@/pages/profile/MyPage'));
-const SummaryLayout = React.lazy(
-  () => import('@/pages/summary/SummaryPage/SummaryLayout'),
-);
-const SummaryEditPage = React.lazy(
-  () => import('@/pages/summary/SummaryPage/SummaryEditPage'),
-);
-const SummaryPreviewPage = React.lazy(
-  () => import('@/pages/summary/SummaryPage/SummaryPreviewPage'),
-);
+// const SummaryLayout = React.lazy(
+//   () => import('@/pages/summary/SummaryPage/SummaryLayout'),
+// );
+// const SummaryEditPage = React.lazy(
+//   () => import('@/pages/summary/SummaryPage/SummaryEditPage'),
+// );
+// const SummaryPreviewPage = React.lazy(
+//   () => import('@/pages/summary/SummaryPage/SummaryPreviewPage'),
+// );
 const GitHubCallbackPage = React.lazy(
   () => import('@/pages/profile/GitHubCallbackPage'),
 );
@@ -56,14 +56,14 @@ const router = createBrowserRouter(
           path: ROUTE_PATH.scholarship,
           element: <ScholarshipApplyPage />,
         },
-        {
-          path: ROUTE_PATH.summary,
-          element: <SummaryLayout />,
-          children: [
-            { index: true, element: <SummaryEditPage /> },
-            { path: 'preview', element: <SummaryPreviewPage /> },
-          ],
-        },
+        // {
+        //   path: ROUTE_PATH.summary,
+        //   element: <SummaryLayout />,
+        //   children: [
+        //     { index: true, element: <SummaryEditPage /> },
+        //     { path: 'preview', element: <SummaryPreviewPage /> },
+        //   ],
+        // },
         {
           path: ROUTE_PATH.myPage,
           element: <MyPage />,
