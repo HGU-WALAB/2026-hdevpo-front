@@ -208,9 +208,7 @@ const MaintenancePage = ({ status }: MaintenancePageProps) => {
                   overflowWrap: 'break-word',
                 }}
               >
-                한동대 SW마일리지 장학금 신청기간 전까지{'\n'}
-                시스템 점검 및 2025년 2학기 데이터 업데이트를 위하여{'\n'}
-                신청 시스템을 일시 중단합니다.
+                {status.message || '시스템 점검 중입니다.\n잠시만 기다려주세요.'}
               </p>
 
               <div
@@ -410,7 +408,6 @@ const MaintenancePage = ({ status }: MaintenancePageProps) => {
                     </svg>
                   </div>
 
-                  {/* 점검 메시지 */}
                   <Typography
                     component="p"
                     style={{
@@ -422,7 +419,8 @@ const MaintenancePage = ({ status }: MaintenancePageProps) => {
                       whiteSpace: 'pre-line',
                     }}
                   >
-                    {status.message || '🔨 시스템 점검 중입니다.\n잠시만 기다려주세요.'}
+                    현재 점검 및 데이터 업데이트가 진행 중입니다 {'\n'}
+                    불편을 드려 죄송합니다. 빠르게 안정화하겠습니다.
                   </Typography>
 
                   {/* 예상 완료 시간 */}
@@ -441,15 +439,7 @@ const MaintenancePage = ({ status }: MaintenancePageProps) => {
                       flexWrap: 'wrap',
                     }}
                   >
-                    <span
-                      aria-hidden="true"
-                      style={{
-                        fontSize: 16,
-                        flexShrink: 0,
-                      }}
-                    >
-                      ⏰
-                    </span>
+
                     <Typography
                       component="span"
                       style={{
