@@ -18,7 +18,12 @@ export const useMaintenanceCheck = () => {
         const status = await getMaintenanceStatus();
         setMaintenanceStatus(status);
       } catch (error) {
-        setMaintenanceStatus(null);
+        setMaintenanceStatus({
+          maintenanceMode: true,
+          message: '점검 상태를 확인할 수 없습니다.\n잠시 후 다시 시도해주세요.',
+          estimatedTime: '',
+          isAllowedUser: false,
+        });
       } finally {
         setIsLoading(false);
       }

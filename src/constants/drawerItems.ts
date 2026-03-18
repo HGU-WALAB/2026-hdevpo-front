@@ -3,8 +3,6 @@ import {
   // BuildingIcon,
   DashboardBlueIcon,
   DashboardIcon,
-  MileageAddBlueIcon,
-  MileageAddIcon,
   MileageListBlueIcon,
   MileageListIcon,
   ScholarshipBlueIcon,
@@ -30,14 +28,6 @@ export const drawerItems = [
     icon: MileageListIcon,
     selectedIcon: MileageListBlueIcon,
     route: ROUTE_PATH.mileageList,
-  },
-  {
-    id: 3,
-    text: '마일리지 등록',
-    shortText: '등록',
-    icon: MileageAddIcon,
-    selectedIcon: MileageAddBlueIcon,
-    route: ROUTE_PATH.newMileage,
   },
   {
     id: 4,
