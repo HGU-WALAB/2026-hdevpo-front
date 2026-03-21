@@ -8,13 +8,13 @@ import { useMemo } from 'react';
 
 const ScholarshipStudentTypeSection = () => {
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
-  const { student } = useAuthStore();
+  const { student, term } = useAuthStore();
 
   const text = useMemo(() => {
-    return student.studentType !== '기타'
+    return student.studentType !== '기타' && term <= 9
       ? `${student.studentType} 마일리지 장학금 신청 대상자입니다!`
       : '마일리지 장학금 신청 대상이 아닙니다.';
-  }, [student.studentType]);
+  }, [student.studentType, term]);
 
   return (
     <S.RowContainer isMobile={isMobile} justify="center">

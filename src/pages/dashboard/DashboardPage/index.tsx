@@ -11,7 +11,7 @@ import { useAuthStore } from '@/stores';
 const DashboardPage = () => {
   useTrackPageView({ eventName: '[View] 대시보드 페이지' });
 
-  const { student } = useAuthStore();
+  const { student, term } = useAuthStore();
 
   return (
     <Flex.Column margin="1rem 1rem 2rem" gap="1rem">
@@ -22,7 +22,7 @@ const DashboardPage = () => {
 
       <CapabilitySection />
 
-      {student.studentType === '기타' && <NoAccessLogoutModal />}
+      {student.studentType === '기타' && term <= 9 && <NoAccessLogoutModal />}
 
       <Footer />
     </Flex.Column>

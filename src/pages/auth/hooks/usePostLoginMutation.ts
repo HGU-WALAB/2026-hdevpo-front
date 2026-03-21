@@ -21,6 +21,7 @@ const usePostLoginMutation = () => {
           studentType: res.studentType,
         },
         res.currentSemester,
+        res.term,
       );
     },
   });

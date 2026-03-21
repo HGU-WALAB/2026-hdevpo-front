@@ -1,6 +1,5 @@
 import { Button, Flex, Text } from '@/components';
 import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
-import { boxShadow } from '@/styles/common';
 import { palette } from '@/styles/palette';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
@@ -295,14 +294,13 @@ const S = {
     min-width: 0;
     padding: 1.25rem;
     border-radius: 0.75rem;
-    background: ${({ theme }) =>
-      `linear-gradient(135deg, ${theme.palette.background.paper} 0%, ${theme.palette.background.default} 100%)`};
-    border-left: 3px solid ${palette.blue400};
-    ${boxShadow};
-    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    background-color: ${({ theme }) => theme.palette.background.paper};
+    border: 1px solid ${({ theme }) => theme.palette.grey[200]};
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+    transition: border-color 0.15s ease, box-shadow 0.15s ease;
     &:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(83, 127, 241, 0.12);
+      border-color: ${({ theme }) => theme.palette.grey[300]};
+      box-shadow: 0 2px 6px rgba(16, 24, 40, 0.08);
     }
   `,
   RepoLink: styled('a')`
