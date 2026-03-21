@@ -19,8 +19,8 @@ import {
   getPortfolioSettings,
   getTechStack,
   getUserInfo,
+  patchActivityById,
   postActivity,
-  putActivity,
   putTechStack,
 } from '../../apis/portfolio';
 import type {
@@ -79,13 +79,11 @@ export interface ActivityItem {
   description: string;
   start_date: string;
   end_date: string;
-  /** 활동 섹션에는 category === 0 인 것만 표시 */
-  category?: number;
+  /** 사용자 정의 카테고리 문자열 */
+  category: string;
   /** API 응답용. 0이 맨 위. 로컬 추가분은 없을 수 있음 */
   display_order?: number;
 }
-
-const ACTIVITY_SECTION_CATEGORY = 0;
 
 function apiActivityToItem(
   a: import('../../apis/portfolio').ActivityApiItem,
@@ -96,7 +94,7 @@ function apiActivityToItem(
     description: a.description,
     start_date: a.start_date,
     end_date: a.end_date,
-    category: a.category,
+    category: (a.category ?? '').trim() || '기타',
     display_order: a.display_order,
   };
 }
@@ -268,7 +266,7 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
         description: item.description,
         start_date: item.start_date,
         end_date: item.end_date,
-        category: ACTIVITY_SECTION_CATEGORY,
+        category: item.category.trim() || '기타',
       });
       setActivities(prev =>
         prev.map(a => (a.id === item.id ? apiActivityToItem(posted) : a)),
@@ -283,12 +281,12 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
   const saveExistingActivity = useCallback(async (item: ActivityItem) => {
     if (item.id <= 0) return;
     try {
-      const updated = await putActivity(item.id, {
+      const updated = await patchActivityById(item.id, {
         title: item.title,
         description: item.description,
         start_date: item.start_date,
         end_date: item.end_date,
-        category: ACTIVITY_SECTION_CATEGORY,
+        category: item.category.trim() || '기타',
       });
       setActivities(prev =>
         prev.map(a => (a.id === item.id ? apiActivityToItem(updated) : a)),
@@ -325,11 +323,9 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
         toast.error('기술 스택을 불러오지 못했습니다.');
       });
 
-    getActivities({ category: [ACTIVITY_SECTION_CATEGORY] })
+    getActivities()
       .then(res => {
-        const list = (res.activities ?? []).filter(
-          a => a.category === ACTIVITY_SECTION_CATEGORY,
-        );
+        const list = res.activities ?? [];
         const sorted = [...list].sort(
           (a, b) => a.display_order - b.display_order,
         );

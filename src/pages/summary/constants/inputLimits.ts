@@ -7,6 +7,8 @@ export const INPUT_MAX_LENGTH = {
   BIO: 500,
   /** 활동 제목 */
   ACTIVITY_TITLE: 100,
+  /** 활동 카테고리 (사용자 입력) */
+  ACTIVITY_CATEGORY: 40,
   /** 활동 설명 */
   ACTIVITY_DESCRIPTION: 300,
   /** 마일리지 추가 설명 */

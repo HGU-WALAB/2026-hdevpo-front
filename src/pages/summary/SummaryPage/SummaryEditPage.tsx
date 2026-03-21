@@ -22,6 +22,7 @@ import {
 import { useSummaryContext } from './context/SummaryContext';
 import {
   ActivitiesSectionContent,
+  type ActivitiesSectionContentHandle,
   DraggableSection,
   MileageSectionContent,
   MileageSelectModal,
@@ -72,6 +73,7 @@ const SummaryEditPage = () => {
   const hasGithub = getGithubUsernameFromStorage() != null;
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
   const techStackRef = useRef<TechStackSectionContentHandle>(null);
+  const activitiesRef = useRef<ActivitiesSectionContentHandle>(null);
 
   const handleDragStart = useCallback((id: DraggableSectionKey) => {
     setDraggedId(id);
@@ -130,7 +132,7 @@ const SummaryEditPage = () => {
       case 'mileage':
         return <MileageSectionContent />;
       case 'activities':
-        return <ActivitiesSectionContent />;
+        return <ActivitiesSectionContent ref={activitiesRef} />;
       default:
         return null;
     }
@@ -239,9 +241,22 @@ const SummaryEditPage = () => {
                         onClick={() => techStackRef.current?.openAddDialog()}
                       />
                     )
+                  : key === 'activities' ? (
+                      <Button
+                        label="활동 추가"
+                        variant="outlined"
+                        color="blue"
+                        size="medium"
+                        onClick={() =>
+                          activitiesRef.current?.openAddActivity()
+                        }
+                      />
+                    )
                   : undefined
             }
-            compactHeaderRight={key === 'tech' && isMobile}
+            compactHeaderRight={
+              (key === 'tech' && isMobile) || key === 'activities'
+            }
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}

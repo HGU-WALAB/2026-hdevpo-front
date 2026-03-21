@@ -21,7 +21,7 @@ export const drawerItems = [
   },
   {
     id: 2,
-    text: '마일리지',
+    text: '마일리지 조회',
     shortText: '마일리지',
     icon: MileageListIcon,
     selectedIcon: MileageListBlueIcon,

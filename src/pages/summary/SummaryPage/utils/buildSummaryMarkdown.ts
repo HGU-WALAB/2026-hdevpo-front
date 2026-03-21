@@ -10,6 +10,7 @@ import type {
   RepoItem,
 } from '../context/SummaryContext';
 import { SECTION_TITLES } from '../../constants/constants';
+import { groupActivitiesByCategory } from '../../utils/activityGrouping';
 import {
   getTechLevelBand,
   getTechLevelBandLabel,
@@ -91,11 +92,15 @@ function sectionMileage(items: MileageItem[]): string {
 function sectionActivities(activities: ActivityItem[]): string {
   if (activities.length === 0) return '';
   const title = SECTION_TITLES.activities;
-  const lines = activities.map(a => {
-    const desc = a.description ? ` · ${a.description}` : '';
-    return `- **${escapeMarkdown(a.title)}** (${a.start_date} ~ ${a.end_date})${escapeMarkdown(desc)}`;
+  const groups = groupActivitiesByCategory(activities);
+  const blocks = groups.map(([cat, groupItems]) => {
+    const lines = groupItems.map(a => {
+      const desc = a.description ? ` · ${a.description}` : '';
+      return `- **${escapeMarkdown(a.title)}** (${a.start_date} ~ ${a.end_date})${escapeMarkdown(desc)}`;
+    });
+    return `### ${escapeMarkdown(cat)}\n\n${lines.join('\n')}`;
   });
-  return `## ${escapeMarkdown(title)}\n\n${lines.join('\n')}`;
+  return `## ${escapeMarkdown(title)}\n\n${blocks.join('\n\n')}`;
 }
 
 const SECTION_BUILDERS: Record<
