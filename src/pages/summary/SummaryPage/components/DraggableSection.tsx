@@ -17,6 +17,8 @@ interface DraggableSectionProps {
   subtitle?: string;
   icon?: ReactNode;
   headerRight?: ReactNode;
+  /** true면 좁은 화면에서도 헤더 우측(작은 버튼)이 제목과 한 줄에 유지 */
+  compactHeaderRight?: boolean;
   onDragStart: (id: DraggableSectionKey) => void;
   onDragOver: (e: DragEvent<HTMLElement>, targetId: DraggableSectionKey) => void;
   onDragLeave: (e: DragEvent<HTMLElement>) => void;
@@ -31,6 +33,7 @@ const DraggableSection = ({
   subtitle,
   icon,
   headerRight,
+  compactHeaderRight = false,
   onDragStart,
   onDragOver,
   onDragLeave,
@@ -103,7 +106,9 @@ const DraggableSection = ({
             <S.Subtitle>{subtitle}</S.Subtitle>
           )}
         </Flex.Column>
-        {headerRight != null && <S.HeaderRight>{headerRight}</S.HeaderRight>}
+        {headerRight != null && (
+          <S.HeaderRight $compact={compactHeaderRight}>{headerRight}</S.HeaderRight>
+        )}
       </S.Header>
       <S.Content>{children}</S.Content>
     </S.Section>
@@ -145,10 +150,10 @@ const S = {
     align-items: center;
     justify-content: center;
   `,
-  HeaderRight: styled('div')`
+  HeaderRight: styled('div')<{ $compact?: boolean }>`
     flex-shrink: 0;
     @media (max-width: 500px) {
-      width: 100%;
+      width: ${p => (p.$compact ? 'auto' : '100%')};
     }
   `,
   Subtitle: styled(Text)`

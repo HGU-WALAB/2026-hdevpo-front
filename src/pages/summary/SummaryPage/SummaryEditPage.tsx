@@ -1,15 +1,16 @@
 import { DownloadIcon } from '@/assets';
 import { Button, Flex, Footer, Text } from '@/components';
 import { ROUTE_PATH } from '@/constants/routePath';
+import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { palette } from '@/styles/palette';
 import { useTrackPageView } from '@/service/amplitude/useTrackPageView';
 import CodeIcon from '@mui/icons-material/Code';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FolderIcon from '@mui/icons-material/Folder';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
-import { Button as MuiButton } from '@mui/material';
+import { Button as MuiButton, useMediaQuery } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { useCallback, useState } from 'react';
+import { useCallback, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
@@ -27,6 +28,7 @@ import {
   RepoSelectModal,
   RepoSectionContent,
   TechStackSectionContent,
+  type TechStackSectionContentHandle,
   UserInfoSectionContent,
 } from './components';
 
@@ -68,6 +70,8 @@ const SummaryEditPage = () => {
   const [repoModalOpen, setRepoModalOpen] = useState(false);
   const [mileageModalOpen, setMileageModalOpen] = useState(false);
   const hasGithub = getGithubUsernameFromStorage() != null;
+  const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
+  const techStackRef = useRef<TechStackSectionContentHandle>(null);
 
   const handleDragStart = useCallback((id: DraggableSectionKey) => {
     setDraggedId(id);
@@ -120,7 +124,7 @@ const SummaryEditPage = () => {
   const renderSectionContent = (key: DraggableSectionKey) => {
     switch (key) {
       case 'tech':
-        return <TechStackSectionContent />;
+        return <TechStackSectionContent ref={techStackRef} />;
       case 'repo':
         return <RepoSectionContent />;
       case 'mileage':
@@ -226,8 +230,18 @@ const SummaryEditPage = () => {
                 ? repoHeaderRight
                 : key === 'mileage'
                   ? mileageHeaderRight
+                  : key === 'tech' && isMobile ? (
+                      <Button
+                        label="항목 추가"
+                        variant="outlined"
+                        color="blue"
+                        size="medium"
+                        onClick={() => techStackRef.current?.openAddDialog()}
+                      />
+                    )
                   : undefined
             }
+            compactHeaderRight={key === 'tech' && isMobile}
             onDragStart={handleDragStart}
             onDragOver={handleDragOver}
             onDragLeave={handleDragLeave}

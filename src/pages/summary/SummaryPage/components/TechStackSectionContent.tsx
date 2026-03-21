@@ -14,8 +14,10 @@ import {
   useTheme,
 } from '@mui/material';
 import {
+  forwardRef,
   useCallback,
   useEffect,
+  useImperativeHandle,
   useMemo,
   useState,
   type CSSProperties,
@@ -35,6 +37,10 @@ import { useSummaryContext } from '../context/SummaryContext';
 interface TechStackSectionContentProps {
   readOnly?: boolean;
 }
+
+export type TechStackSectionContentHandle = {
+  openAddDialog: () => void;
+};
 
 type GroupedEntry = { item: TechStackItem; flatIndex: number };
 
@@ -92,9 +98,10 @@ function NotionTag({
   );
 }
 
-const TechStackSectionContent = ({
-  readOnly = false,
-}: TechStackSectionContentProps) => {
+const TechStackSectionContent = forwardRef<
+  TechStackSectionContentHandle,
+  TechStackSectionContentProps
+>(function TechStackSectionContent({ readOnly = false }, ref) {
   const theme = useTheme();
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
   const { techStackItems, setTechStackItems } = useSummaryContext();
@@ -137,6 +144,16 @@ const TechStackSectionContent = ({
   const previewTagPair = getLevelTagPair(levelInput);
 
   const levelLegend = useMemo(() => getLevelTierLegend(), []);
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      openAddDialog: () => {
+        if (!readOnly) setAddOpen(true);
+      },
+    }),
+    [readOnly],
+  );
 
   const headerIconColor = theme.palette.grey[500];
   const headerLabelColor = theme.palette.grey[600];
@@ -227,7 +244,7 @@ const TechStackSectionContent = ({
 
       {techStackItems.length === 0 ? (
         <Flex.Column gap="0.75rem" style={{ width: '100%' }}>
-          {!readOnly && (
+          {!readOnly && !isMobile && (
             <Flex.Row justify="flex-end" style={{ width: '100%' }}>
               <Button
                 label="항목 추가"
@@ -268,17 +285,6 @@ const TechStackSectionContent = ({
               </S.TagCloud>
             </S.MobileCard>
           ))}
-          {!readOnly && (
-            <Flex.Row justify="flex-end" style={{ width: '100%' }}>
-              <Button
-                label="항목 추가"
-                variant="outlined"
-                color="blue"
-                size="medium"
-                onClick={() => setAddOpen(true)}
-              />
-            </Flex.Row>
-          )}
         </Flex.Column>
       ) : (
         tableBlock
@@ -399,7 +405,7 @@ const TechStackSectionContent = ({
       )}
     </Flex.Column>
   );
-};
+});
 
 export default TechStackSectionContent;
 

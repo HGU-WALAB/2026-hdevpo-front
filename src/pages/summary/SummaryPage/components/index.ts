@@ -6,4 +6,5 @@ export { default as RepoSelectModal } from './RepoSelectModal';
 export { default as RepoSectionContent } from './RepoSectionContent';
 export { default as StaticSection } from './StaticSection';
 export { default as TechStackSectionContent } from './TechStackSectionContent';
+export type { TechStackSectionContentHandle } from './TechStackSectionContent';
 export { default as UserInfoSectionContent } from './UserInfoSectionContent';
