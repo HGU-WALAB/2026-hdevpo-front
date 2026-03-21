@@ -333,10 +333,14 @@ export const PortfolioHandlers = [
         name: existing?.name ?? '',
         html_url: existing?.html_url ?? '',
         language: existing?.language ?? '',
+        languages: existing?.languages ?? [],
         created_at: existing?.created_at ?? '',
         updated_at: existing?.updated_at ?? '',
         visibility: existing?.visibility ?? 'public',
         owner: existing?.owner ?? 'user',
+        commit_count: existing?.commit_count ?? 0,
+        stargazers_count: existing?.stargazers_count ?? 0,
+        forks_count: existing?.forks_count ?? 0,
       });
     });
     if (repositoriesStore.length > 0) {

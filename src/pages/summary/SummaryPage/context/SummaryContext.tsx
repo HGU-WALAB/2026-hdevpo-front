@@ -24,6 +24,7 @@ import {
   putTechStack,
 } from '../../apis/portfolio';
 import type {
+  PortfolioRepositoryLanguage,
   PortfolioRepositoryItem,
   UserInfoResponse,
 } from '../../apis/portfolio';
@@ -48,7 +49,13 @@ export interface RepoItem {
   description: string;
   created_at: string;
   updated_at: string;
+  /** 마크다운 등에 쓰는 언어 이름 목록 */
   languages: string[];
+  /** 카드 UI: 언어별 비율 표시용 */
+  languageBreakdown?: PortfolioRepositoryLanguage[];
+  commit_count?: number;
+  stargazers_count?: number;
+  forks_count?: number;
   /** GitHub 레포 페이지 URL (제목 클릭 시 이동) */
   html_url?: string;
 }
@@ -99,6 +106,12 @@ function nonEmpty(s: string | null | undefined): string | null {
 }
 
 export function portfolioRepoToRepoItem(p: PortfolioRepositoryItem): RepoItem {
+  const breakdown =
+    p.languages && p.languages.length > 0 ? [...p.languages] : undefined;
+  const languageNames =
+    breakdown?.map(l => l.name) ??
+    (p.language ? [p.language] : []);
+
   return {
     id: p.id ?? undefined,
     repo_id: p.repo_id,
@@ -109,7 +122,11 @@ export function portfolioRepoToRepoItem(p: PortfolioRepositoryItem): RepoItem {
     description: p.description ?? '',
     created_at: p.created_at ?? '',
     updated_at: p.updated_at ?? '',
-    languages: p.language ? [p.language] : [],
+    languages: languageNames,
+    languageBreakdown: breakdown,
+    commit_count: p.commit_count,
+    stargazers_count: p.stargazers_count,
+    forks_count: p.forks_count,
     html_url: p.html_url ?? '',
     owner: p.owner ?? '',
   };

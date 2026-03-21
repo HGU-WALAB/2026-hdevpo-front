@@ -1,14 +1,20 @@
 import { SearchIcon } from '@/assets';
 import { Button, Dropdown, Flex, Input, Modal, Text } from '@/components';
+import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { palette } from '@/styles/palette';
 import type { PortfolioRepositoryItem, PutRepositoryItem } from '../../apis/portfolio';
 import { getAllRepositories, putRepositories } from '../../apis/portfolio';
 import { formatDateRange } from '../../utils/date';
 import { portfolioRepoToRepoItem, useSummaryContext } from '../context/SummaryContext';
+import {
+  formatRepoStat,
+  RepoLanguageBar,
+  RepoStatPills,
+} from './repoCardMeta';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Checkbox from '@mui/material/Checkbox';
 import LinearProgress from '@mui/material/LinearProgress';
-import { styled, useTheme } from '@mui/material';
+import { styled, useMediaQuery, useTheme } from '@mui/material';
 import { toast } from 'react-toastify';
 
 interface RepoSelectModalProps {
@@ -38,6 +44,7 @@ const AFFILIATION_OPTIONS = [
 
 const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
   const theme = useTheme();
+  const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
   const { setRepos } = useSummaryContext();
   const [allRepos, setAllRepos] = useState<PortfolioRepositoryItem[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<number>>(new Set());
@@ -123,7 +130,8 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
       r =>
         (r.name ?? '').toLowerCase().includes(q) ||
         (r.description?.toLowerCase().includes(q) ?? false) ||
-        (r.language?.toLowerCase().includes(q) ?? false),
+        (r.language?.toLowerCase().includes(q) ?? false) ||
+        (r.languages?.some(l => l.name.toLowerCase().includes(q)) ?? false),
     );
   }, [allRepos, searchQuery]);
 
@@ -291,7 +299,7 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
                     '&.Mui-checked': { color: palette.blue500 },
                   }}
                 />
-                <Flex.Column gap="0.375rem" style={{ flex: 1, minWidth: 0 }}>
+                <Flex.Column gap="0.5rem" style={{ flex: 1, minWidth: 0 }}>
                   {repo.html_url ? (
                     <S.RepoNameLink
                       href={repo.html_url}
@@ -338,19 +346,45 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
                       {repo.description}
                     </Text>
                   )}
-                  <Text
-                    style={{
-                      ...theme.typography.caption,
-                      color: theme.palette.grey[500],
-                      margin: 0,
-                    }}
+                  <Flex.Row
+                    align="center"
+                    justify="space-between"
+                    wrap="wrap"
+                    gap="0.5rem"
+                    style={{ width: '100%' }}
                   >
-                    {formatDateRange(repo.created_at, repo.updated_at)}
-                  </Text>
-                  {repo.language && (
-                    <Flex.Row gap="0.375rem" wrap="wrap">
-                      <S.LangTag>{repo.language}</S.LangTag>
-                    </Flex.Row>
+                    <Text
+                      style={{
+                        ...theme.typography.caption,
+                        color: theme.palette.grey[500],
+                        margin: 0,
+                        flex: '0 1 auto',
+                        minWidth: 0,
+                      }}
+                    >
+                      {formatDateRange(repo.created_at, repo.updated_at)}
+                    </Text>
+                    {(formatRepoStat(repo.commit_count) != null ||
+                      formatRepoStat(repo.stargazers_count) != null ||
+                      formatRepoStat(repo.forks_count) != null) && (
+                      <RepoStatPills
+                        isMobile={isMobile}
+                        stats={{
+                          commit_count: repo.commit_count,
+                          stargazers_count: repo.stargazers_count,
+                          forks_count: repo.forks_count,
+                        }}
+                      />
+                    )}
+                  </Flex.Row>
+                  {repo.languages && repo.languages.length > 0 ? (
+                    <RepoLanguageBar breakdown={repo.languages} />
+                  ) : (
+                    repo.language && (
+                      <Flex.Row gap="0.375rem" wrap="wrap">
+                        <S.LangTag>{repo.language}</S.LangTag>
+                      </Flex.Row>
+                    )
                   )}
                 </Flex.Column>
               </S.Row>

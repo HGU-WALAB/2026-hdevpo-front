@@ -1,6 +1,12 @@
 import { ENDPOINT } from '@/apis/endPoint';
 import { http } from '@/apis/http';
 
+/** 언어별 비율 (GitHub linguist 등) */
+export interface PortfolioRepositoryLanguage {
+  name: string;
+  percentage: number;
+}
+
 /** 활동 요약 - 포트폴리오 레포지토리 한 건 (GET/PATCH 응답) */
 export interface PortfolioRepositoryItem {
   id: number;
@@ -11,11 +17,16 @@ export interface PortfolioRepositoryItem {
   display_order: number;
   name: string;
   html_url: string;
-  language: string;
+  /** 단일 대표 언어(하위 호환). `languages`가 있으면 우선 사용 */
+  language?: string;
+  languages?: PortfolioRepositoryLanguage[];
   created_at: string;
   updated_at: string;
   visibility: string;
   owner: string;
+  commit_count?: number;
+  stargazers_count?: number;
+  forks_count?: number;
 }
 
 /** PATCH /api/portfolio/repositories/:id 요청 body */
