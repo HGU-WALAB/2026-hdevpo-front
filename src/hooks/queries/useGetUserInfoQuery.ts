@@ -6,10 +6,13 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect } from 'react';
 
 const useGetUserInfoQuery = () => {
+  const { isLogin } = useAuthStore();
   const query = useQuery<UserResponse>({
     queryKey: [QUERY_KEYS.userInfo],
     queryFn: () => getUserInfo(),
-    throwOnError: true,
+    enabled: isLogin,
+    retry: false,
+    throwOnError: isLogin,
   });
 
   useEffect(() => {

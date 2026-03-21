@@ -9,11 +9,12 @@ import {
   useState,
 } from 'react';
 import { toast } from 'react-toastify';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 
+import { QUERY_KEYS } from '@/constants/queryKeys';
 import {
   deleteActivity as deleteActivityApi,
   getActivities,
-  getAllRepositories,
   getPortfolioMileage,
   getPortfolioSettings,
   getTechStack,
@@ -183,12 +184,35 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
     DRAGGABLE_SECTION_ORDER,
   );
   const [techStackTags, setTechStackTagsState] = useState<string[]>([]);
-  const [repos, setRepos] = useState<RepoItem[]>([]);
   const [mileageItems, setMileageItems] = useState<MileageItem[]>([]);
   const [activities, setActivities] = useState<ActivityItem[]>([]);
   const [activitiesNextId, setActivitiesNextId] = useState(-1);
   const [certificates, setCertificates] = useState<ActivityItem[]>([]);
   const [certificatesNextId, setCertificatesNextId] = useState(-1);
+
+  const queryClient = useQueryClient();
+  const repoQueryKey = useMemo(() => [QUERY_KEYS.portfolioRepositories], []);
+
+  const reposQuery = useQuery<RepoItem[]>({
+    queryKey: repoQueryKey,
+    queryFn: async () => {
+      const { getAllRepositories } = await import('../../apis/portfolio');
+      const list = await getAllRepositories();
+      return (list ?? []).map(portfolioRepoToRepoItem);
+    },
+    retry: 1,
+    refetchOnWindowFocus: false,
+  });
+
+  const setRepos = useCallback(
+    (v: RepoItem[] | ((p: RepoItem[]) => RepoItem[])) => {
+      queryClient.setQueryData<RepoItem[]>(repoQueryKey, prev => {
+        const safePrev = Array.isArray(prev) ? prev : [];
+        return typeof v === 'function' ? v(safePrev) : v;
+      });
+    },
+    [queryClient, repoQueryKey],
+  );
 
   const techStackUserModifiedRef = useRef(false);
 
@@ -377,14 +401,6 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
         toast.error('유저 정보를 불러오지 못했습니다.');
       });
 
-    getAllRepositories()
-      .then(list => {
-        setRepos(list.map(portfolioRepoToRepoItem));
-      })
-      .catch(() => {
-        toast.error('레포지토리 목록을 불러오지 못했습니다.');
-      });
-
     getPortfolioMileage()
       .then(res => {
         const list = res.mileage ?? [];
@@ -419,7 +435,7 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       setSectionOrder,
       techStackTags,
       setTechStackTags,
-      repos,
+      repos: reposQuery.data ?? [],
       setRepos,
       mileageItems,
       setMileageItems,
@@ -443,7 +459,8 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       sectionOrder,
       techStackTags,
       setTechStackTags,
-      repos,
+      reposQuery.data,
+      setRepos,
       mileageItems,
       activities,
       deleteActivity,

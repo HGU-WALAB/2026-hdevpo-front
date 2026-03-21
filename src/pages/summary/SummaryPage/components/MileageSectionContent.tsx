@@ -1,5 +1,4 @@
 import { Flex, Text } from '@/components';
-import { boxShadow } from '@/styles/common';
 import { palette } from '@/styles/palette';
 import EditIcon from '@mui/icons-material/Edit';
 import { useCallback, useState } from 'react';
@@ -172,11 +171,12 @@ const S = {
     gap: 0.375rem;
     border-radius: 0.5rem;
     background-color: ${({ theme }) => theme.palette.background.paper};
-    border-left: 3px solid ${palette.blue400};
-    ${boxShadow};
-    transition: transform 0.15s ease, box-shadow 0.15s ease;
+    border: 1px solid ${({ theme }) => theme.palette.grey[200]};
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
     &:hover {
-      box-shadow: 0 2px 8px rgba(83, 127, 241, 0.1);
+      border-color: ${({ theme }) => theme.palette.grey[300]};
+      box-shadow: 0 2px 6px rgba(16, 24, 40, 0.08);
     }
   `,
   CategoryTag: styled('span')`

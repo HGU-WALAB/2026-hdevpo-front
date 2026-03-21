@@ -5,6 +5,7 @@ export const QUERY_KEYS = {
   scholarshipDuration: 'scholarshipDuration',
   etcMileageList: 'etcMileageList',
   userInfo: 'userInfo',
+  portfolioRepositories: 'portfolioRepositories',
   capability: 'capability',
   compareCapability: 'compareCapability',
   capabilityDetail: 'capabilityDetail',
