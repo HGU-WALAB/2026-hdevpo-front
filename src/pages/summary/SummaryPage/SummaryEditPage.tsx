@@ -178,6 +178,9 @@ const SummaryEditPage = () => {
     </S.RepoSelectButton>
   );
 
+  /** 모바일에서 이력서 패널만 표시 (내 활동 본문 숨김) */
+  const mobileCvOnly = isMobile && cvPanelOpen;
+
   return (
     <Flex.Column margin="1rem" gap="1.5rem">
       <S.TopRow align="center" justify="space-between" gap="1rem" wrap="wrap">
@@ -211,7 +214,13 @@ const SummaryEditPage = () => {
         width="100%"
         style={{ minWidth: 0 }}
       >
-        <S.MainSplit $narrow={cvPanelOpen} gap="1.5rem" width="100%" style={{ minWidth: 0 }}>
+        {!mobileCvOnly ? (
+        <S.MainSplit
+          $narrow={cvPanelOpen && !isMobile}
+          gap="1.5rem"
+          width="100%"
+          style={{ minWidth: 0 }}
+        >
           <PortfolioPromptQualityDashboard progress={promptProgress} />
           <UserInfoSectionContent />
           <Flex.Column gap="1rem" width="100%" style={{ minWidth: 0 }}>
@@ -274,8 +283,13 @@ const SummaryEditPage = () => {
         ))}
           </Flex.Column>
         </S.MainSplit>
+        ) : null}
         {cvPanelOpen ? (
-          <S.CvPane width="100%" style={{ minWidth: 0 }}>
+          <S.CvPane
+            $mobileOnly={mobileCvOnly}
+            width="100%"
+            style={{ minWidth: 0 }}
+          >
             <CvManagementPanel onClose={() => setCvPanelOpen(false)} />
           </S.CvPane>
         ) : null}
@@ -312,14 +326,21 @@ const S = {
       width: 100%;
     }
   `,
-  CvPane: styled(Flex.Column)`
+  CvPane: styled(Flex.Column)<{ $mobileOnly?: boolean }>`
     flex: 1 1 50%;
     min-width: 0;
     min-height: min(70vh, 42rem);
     @media ${MAX_RESPONSIVE_WIDTH} {
       flex: 1 1 auto;
       width: 100%;
-      min-height: min(55vh, 28rem);
+      ${({ $mobileOnly }) =>
+        $mobileOnly
+          ? `
+        min-height: min(72vh, 40rem);
+      `
+          : `
+        min-height: min(55vh, 28rem);
+      `}
     }
   `,
   TopRow: styled(Flex.Row)`
