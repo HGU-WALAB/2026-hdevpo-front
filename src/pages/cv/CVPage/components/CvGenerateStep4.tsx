@@ -11,6 +11,7 @@ import { TextField, useTheme } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useMemo } from 'react';
 
+import { buildCvPreviewSrcDoc } from '../../utils/buildCvPreviewSrcDoc';
 import { extractCompanyLineFromJobPosting } from '../../utils/extractCompanyLineFromJobPosting';
 import { sanitizeCvHtml } from '../../utils/sanitizeCvHtml';
 import { CvGeneratePageS as WizS } from '../cvGeneratePageStyles';
@@ -40,6 +41,10 @@ const CvGenerateStep4 = ({
 }: CvGenerateStep4Props) => {
   const theme = useTheme();
   const sanitizedHtml = useMemo(() => sanitizeCvHtml(htmlInput), [htmlInput]);
+  const previewSrcDoc = useMemo(
+    () => buildCvPreviewSrcDoc(sanitizedHtml),
+    [sanitizedHtml],
+  );
   const parsedCompany = useMemo(
     () => extractCompanyLineFromJobPosting(jobPosting),
     [jobPosting],
@@ -63,8 +68,7 @@ const CvGenerateStep4 = ({
             lineHeight: 1.5,
           }}
         >
-          AI가 생성한 CV·자기소개서 내용을 붙여넣으면 히스토리로 관리됩니다. 스크립트와 인라인 이벤트는
-          자동으로 제거된 뒤 미리보기에 반영됩니다.
+          AI가 생성한 html 결과를 붙여넣으면 히스토리로 관리됩니다. 스크립트는 제거됩니다.
         </Text>
       </Flex.Column>
 
@@ -147,13 +151,19 @@ const CvGenerateStep4 = ({
           </Text>
           <S.PreviewPane>
             {sanitizedHtml.trim() ? (
-              <S.HtmlPreviewBody dangerouslySetInnerHTML={{ __html: sanitizedHtml }} />
+              <S.PreviewIframe
+                title="CV HTML 미리보기"
+                srcDoc={previewSrcDoc}
+                sandbox=""
+                referrerPolicy="no-referrer"
+              />
             ) : (
               <Text
                 margin="0"
                 style={{
                   ...theme.typography.body2,
                   color: theme.palette.grey[500],
+                  padding: '0.85rem 1rem',
                 }}
               >
                 입력한 HTML이 정제되어 여기에 표시됩니다.
@@ -309,8 +319,8 @@ const S = {
     display: 'flex',
     flexDirection: 'column',
     height: HTML_PANE_HEIGHT,
-    overflow: 'auto',
-    padding: '0.85rem 1rem',
+    overflow: 'hidden',
+    padding: 0,
     borderRadius: '0.5rem',
     border: `1px solid ${palette.grey200}`,
     backgroundColor: palette.white,
@@ -320,27 +330,15 @@ const S = {
     ...theme.typography.body2,
     color: theme.palette.text.primary,
   })),
-  HtmlPreviewBody: styled('div')(({ theme }) => ({
-    width: '100%',
-    minWidth: 0,
-    wordBreak: 'break-word',
-    fontSize: theme.typography.body2.fontSize,
-    lineHeight: 1.55,
-    color: theme.palette.text.primary,
-    '& img': {
-      maxWidth: '100%',
-      height: 'auto',
-    },
-    '& table': {
-      borderCollapse: 'collapse',
-      maxWidth: '100%',
-    },
-    '& th, & td': {
-      border: `1px solid ${palette.grey200}`,
-      padding: '0.25rem 0.4rem',
-    },
-    '& a': {
-      color: palette.blue600,
-    },
-  })),
+  /** srcDoc + sandbox: 외부 CSS(link) 적용·앱과 스타일 격리. 스크립트는 sandbox로 차단 */
+  PreviewIframe: styled('iframe')`
+    display: block;
+    flex: 1 1 auto;
+    width: 100%;
+    min-height: 0;
+    height: 100%;
+    border: none;
+    background-color: ${palette.white};
+    box-sizing: border-box;
+  `,
 };
