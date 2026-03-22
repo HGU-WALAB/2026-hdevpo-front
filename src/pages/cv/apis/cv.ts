@@ -35,6 +35,7 @@ export interface PortfolioCvBuildPromptRequest {
   job_posting: string;
   target_position: string;
   additional_notes: string;
+  title: string;
   selected_mileage_ids: number[];
   selected_activity_ids: number[];
   selected_repo_ids: number[];
@@ -42,6 +43,7 @@ export interface PortfolioCvBuildPromptRequest {
 
 export interface PortfolioCvBuildPromptResponse {
   prompt: string;
+  cv_id: number;
 }
 
 export const postPortfolioCvBuildPrompt = async (body: PortfolioCvBuildPromptRequest) => {

@@ -51,6 +51,7 @@ const mileageStore: PortfolioMileageItem[] = mockPortfolioMileage.map(m => ({
 let nextMileageId = Math.max(0, ...mileageStore.map(m => m.id)) + 1;
 
 const cvStore: PortfolioCvDetail[] = mockPortfolioCvDetails.map(c => ({ ...c }));
+let nextCvId = Math.max(0, ...cvStore.map(c => c.id)) + 1;
 
 function buildPortfolioMileageItem(
   id: number,
@@ -300,6 +301,7 @@ export const PortfolioHandlers = [
   http.post(BASE_URL + `${ENDPOINT.PORTFOLIO_CV}/build-prompt`, async ({ request }) => {
     try {
       const body = (await request.json()) as PortfolioCvBuildPromptRequest;
+      const title = (body.title ?? '').trim();
       const job = (body.job_posting ?? '').trim();
       const pos = (body.target_position ?? '').trim();
       const notes = (body.additional_notes ?? '').trim();
@@ -308,6 +310,9 @@ export const PortfolioHandlers = [
       const r = body.selected_repo_ids ?? [];
       const prompt = [
         '# 맞춤 CV 프롬프트 (Mock)',
+        '',
+        '## 제목',
+        title || '(미입력)',
         '',
         '## 지원 직무',
         pos || '(미입력)',
@@ -325,7 +330,20 @@ export const PortfolioHandlers = [
       ]
         .filter(Boolean)
         .join('\n');
-      return HttpResponse.json({ prompt }, { status: 200 });
+      const cvId = nextCvId++;
+      const now = new Date().toISOString();
+      cvStore.push({
+        id: cvId,
+        title: title || '무제',
+        job_posting: job,
+        target_position: pos,
+        additional_notes: notes,
+        prompt,
+        html_content: '',
+        created_at: now,
+        updated_at: now,
+      });
+      return HttpResponse.json({ prompt, cv_id: cvId }, { status: 200 });
     } catch {
       return new HttpResponse(null, { status: 400 });
     }

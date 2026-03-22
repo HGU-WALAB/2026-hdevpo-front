@@ -42,6 +42,7 @@ export function writeCvWizardStep1Selection(draft: CvWizardStep1Selection): void
 export const CV_WIZARD_STEP2_STORAGE_KEY = 'cv-wizard-step2-draft-v1';
 
 export interface CvWizardStep2Draft {
+  title: string;
   job_posting: string;
   target_position: string;
   additional_notes: string;
@@ -54,6 +55,7 @@ export function readCvWizardStep2Draft(): CvWizardStep2Draft | null {
     if (!raw) return null;
     const parsed = JSON.parse(raw) as Partial<CvWizardStep2Draft>;
     return {
+      title: typeof parsed.title === 'string' ? parsed.title : '',
       job_posting: typeof parsed.job_posting === 'string' ? parsed.job_posting : '',
       target_position:
         typeof parsed.target_position === 'string' ? parsed.target_position : '',
@@ -69,6 +71,39 @@ export function writeCvWizardStep2Draft(draft: CvWizardStep2Draft): void {
   if (typeof window === 'undefined') return;
   try {
     sessionStorage.setItem(CV_WIZARD_STEP2_STORAGE_KEY, JSON.stringify(draft));
+  } catch {
+    // ignore
+  }
+}
+
+/** build-prompt 응답의 CV id (4단계 등에서 사용) */
+export const CV_WIZARD_PENDING_CV_ID_KEY = 'cv-wizard-pending-cv-id-v1';
+
+export function readCvWizardPendingCvId(): number | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(CV_WIZARD_PENDING_CV_ID_KEY);
+    if (raw == null || raw === '') return null;
+    const n = Number(raw);
+    return Number.isFinite(n) ? n : null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeCvWizardPendingCvId(id: number): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(CV_WIZARD_PENDING_CV_ID_KEY, String(id));
+  } catch {
+    // ignore
+  }
+}
+
+export function clearCvWizardPendingCvId(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.removeItem(CV_WIZARD_PENDING_CV_ID_KEY);
   } catch {
     // ignore
   }
@@ -137,6 +172,7 @@ export function clearAllCvWizardSession(): void {
     sessionStorage.removeItem(CV_WIZARD_STEP1_STORAGE_KEY);
     sessionStorage.removeItem(CV_WIZARD_STEP2_STORAGE_KEY);
     sessionStorage.removeItem(CV_WIZARD_PENDING_PROMPT_KEY);
+    sessionStorage.removeItem(CV_WIZARD_PENDING_CV_ID_KEY);
     sessionStorage.removeItem(CV_WIZARD_UI_STEP_KEY);
   } catch {
     // ignore

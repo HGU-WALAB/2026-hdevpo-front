@@ -17,6 +17,7 @@ import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined';
 import FolderIcon from '@mui/icons-material/Folder';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
+import SubtitlesOutlinedIcon from '@mui/icons-material/SubtitlesOutlined';
 import {
   Button as MuiButton,
   Checkbox,
@@ -38,6 +39,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
+import { INPUT_MAX_LENGTH } from '@/pages/summary/constants/inputLimits';
 import { TechStackSectionContent } from '@/pages/summary/SummaryPage/components';
 import { formatDateRange } from '@/pages/summary/utils/date';
 import {
@@ -53,6 +55,7 @@ import {
   readCvWizardStep1Selection,
   readCvWizardStep2Draft,
   readCvWizardUiStep,
+  writeCvWizardPendingCvId,
   writeCvWizardPendingPrompt,
   writeCvWizardStep1Selection,
   writeCvWizardStep2Draft,
@@ -66,6 +69,8 @@ const STEPS = [
   { n: 3, label: '프롬프트 생성' },
   { n: 4, label: '결과 저장' },
 ] as const;
+
+const TITLE_PLACEHOLDER = '예) 네이버 2026 상반기 백엔드 신입';
 
 const JOB_POSTING_PLACEHOLDER = `예) 회사: 카카오
 포지션: 백엔드 개발자 (인턴)
@@ -143,6 +148,7 @@ const CvGeneratePage = () => {
   );
 
   const step2DraftInit = useMemo(() => readCvWizardStep2Draft(), []);
+  const [draftTitle, setDraftTitle] = useState(step2DraftInit?.title ?? '');
   const [jobPosting, setJobPosting] = useState(step2DraftInit?.job_posting ?? '');
   const [targetPosition, setTargetPosition] = useState(
     step2DraftInit?.target_position ?? '',
@@ -179,11 +185,12 @@ const CvGeneratePage = () => {
 
   useEffect(() => {
     writeCvWizardStep2Draft({
+      title: draftTitle,
       job_posting: jobPosting,
       target_position: targetPosition,
       additional_notes: additionalNotes,
     });
-  }, [jobPosting, targetPosition, additionalNotes]);
+  }, [draftTitle, jobPosting, targetPosition, additionalNotes]);
 
   useEffect(() => {
     writeCvWizardPendingPrompt(generatedPrompt);
@@ -244,16 +251,18 @@ const CvGeneratePage = () => {
   }, []);
 
   const handleBuildPrompt = useCallback(() => {
+    const tt = draftTitle.trim();
     const jp = jobPosting.trim();
     const tp = targetPosition.trim();
-    if (!jp || !tp) {
-      toast.warn('공고 정보와 지원 직무를 입력해 주세요.');
+    if (!tt || !jp || !tp) {
+      toast.warn('제목, 공고 정보, 지원 직무를 모두 입력해 주세요.');
       return;
     }
     const ids = getCommittedSelection();
     writeCvWizardStep1Selection(ids);
     buildPromptMutation.mutate(
       {
+        title: tt,
         job_posting: jp,
         target_position: tp,
         additional_notes: additionalNotes.trim(),
@@ -265,6 +274,7 @@ const CvGeneratePage = () => {
         onSuccess: data => {
           setGeneratedPrompt(data.prompt);
           writeCvWizardPendingPrompt(data.prompt);
+          writeCvWizardPendingCvId(data.cv_id);
           setWizardStep(3);
           toast.success('프롬프트가 생성되었습니다.');
         },
@@ -276,6 +286,7 @@ const CvGeneratePage = () => {
   }, [
     additionalNotes,
     buildPromptMutation,
+    draftTitle,
     getCommittedSelection,
     jobPosting,
     targetPosition,
@@ -507,9 +518,30 @@ const CvGeneratePage = () => {
                 color: theme.palette.grey[600],
               }}
             >
-              공고 정보와 지원 직무를 입력하면 맞춤 프롬프트가 자동 생성됩니다.
+              제목·공고 정보·지원 직무는 필수입니다. 추가 요청사항은 선택입니다.
             </Text>
           </Flex.Column>
+
+          <S.JdFieldRow align="flex-start" gap="0.65rem" width="100%">
+            <S.FieldLeadIcon aria-hidden>
+              <SubtitlesOutlinedIcon sx={{ fontSize: 22, color: palette.grey600 }} />
+            </S.FieldLeadIcon>
+            <Flex.Column gap="0.35rem" style={{ flex: '1 1 0', minWidth: 0, width: '100%' }}>
+              <TextField
+                required
+                fullWidth
+                label="제목"
+                helperText="이력서 히스토리에서 구분할 이름을 짧게 입력하세요."
+                placeholder={TITLE_PLACEHOLDER}
+                value={draftTitle}
+                onChange={e => setDraftTitle(e.target.value)}
+                inputProps={{
+                  maxLength: INPUT_MAX_LENGTH.REPO_TITLE,
+                  'aria-label': '이력서 제목',
+                }}
+              />
+            </Flex.Column>
+          </S.JdFieldRow>
 
           <S.JdFieldRow align="flex-start" gap="0.65rem" width="100%">
             <S.FieldLeadIcon aria-hidden>
