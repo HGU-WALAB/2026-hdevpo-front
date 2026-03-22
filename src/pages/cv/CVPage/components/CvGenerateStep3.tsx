@@ -146,7 +146,7 @@ const CvGenerateStep3 = ({ value, onChange }: CvGenerateStep3Props) => {
             lineHeight: 1.5,
           }}
         >
-          복사한 프롬프트를 아래 AI 서비스에 붙여넣어 CV를 생성하세요.
+          복사한 프롬프트를 아래 AI 서비스에 붙여넣어 이력서를 html로 생성하세요.
         </Text>
         <Flex.Row
           align="stretch"

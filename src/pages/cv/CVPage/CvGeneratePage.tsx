@@ -323,7 +323,7 @@ const CvGeneratePage = () => {
 
       <Flex.Column gap="0.35rem" width="100%">
         <Heading as="h1" margin="0" color={theme.palette.text.primary}>
-          CV 생성기
+          이력서 생성하기
         </Heading>
         <Text
           margin="0"
@@ -332,7 +332,7 @@ const CvGeneratePage = () => {
             color: theme.palette.grey[600],
           }}
         >
-          마일리지 항목으로 맞춤 CV 프롬프트를 만들고 히스토리로 관리하세요
+          마일리지 항목으로 맞춤 이력서 프롬프트를 만들고 히스토리로 관리하세요
         </Text>
       </Flex.Column>
 
