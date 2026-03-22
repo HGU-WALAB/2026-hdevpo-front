@@ -3,9 +3,7 @@ import {
   type ReactNode,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react';
 import { toast } from 'react-toastify';
@@ -186,19 +184,94 @@ interface SummaryProviderProps {
   children: ReactNode;
 }
 
+const normalizeTechStackList = (list: TechStackItem[]) =>
+  list
+    .map(item => ({
+      name: (item.name ?? '').trim(),
+      domain: (item.domain ?? '').trim() || '기타',
+      level: clampTechLevel(item.level ?? 0),
+    }))
+    .filter(item => item.name !== '');
+
+const QUERY_CONFIG = { retry: 1, refetchOnWindowFocus: false } as const;
+
 export const SummaryProvider = ({ children }: SummaryProviderProps) => {
-  const [userInfo, setUserInfo] = useState<UserInfo | null>(null);
-  const [sectionOrder, setSectionOrder] = useState<DraggableSectionKey[]>(
-    DRAGGABLE_SECTION_ORDER,
-  );
-  const [techStackItems, setTechStackItemsState] = useState<TechStackItem[]>(
-    [],
-  );
-  const [mileageItems, setMileageItems] = useState<MileageItem[]>([]);
-  const [activities, setActivities] = useState<ActivityItem[]>([]);
+  const queryClient = useQueryClient();
   const [activitiesNextId, setActivitiesNextId] = useState(-1);
 
-  const queryClient = useQueryClient();
+  // ── 유저 정보 ──────────────────────────────────────────────────────────────
+  const userInfoQuery = useQuery<UserInfo | null>({
+    queryKey: [QUERY_KEYS.portfolioUserInfo],
+    queryFn: async () => {
+      const res = await getUserInfo();
+      try {
+        localStorage.setItem('portfolio-user-info', JSON.stringify(res));
+      } catch {
+        // ignore
+      }
+      return res;
+    },
+    ...QUERY_CONFIG,
+  });
+
+  const setUserInfo = useCallback(
+    (v: UserInfo | null | ((p: UserInfo | null) => UserInfo | null)) => {
+      queryClient.setQueryData<UserInfo | null>(
+        [QUERY_KEYS.portfolioUserInfo],
+        prev => (typeof v === 'function' ? v(prev ?? null) : v),
+      );
+    },
+    [queryClient],
+  );
+
+  // ── 섹션 순서 ──────────────────────────────────────────────────────────────
+  const settingsQuery = useQuery<DraggableSectionKey[]>({
+    queryKey: [QUERY_KEYS.portfolioSettings],
+    queryFn: async () => {
+      const res = await getPortfolioSettings();
+      const order = res.section_order ?? [];
+      const validKeys = order.filter((k): k is DraggableSectionKey =>
+        DRAGGABLE_SECTION_ORDER.includes(k as DraggableSectionKey),
+      );
+      const missing = DRAGGABLE_SECTION_ORDER.filter(k => !validKeys.includes(k));
+      return validKeys.length > 0 ? [...validKeys, ...missing] : DRAGGABLE_SECTION_ORDER;
+    },
+    ...QUERY_CONFIG,
+  });
+
+  const setSectionOrder = useCallback(
+    (v: DraggableSectionKey[] | ((p: DraggableSectionKey[]) => DraggableSectionKey[])) => {
+      queryClient.setQueryData<DraggableSectionKey[]>(
+        [QUERY_KEYS.portfolioSettings],
+        prev => (typeof v === 'function' ? v(prev ?? DRAGGABLE_SECTION_ORDER) : v),
+      );
+    },
+    [queryClient],
+  );
+
+  // ── 기술 스택 ──────────────────────────────────────────────────────────────
+  const techStackQuery = useQuery<TechStackItem[]>({
+    queryKey: [QUERY_KEYS.portfolioTechStack],
+    queryFn: async () => {
+      const res = await getTechStack();
+      return normalizeTechStackList(res.tech_stack ?? []);
+    },
+    ...QUERY_CONFIG,
+  });
+
+  const setTechStackItems = useCallback(
+    (v: TechStackItem[] | ((p: TechStackItem[]) => TechStackItem[])) => {
+      const prev = queryClient.getQueryData<TechStackItem[]>([QUERY_KEYS.portfolioTechStack]) ?? [];
+      const next = typeof v === 'function' ? v(prev) : v;
+      queryClient.setQueryData<TechStackItem[]>([QUERY_KEYS.portfolioTechStack], next);
+      putTechStack({ tech_stack: normalizeTechStackList(next) })
+        .then(() => toast.success('변경사항이 저장되었습니다.', SAVED_TOAST_OPTIONS))
+        .catch(() => toast.error('기술 스택 저장에 실패했습니다.'));
+    },
+    [queryClient],
+  );
+
+  // ── 레포지토리 ─────────────────────────────────────────────────────────────
   const repoQueryKey = useMemo(() => [QUERY_KEYS.portfolioRepositories], []);
 
   const reposQuery = useQuery<RepoItem[]>({
@@ -208,8 +281,7 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       const list = await getAllRepositories();
       return (list ?? []).map(portfolioRepoToRepoItem);
     },
-    retry: 1,
-    refetchOnWindowFocus: false,
+    ...QUERY_CONFIG,
   });
 
   const setRepos = useCallback(
@@ -222,29 +294,51 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
     [queryClient, repoQueryKey],
   );
 
-  const techStackUserModifiedRef = useRef(false);
-
-  const setTechStackItems = useCallback(
-    (
-      v: TechStackItem[] | ((p: TechStackItem[]) => TechStackItem[]),
-    ) => {
-      techStackUserModifiedRef.current = true;
-      setTechStackItemsState(v);
+  // ── 마일리지 ───────────────────────────────────────────────────────────────
+  const mileageQuery = useQuery<MileageItem[]>({
+    queryKey: [QUERY_KEYS.portfolioMileage],
+    queryFn: async () => {
+      const res = await getPortfolioMileage();
+      const list = res.mileage ?? [];
+      const sorted = [...list].sort((a, b) => a.display_order - b.display_order);
+      return sorted.map(portfolioMileageToItem);
     },
-    [],
+    ...QUERY_CONFIG,
+  });
+
+  const setMileageItems = useCallback(
+    (v: MileageItem[] | ((p: MileageItem[]) => MileageItem[])) => {
+      queryClient.setQueryData<MileageItem[]>(
+        [QUERY_KEYS.portfolioMileage],
+        prev => (typeof v === 'function' ? v(prev ?? []) : v),
+      );
+    },
+    [queryClient],
   );
 
-  const normalizeTechStackList = useCallback((list: TechStackItem[]) => {
-    return list
-      .map(item => ({
-        name: (item.name ?? '').trim(),
-        domain: (item.domain ?? '').trim() || '기타',
-        level: clampTechLevel(item.level ?? 0),
-      }))
-      .filter(item => item.name !== '');
-  }, []);
+  // ── 활동 ───────────────────────────────────────────────────────────────────
+  const activitiesQuery = useQuery<ActivityItem[]>({
+    queryKey: [QUERY_KEYS.portfolioActivities],
+    queryFn: async () => {
+      const res = await getActivities();
+      const list = res.activities ?? [];
+      const sorted = [...list].sort((a, b) => a.display_order - b.display_order);
+      return sorted.map(apiActivityToItem);
+    },
+    ...QUERY_CONFIG,
+  });
 
-  /** 활동 삭제 (즉시 DELETE API 호출) */
+  const setActivities = useCallback(
+    (v: ActivityItem[] | ((p: ActivityItem[]) => ActivityItem[])) => {
+      queryClient.setQueryData<ActivityItem[]>(
+        [QUERY_KEYS.portfolioActivities],
+        prev => (typeof v === 'function' ? v(prev ?? []) : v),
+      );
+    },
+    [queryClient],
+  );
+
+  // ── 활동 CRUD ──────────────────────────────────────────────────────────────
   const deleteActivity = useCallback(async (id: number) => {
     if (id > 0) {
       try {
@@ -255,9 +349,8 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       }
     }
     setActivities(prev => prev.filter(a => a.id !== id));
-  }, []);
+  }, [setActivities]);
 
-  /** 새 활동(id<0) 저장 버튼 클릭 시에만 POST. 성공 시 목록에 서버 응답으로 교체, 실패 시 throw */
   const postNewActivity = useCallback(async (item: ActivityItem) => {
     if (item.id >= 0) return;
     try {
@@ -275,9 +368,8 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       toast.error('활동 추가에 실패했습니다.');
       throw new Error('활동 추가 실패');
     }
-  }, []);
+  }, [setActivities]);
 
-  /** 기존 활동(id>0) 저장 버튼 클릭 시 즉시 PUT. 실패 시 throw */
   const saveExistingActivity = useCallback(async (item: ActivityItem) => {
     if (item.id <= 0) return;
     try {
@@ -296,100 +388,22 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       toast.error('활동 수정에 실패했습니다.');
       throw new Error('활동 수정 실패');
     }
-  }, []);
+  }, [setActivities]);
 
-  /** 활동 요약 페이지 진입 시 GET 1회 */
-  useEffect(() => {
-    getPortfolioSettings()
-      .then(res => {
-        const order = res.section_order ?? [];
-        const validKeys = order.filter((k): k is DraggableSectionKey =>
-          DRAGGABLE_SECTION_ORDER.includes(k as DraggableSectionKey),
-        );
-        const missing = DRAGGABLE_SECTION_ORDER.filter(k => !validKeys.includes(k));
-        if (validKeys.length > 0) {
-          setSectionOrder([...validKeys, ...missing]);
-        }
-      })
-      .catch(() => {
-        // 설정 조회 실패 시 기본 순서 유지
-      });
-
-    getTechStack()
-      .then(res => {
-        setTechStackItemsState(normalizeTechStackList(res.tech_stack ?? []));
-      })
-      .catch(() => {
-        toast.error('기술 스택을 불러오지 못했습니다.');
-      });
-
-    getActivities()
-      .then(res => {
-        const list = res.activities ?? [];
-        const sorted = [...list].sort(
-          (a, b) => a.display_order - b.display_order,
-        );
-        setActivities(sorted.map(apiActivityToItem));
-      })
-      .catch(() => {
-        toast.error('활동 목록을 불러오지 못했습니다.');
-      });
-
-    getUserInfo()
-      .then(res => {
-        setUserInfo(res);
-        try {
-          localStorage.setItem(
-            'portfolio-user-info',
-            JSON.stringify(res),
-          );
-        } catch {
-          // ignore
-        }
-      })
-      .catch(() => {
-        toast.error('유저 정보를 불러오지 못했습니다.');
-      });
-
-    getPortfolioMileage()
-      .then(res => {
-        const list = res.mileage ?? [];
-        const sorted = [...list].sort(
-          (a, b) => a.display_order - b.display_order,
-        );
-        setMileageItems(sorted.map(portfolioMileageToItem));
-      })
-      .catch(() => {
-        toast.error('마일리지 목록을 불러오지 못했습니다.');
-      });
-  }, [normalizeTechStackList]);
-
-  /** 기술 스택 변경 시 즉시 PUT */
-  useEffect(() => {
-    if (!techStackUserModifiedRef.current) return;
-
-    putTechStack({ tech_stack: normalizeTechStackList(techStackItems) })
-      .then(() => {
-        toast.success('변경사항이 저장되었습니다.', SAVED_TOAST_OPTIONS);
-      })
-      .catch(() => {
-        toast.error('기술 스택 저장에 실패했습니다.');
-      });
-  }, [techStackItems, normalizeTechStackList]);
-
+  // ── Context value ──────────────────────────────────────────────────────────
   const value = useMemo<SummaryState>(
     () => ({
-      userInfo,
+      userInfo: userInfoQuery.data ?? null,
       setUserInfo,
-      sectionOrder,
+      sectionOrder: settingsQuery.data ?? DRAGGABLE_SECTION_ORDER,
       setSectionOrder,
-      techStackItems,
+      techStackItems: techStackQuery.data ?? [],
       setTechStackItems,
       repos: reposQuery.data ?? [],
       setRepos,
-      mileageItems,
+      mileageItems: mileageQuery.data ?? [],
       setMileageItems,
-      activities,
+      activities: activitiesQuery.data ?? [],
       setActivities,
       deleteActivity,
       postNewActivity,
@@ -398,14 +412,18 @@ export const SummaryProvider = ({ children }: SummaryProviderProps) => {
       setActivitiesNextId,
     }),
     [
-      userInfo,
-      sectionOrder,
-      techStackItems,
+      userInfoQuery.data,
+      setUserInfo,
+      settingsQuery.data,
+      setSectionOrder,
+      techStackQuery.data,
       setTechStackItems,
       reposQuery.data,
       setRepos,
-      mileageItems,
-      activities,
+      mileageQuery.data,
+      setMileageItems,
+      activitiesQuery.data,
+      setActivities,
       deleteActivity,
       postNewActivity,
       saveExistingActivity,

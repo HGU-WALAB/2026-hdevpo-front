@@ -79,21 +79,39 @@ export const getRepositories = async (params?: GetRepositoriesParams) => {
   return response;
 };
 
-/** 빈 배열 나올 때까지 모든 페이지 조회 */
+/** 빈 배열 나올 때까지 모든 페이지 조회 (병렬 배치로 속도 개선) */
 export const getAllRepositories = async (
   options: GetRepositoriesParams & { perPage?: number } = {},
 ): Promise<PortfolioRepositoryItem[]> => {
   const { perPage = 20, ...baseParams } = options;
-  const all: PortfolioRepositoryItem[] = [];
-  let page = 1;
+  const BATCH = 5;
+
+  // 1페이지를 먼저 가져와 데이터가 더 있는지 확인
+  const firstRes = await getRepositories({ ...baseParams, page: 1, per_page: perPage });
+  const firstList = firstRes.repositories ?? [];
+  if (firstList.length < perPage) return firstList;
+
+  const all = [...firstList];
+  let startPage = 2;
+
   for (;;) {
-    const res = await getRepositories({ ...baseParams, page, per_page: perPage });
-    const list = res.repositories ?? [];
-    if (list.length === 0) break;
-    all.push(...list);
-    if (list.length < perPage) break;
-    page += 1;
+    // BATCH 개 페이지를 병렬로 요청
+    const pages = Array.from({ length: BATCH }, (_, i) => startPage + i);
+    const results = await Promise.all(
+      pages.map(p => getRepositories({ ...baseParams, page: p, per_page: perPage })),
+    );
+
+    let done = false;
+    for (const res of results) {
+      const list = res.repositories ?? [];
+      if (list.length === 0) { done = true; break; }
+      all.push(...list);
+      if (list.length < perPage) { done = true; break; }
+    }
+    if (done) break;
+    startPage += BATCH;
   }
+
   return all;
 };
 
