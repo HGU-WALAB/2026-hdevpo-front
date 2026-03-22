@@ -20,7 +20,7 @@ import {
   getPortfolioCvById,
   getPortfolioCvList,
   type PortfolioCvListItem,
-} from '../apis/cv';
+} from '../../apis/cv';
 import CvPreviewModal from './CvPreviewModal';
 
 const CV_QUERY_CONFIG = { retry: 1, refetchOnWindowFocus: false } as const;

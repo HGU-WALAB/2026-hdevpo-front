@@ -17,7 +17,7 @@ import { useEffect, useState, type FunctionComponent, type SVGProps } from 'reac
 import { toast } from 'react-toastify';
 
 import { formatDateOnly } from '@/pages/summary/utils/date';
-import type { PortfolioCvDetail } from '../apis/cv';
+import type { PortfolioCvDetail } from '../../apis/cv';
 
 export interface CvPreviewModalProps {
   open: boolean;

@@ -20,7 +20,10 @@ import { mockPortfolioRepositories } from '@/mocks/fixtures/portfolioRepositorie
 import { mockTechStackResponse } from '@/mocks/fixtures/portfolioTechStack';
 import { mockPortfolioCvDetails } from '@/mocks/fixtures/portfolioCv';
 import { mockUserInfoResponse } from '@/mocks/fixtures/portfolioUserInfo';
-import type { PortfolioCvDetail } from '@/pages/cv/apis/cv';
+import type {
+  PortfolioCvBuildPromptRequest,
+  PortfolioCvDetail,
+} from '@/pages/cv/apis/cv';
 
 const techStackStore = {
   tech_stack: [...mockTechStackResponse.tech_stack],
@@ -292,6 +295,40 @@ export const PortfolioHandlers = [
       return new HttpResponse(null, { status: 404 });
     }
     return HttpResponse.json({ ...item }, { status: 200 });
+  }),
+
+  http.post(BASE_URL + `${ENDPOINT.PORTFOLIO_CV}/build-prompt`, async ({ request }) => {
+    try {
+      const body = (await request.json()) as PortfolioCvBuildPromptRequest;
+      const job = (body.job_posting ?? '').trim();
+      const pos = (body.target_position ?? '').trim();
+      const notes = (body.additional_notes ?? '').trim();
+      const m = body.selected_mileage_ids ?? [];
+      const a = body.selected_activity_ids ?? [];
+      const r = body.selected_repo_ids ?? [];
+      const prompt = [
+        '# 맞춤 CV 프롬프트 (Mock)',
+        '',
+        '## 지원 직무',
+        pos || '(미입력)',
+        '',
+        '## 공고·자격 요약',
+        job ? job.slice(0, 600) + (job.length > 600 ? '…' : '') : '(미입력)',
+        '',
+        notes ? `## 추가 요청\n${notes}\n` : '',
+        '## 포함한 포트폴리오 항목 (선택 ID)',
+        `- 마일리지: ${JSON.stringify(m)}`,
+        `- 활동: ${JSON.stringify(a)}`,
+        `- 레포지토리: ${JSON.stringify(r)}`,
+        '',
+        '_이 내용은 목(Mock) 응답입니다._',
+      ]
+        .filter(Boolean)
+        .join('\n');
+      return HttpResponse.json({ prompt }, { status: 200 });
+    } catch {
+      return new HttpResponse(null, { status: 400 });
+    }
   }),
 
   http.get(BASE_URL + ENDPOINT.PORTFOLIO_REPOSITORIES, ({ request }) => {

@@ -29,3 +29,24 @@ export const getPortfolioCvList = async () => {
 export const getPortfolioCvById = async (id: number) => {
   return http.get<PortfolioCvDetail>(`${ENDPOINT.PORTFOLIO_CV}/${id}`);
 };
+
+/** POST /api/portfolio/cv/build-prompt */
+export interface PortfolioCvBuildPromptRequest {
+  job_posting: string;
+  target_position: string;
+  additional_notes: string;
+  selected_mileage_ids: number[];
+  selected_activity_ids: number[];
+  selected_repo_ids: number[];
+}
+
+export interface PortfolioCvBuildPromptResponse {
+  prompt: string;
+}
+
+export const postPortfolioCvBuildPrompt = async (body: PortfolioCvBuildPromptRequest) => {
+  return http.post<PortfolioCvBuildPromptRequest, PortfolioCvBuildPromptResponse>(
+    `${ENDPOINT.PORTFOLIO_CV}/build-prompt`,
+    body,
+  );
+};

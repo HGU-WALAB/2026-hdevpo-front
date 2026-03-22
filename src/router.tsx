@@ -23,7 +23,7 @@ const SummaryEditPage = React.lazy(
 const SummaryPreviewPage = React.lazy(
   () => import('@/pages/summary/SummaryPage/SummaryPreviewPage'),
 );
-const CvGeneratePage = React.lazy(() => import('@/pages/cv/CvGeneratePage'));
+const CvGeneratePage = React.lazy(() => import('@/pages/cv/CVPage/CvGeneratePage'));
 const GitHubCallbackPage = React.lazy(
   () => import('@/pages/profile/GitHubCallbackPage'),
 );

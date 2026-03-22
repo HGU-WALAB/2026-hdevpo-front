@@ -37,3 +37,95 @@ export function writeCvWizardStep1Selection(draft: CvWizardStep1Selection): void
     // ignore quota / private mode
   }
 }
+
+/** 2단계 입력 초안 (sessionStorage) */
+export const CV_WIZARD_STEP2_STORAGE_KEY = 'cv-wizard-step2-draft-v1';
+
+export interface CvWizardStep2Draft {
+  job_posting: string;
+  target_position: string;
+  additional_notes: string;
+}
+
+export function readCvWizardStep2Draft(): CvWizardStep2Draft | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem(CV_WIZARD_STEP2_STORAGE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<CvWizardStep2Draft>;
+    return {
+      job_posting: typeof parsed.job_posting === 'string' ? parsed.job_posting : '',
+      target_position:
+        typeof parsed.target_position === 'string' ? parsed.target_position : '',
+      additional_notes:
+        typeof parsed.additional_notes === 'string' ? parsed.additional_notes : '',
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function writeCvWizardStep2Draft(draft: CvWizardStep2Draft): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(CV_WIZARD_STEP2_STORAGE_KEY, JSON.stringify(draft));
+  } catch {
+    // ignore
+  }
+}
+
+/** 3단계에서 사용할 build-prompt 응답 캐시 */
+export const CV_WIZARD_PENDING_PROMPT_KEY = 'cv-wizard-pending-prompt-v1';
+
+export function readCvWizardPendingPrompt(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const t = sessionStorage.getItem(CV_WIZARD_PENDING_PROMPT_KEY);
+    return t ?? null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeCvWizardPendingPrompt(prompt: string): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(CV_WIZARD_PENDING_PROMPT_KEY, prompt);
+  } catch {
+    // ignore
+  }
+}
+
+/** 현재 마법사 단계 (새로고침 후 복원용, 1·2·3만 사용) */
+export const CV_WIZARD_UI_STEP_KEY = 'cv-wizard-ui-step-v1';
+
+export type CvWizardUiStep = 1 | 2 | 3;
+
+export function readCvWizardUiStep(): CvWizardUiStep | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const v = sessionStorage.getItem(CV_WIZARD_UI_STEP_KEY);
+    if (v === '1' || v === '2' || v === '3') return Number(v) as CvWizardUiStep;
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+export function writeCvWizardUiStep(step: CvWizardUiStep): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.setItem(CV_WIZARD_UI_STEP_KEY, String(step));
+  } catch {
+    // ignore
+  }
+}
+
+export function clearCvWizardPendingPrompt(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    sessionStorage.removeItem(CV_WIZARD_PENDING_PROMPT_KEY);
+  } catch {
+    // ignore
+  }
+}

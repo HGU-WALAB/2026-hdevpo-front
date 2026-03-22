@@ -8,11 +8,22 @@ import { boxShadow } from '@/styles/common';
 import { palette } from '@/styles/palette';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
+import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
+import CheckIcon from '@mui/icons-material/Check';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
+import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined';
 import FolderIcon from '@mui/icons-material/Folder';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
-import { Button as MuiButton, Checkbox, useMediaQuery, useTheme } from '@mui/material';
+import {
+  Button as MuiButton,
+  Checkbox,
+  TextField,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
 import { styled } from '@mui/material/styles';
 import {
   Fragment,
@@ -20,7 +31,9 @@ import {
   useEffect,
   useMemo,
   useState,
+  type FunctionComponent,
   type ReactNode,
+  type SVGProps,
 } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
@@ -34,10 +47,19 @@ import {
   useSummaryContext,
 } from '@/pages/summary/SummaryPage/context/SummaryContext';
 
+import CvGenerateStep3 from './components/CvGenerateStep3';
 import {
+  clearCvWizardPendingPrompt,
+  readCvWizardPendingPrompt,
   readCvWizardStep1Selection,
+  readCvWizardStep2Draft,
+  readCvWizardUiStep,
+  writeCvWizardPendingPrompt,
   writeCvWizardStep1Selection,
-} from './constants/cvWizardStorage';
+  writeCvWizardStep2Draft,
+  writeCvWizardUiStep,
+} from '../constants/cvWizardStorage';
+import usePostPortfolioCvBuildPromptMutation from '../hooks/usePostPortfolioCvBuildPromptMutation';
 
 const STEPS = [
   { n: 1, label: '항목 선택' },
@@ -45,6 +67,41 @@ const STEPS = [
   { n: 3, label: '프롬프트 생성' },
   { n: 4, label: '결과 저장' },
 ] as const;
+
+const JOB_POSTING_PLACEHOLDER = `예) 회사: 카카오
+포지션: 백엔드 개발자 (인턴)
+자격요건: Java/Spring 경험, 알고리즘 실력
+우대사항: AWS 경험, 오픈소스 기여
+...`;
+
+const TARGET_POSITION_PLACEHOLDER =
+  '예) 백엔드 개발자, AI 엔지니어, 프론트엔드 인턴 등';
+
+const ADDITIONAL_NOTES_PLACEHOLDER =
+  '예) 프로젝트 경험 위주로 강조해줘, 간결하게 작성해줘 등';
+
+type WizardStep = 1 | 2 | 3;
+
+type StepVisualState = 'completed' | 'active' | 'upcoming';
+
+function readInitialWizardStep(): WizardStep {
+  const s = readCvWizardUiStep();
+  if (s === 3) return readCvWizardPendingPrompt()?.trim() ? 3 : 2;
+  if (s === 2) return 2;
+  return 1;
+}
+
+function stepVisual(stepN: number, wizardStep: WizardStep): StepVisualState {
+  if (wizardStep === 1) return stepN === 1 ? 'active' : 'upcoming';
+  if (wizardStep === 2) {
+    if (stepN === 1) return 'completed';
+    if (stepN === 2) return 'active';
+    return 'upcoming';
+  }
+  if (stepN <= 2) return 'completed';
+  if (stepN === 3) return 'active';
+  return 'upcoming';
+}
 
 const getProfileImageUrl = (filename: string | null | undefined): string | null =>
   filename?.trim()
@@ -59,12 +116,22 @@ function toggleInList(ids: number[], id: number): number[] {
   return ids.includes(id) ? ids.filter(x => x !== id) : [...ids, id];
 }
 
+const AutoAwesomeIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
+  <AutoAwesomeIcon sx={{ fontSize: 20 }} />
+);
+
 const CvGeneratePage = () => {
   useTrackPageView({ eventName: '[View] CV 생성기' });
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
   const { userInfo, repos, mileageItems, activities } = useSummaryContext();
+  const buildPromptMutation = usePostPortfolioCvBuildPromptMutation();
+
+  const [wizardStep, setWizardStep] = useState<WizardStep>(readInitialWizardStep);
+  const [generatedPrompt, setGeneratedPrompt] = useState(
+    () => readCvWizardPendingPrompt() ?? '',
+  );
 
   const [selectedMileageIds, setSelectedMileageIds] = useState<number[]>(
     () => readCvWizardStep1Selection()?.selected_mileage_ids ?? [],
@@ -74,6 +141,15 @@ const CvGeneratePage = () => {
   );
   const [selectedRepoIds, setSelectedRepoIds] = useState<number[]>(
     () => readCvWizardStep1Selection()?.selected_repo_ids ?? [],
+  );
+
+  const step2DraftInit = useMemo(() => readCvWizardStep2Draft(), []);
+  const [jobPosting, setJobPosting] = useState(step2DraftInit?.job_posting ?? '');
+  const [targetPosition, setTargetPosition] = useState(
+    step2DraftInit?.target_position ?? '',
+  );
+  const [additionalNotes, setAdditionalNotes] = useState(
+    step2DraftInit?.additional_notes ?? '',
   );
 
   const visibleRepos = useMemo(
@@ -102,11 +178,28 @@ const CvGeneratePage = () => {
     );
   }, [visibleRepos]);
 
-  const handleBack = useCallback(() => {
-    navigate(ROUTE_PATH.summary);
-  }, [navigate]);
+  useEffect(() => {
+    writeCvWizardStep2Draft({
+      job_posting: jobPosting,
+      target_position: targetPosition,
+      additional_notes: additionalNotes,
+    });
+  }, [jobPosting, targetPosition, additionalNotes]);
 
-  const handleNext = useCallback(() => {
+  useEffect(() => {
+    writeCvWizardPendingPrompt(generatedPrompt);
+  }, [generatedPrompt]);
+
+  useEffect(() => {
+    writeCvWizardUiStep(wizardStep);
+  }, [wizardStep]);
+
+  useEffect(() => {
+    if (wizardStep !== 3) return;
+    if (!generatedPrompt.trim()) setWizardStep(2);
+  }, [wizardStep, generatedPrompt]);
+
+  const getCommittedSelection = useCallback(() => {
     const mileageIds = mileageItems
       .filter(m => m.id != null && selectedMileageIds.includes(m.id!))
       .map(m => m.id!);
@@ -116,13 +209,11 @@ const CvGeneratePage = () => {
     const repoIds = visibleRepos
       .filter(r => selectedRepoIds.includes(repoSelectionId(r)))
       .map(r => repoSelectionId(r));
-
-    writeCvWizardStep1Selection({
+    return {
       selected_mileage_ids: mileageIds,
       selected_activity_ids: activityIds,
       selected_repo_ids: repoIds,
-    });
-    toast.info('선택 항목이 저장되었습니다. JD 입력 단계는 준비 중입니다.');
+    };
   }, [
     activities,
     mileageItems,
@@ -130,6 +221,67 @@ const CvGeneratePage = () => {
     selectedMileageIds,
     selectedRepoIds,
     visibleRepos,
+  ]);
+
+  const handleBack = useCallback(() => {
+    clearCvWizardPendingPrompt();
+    writeCvWizardUiStep(1);
+    navigate(ROUTE_PATH.summary);
+  }, [navigate]);
+
+  const handleNextFromStep1 = useCallback(() => {
+    writeCvWizardStep1Selection(getCommittedSelection());
+    setWizardStep(2);
+  }, [getCommittedSelection]);
+
+  const handlePrevFromStep2 = useCallback(() => {
+    setWizardStep(1);
+  }, []);
+
+  const handlePrevFromStep3 = useCallback(() => {
+    setWizardStep(2);
+  }, []);
+
+  const handleStep4Placeholder = useCallback(() => {
+    toast.info('4단계는 준비 중입니다.');
+  }, []);
+
+  const handleBuildPrompt = useCallback(() => {
+    const jp = jobPosting.trim();
+    const tp = targetPosition.trim();
+    if (!jp || !tp) {
+      toast.warn('공고 정보와 지원 직무를 입력해 주세요.');
+      return;
+    }
+    const ids = getCommittedSelection();
+    writeCvWizardStep1Selection(ids);
+    buildPromptMutation.mutate(
+      {
+        job_posting: jp,
+        target_position: tp,
+        additional_notes: additionalNotes.trim(),
+        selected_mileage_ids: ids.selected_mileage_ids,
+        selected_activity_ids: ids.selected_activity_ids,
+        selected_repo_ids: ids.selected_repo_ids,
+      },
+      {
+        onSuccess: data => {
+          setGeneratedPrompt(data.prompt);
+          writeCvWizardPendingPrompt(data.prompt);
+          setWizardStep(3);
+          toast.success('프롬프트가 생성되었습니다.');
+        },
+        onError: () => {
+          toast.error('프롬프트 생성에 실패했습니다. 잠시 후 다시 시도해 주세요.');
+        },
+      },
+    );
+  }, [
+    additionalNotes,
+    buildPromptMutation,
+    getCommittedSelection,
+    jobPosting,
+    targetPosition,
   ]);
 
   const name = userInfo?.name ?? '-';
@@ -171,7 +323,7 @@ const CvGeneratePage = () => {
 
       <Flex.Column gap="0.35rem" width="100%">
         <Heading as="h1" margin="0" color={theme.palette.text.primary}>
-          이력서 생성하기
+          CV 생성기
         </Heading>
         <Text
           margin="0"
@@ -180,34 +332,45 @@ const CvGeneratePage = () => {
             color: theme.palette.grey[600],
           }}
         >
-          마일리지 항목으로 맞춤 이력서 프롬프트를 만들고 히스토리로 관리하세요
+          마일리지 항목으로 맞춤 CV 프롬프트를 만들고 히스토리로 관리하세요
         </Text>
       </Flex.Column>
 
       <S.Card>
         <S.StepperRow role="list" aria-label="진행 단계">
-          {STEPS.map((step, idx) => (
-            <Fragment key={step.n}>
-              <Flex.Column
-                align="center"
-                gap="0.35rem"
-                style={{ width: '4.75rem', flexShrink: 0 }}
-              >
-                <S.StepCircle
-                  $active={step.n === 1}
-                  $muted={step.n !== 1}
-                  aria-current={step.n === 1 ? 'step' : undefined}
+          {STEPS.map((step, idx) => {
+            const vs = stepVisual(step.n, wizardStep);
+            return (
+              <Fragment key={step.n}>
+                <Flex.Column
+                  align="center"
+                  gap="0.35rem"
+                  style={{ width: '4.75rem', flexShrink: 0 }}
                 >
-                  {step.n}
-                </S.StepCircle>
-                <S.StepLabel $active={step.n === 1}>{step.label}</S.StepLabel>
-              </Flex.Column>
-              {idx < STEPS.length - 1 ? <S.StepConnector aria-hidden /> : null}
-            </Fragment>
-          ))}
+                  <S.StepCircle
+                    $active={vs === 'active'}
+                    $completed={vs === 'completed'}
+                    $muted={vs === 'upcoming'}
+                    aria-current={vs === 'active' ? 'step' : undefined}
+                  >
+                    {vs === 'completed' ? (
+                      <CheckIcon sx={{ fontSize: 18 }} aria-hidden />
+                    ) : (
+                      step.n
+                    )}
+                  </S.StepCircle>
+                  <S.StepLabel $active={vs === 'active'} $completed={vs === 'completed'}>
+                    {step.label}
+                  </S.StepLabel>
+                </Flex.Column>
+                {idx < STEPS.length - 1 ? <S.StepConnector aria-hidden /> : null}
+              </Fragment>
+            );
+          })}
         </S.StepperRow>
 
-        <Flex.Column gap="1.25rem" width="100%" style={{ marginTop: '1.5rem' }}>
+        {wizardStep === 1 ? (
+        <Flex.Column gap="1.25rem" width="100%" style={{ marginTop: '1.5rem' }} key="step1">
           <Flex.Column gap="0.35rem" width="100%">
             <Heading as="h3" margin="0" color={theme.palette.text.primary}>
               어떤 항목을 포함할까요?
@@ -332,7 +495,87 @@ const CvGeneratePage = () => {
             ))}
           </SelectableSection>
         </Flex.Column>
+        ) : null}
 
+        {wizardStep === 2 ? (
+        <Flex.Column gap="1.25rem" width="100%" style={{ marginTop: '1.5rem' }} key="step2">
+          <Flex.Column gap="0.35rem" width="100%">
+            <Heading as="h3" margin="0" color={theme.palette.text.primary}>
+              채용 공고를 입력하세요
+            </Heading>
+            <Text
+              margin="0"
+              style={{
+                ...theme.typography.body2,
+                color: theme.palette.grey[600],
+              }}
+            >
+              공고 정보와 지원 직무를 입력하면 맞춤 프롬프트가 자동 생성됩니다.
+            </Text>
+          </Flex.Column>
+
+          <S.JdFieldRow align="flex-start" gap="0.65rem" width="100%">
+            <S.FieldLeadIcon aria-hidden>
+              <ArticleOutlinedIcon sx={{ fontSize: 22, color: palette.grey600 }} />
+            </S.FieldLeadIcon>
+            <Flex.Column gap="0.35rem" style={{ flex: '1 1 0', minWidth: 0, width: '100%' }}>
+              <TextField
+                required
+                fullWidth
+                label="공고 정보"
+                helperText="회사명, 공고 제목, 우대사항, 자격요건 등"
+                placeholder={JOB_POSTING_PLACEHOLDER}
+                value={jobPosting}
+                onChange={e => setJobPosting(e.target.value)}
+                multiline
+                minRows={isMobile ? 6 : 8}
+                inputProps={{ maxLength: 12000, 'aria-label': '공고 정보' }}
+              />
+            </Flex.Column>
+          </S.JdFieldRow>
+
+          <S.JdFieldRow align="flex-start" gap="0.65rem" width="100%">
+            <S.FieldLeadIcon aria-hidden>
+              <FlagOutlinedIcon sx={{ fontSize: 22, color: palette.grey600 }} />
+            </S.FieldLeadIcon>
+            <Flex.Column gap="0.35rem" style={{ flex: '1 1 0', minWidth: 0, width: '100%' }}>
+              <TextField
+                required
+                fullWidth
+                label="지원 직무"
+                placeholder={TARGET_POSITION_PLACEHOLDER}
+                value={targetPosition}
+                onChange={e => setTargetPosition(e.target.value)}
+                inputProps={{ maxLength: 200, 'aria-label': '지원 직무' }}
+              />
+            </Flex.Column>
+          </S.JdFieldRow>
+
+          <S.JdFieldRow align="flex-start" gap="0.65rem" width="100%">
+            <S.FieldLeadIcon aria-hidden>
+              <ChatBubbleOutlineIcon sx={{ fontSize: 22, color: palette.grey600 }} />
+            </S.FieldLeadIcon>
+            <Flex.Column gap="0.35rem" style={{ flex: '1 1 0', minWidth: 0, width: '100%' }}>
+              <TextField
+                fullWidth
+                label="추가 요청사항 (선택)"
+                placeholder={ADDITIONAL_NOTES_PLACEHOLDER}
+                value={additionalNotes}
+                onChange={e => setAdditionalNotes(e.target.value)}
+                multiline
+                minRows={3}
+                inputProps={{ maxLength: 4000, 'aria-label': '추가 요청사항' }}
+              />
+            </Flex.Column>
+          </S.JdFieldRow>
+        </Flex.Column>
+        ) : null}
+
+        {wizardStep === 3 ? (
+          <CvGenerateStep3 value={generatedPrompt} onChange={setGeneratedPrompt} />
+        ) : null}
+
+        {wizardStep === 1 ? (
         <Flex.Row
           align="center"
           justify="flex-end"
@@ -348,9 +591,71 @@ const CvGeneratePage = () => {
             size="large"
             icon={() => <ArrowForwardIcon sx={{ fontSize: 20 }} />}
             iconPosition="end"
-            onClick={handleNext}
+            onClick={handleNextFromStep1}
           />
         </Flex.Row>
+        ) : null}
+
+        {wizardStep === 2 ? (
+        <Flex.Row
+          align="center"
+          justify="space-between"
+          gap="0.75rem"
+          wrap="wrap"
+          width="100%"
+          style={{ marginTop: '1.75rem', paddingTop: '1rem', borderTop: `1px solid ${palette.grey200}` }}
+        >
+          <S.BackButton
+            type="button"
+            variant="outlined"
+            onClick={handlePrevFromStep2}
+            aria-label="항목 선택 단계로 돌아가기"
+            startIcon={<ArrowBackIcon sx={{ fontSize: 20, color: 'inherit' }} />}
+          >
+            이전
+          </S.BackButton>
+          <Button
+            label="프롬프트 생성"
+            variant="contained"
+            color="blue"
+            size="large"
+            icon={AutoAwesomeIconWrap}
+            iconPosition="start"
+            disabled={buildPromptMutation.isPending}
+            onClick={handleBuildPrompt}
+          />
+        </Flex.Row>
+        ) : null}
+
+        {wizardStep === 3 ? (
+        <Flex.Row
+          align="center"
+          justify="space-between"
+          gap="0.75rem"
+          wrap="wrap"
+          width="100%"
+          style={{ marginTop: '1.75rem', paddingTop: '1rem', borderTop: `1px solid ${palette.grey200}` }}
+        >
+          <S.BackButton
+            type="button"
+            variant="outlined"
+            onClick={handlePrevFromStep3}
+            aria-label="JD 입력 단계로 돌아가기"
+            startIcon={<ArrowBackIcon sx={{ fontSize: 20, color: 'inherit' }} />}
+          >
+            이전
+          </S.BackButton>
+          <Button
+            label="AI 결과 붙여넣기"
+            variant="contained"
+            color="blue"
+            size="large"
+            icon={() => <ArrowForwardIcon sx={{ fontSize: 20 }} />}
+            iconPosition="end"
+            onClick={handleStep4Placeholder}
+          />
+        </Flex.Row>
+        ) : null}
       </S.Card>
     </Flex.Column>
   );
@@ -618,29 +923,34 @@ const S = {
     flex-wrap: nowrap;
   `,
   StepCircle: styled('span', {
-    shouldForwardProp: p => p !== '$active' && p !== '$muted',
-  })<{ $active?: boolean; $muted?: boolean }>(({ theme, $active, $muted }) => ({
-    display: 'flex',
-    alignItems: 'center',
-    justifyContent: 'center',
-    width: '2rem',
-    height: '2rem',
-    borderRadius: '50%',
-    ...theme.typography.body2,
-    fontWeight: 700,
-    flexShrink: 0,
-    boxSizing: 'border-box',
-    border: `2px solid ${$active ? palette.blue500 : palette.grey300}`,
-    backgroundColor: $active ? palette.blue500 : palette.white,
-    color: $active ? palette.white : theme.palette.grey[600],
-    ...($muted && !$active ? { opacity: 0.85 } : {}),
-  })),
+    shouldForwardProp: p => p !== '$active' && p !== '$muted' && p !== '$completed',
+  })<{ $active?: boolean; $muted?: boolean; $completed?: boolean }>(
+    ({ theme, $active, $muted, $completed }) => {
+      const filled = $active || $completed;
+      return {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        width: '2rem',
+        height: '2rem',
+        borderRadius: '50%',
+        ...theme.typography.body2,
+        fontWeight: 700,
+        flexShrink: 0,
+        boxSizing: 'border-box',
+        border: `2px solid ${filled ? palette.blue500 : palette.grey300}`,
+        backgroundColor: filled ? palette.blue500 : palette.white,
+        color: filled ? palette.white : theme.palette.grey[600],
+        ...($muted && !filled ? { opacity: 0.85 } : {}),
+      };
+    },
+  ),
   StepLabel: styled('span', {
-    shouldForwardProp: p => p !== '$active',
-  })<{ $active?: boolean }>(({ theme, $active }) => ({
+    shouldForwardProp: p => p !== '$active' && p !== '$completed',
+  })<{ $active?: boolean; $completed?: boolean }>(({ theme, $active, $completed }) => ({
     ...theme.typography.caption,
-    fontWeight: $active ? 700 : 500,
-    color: $active ? palette.blue600 : theme.palette.text.secondary,
+    fontWeight: $active ? 700 : $completed ? 600 : 500,
+    color: $active || $completed ? palette.blue600 : theme.palette.text.secondary,
     textAlign: 'center',
     lineHeight: 1.25,
     wordBreak: 'keep-all',
@@ -733,7 +1043,21 @@ const S = {
     color: theme.palette.grey[600],
     backgroundColor: palette.grey200,
   })),
-  /** 내 활동 요약 `미리보기` 버튼과 동일한 아웃라인 톤 */
+  JdFieldRow: styled(Flex.Row)`
+    flex-wrap: wrap;
+    @media (min-width: 901px) {
+      flex-wrap: nowrap;
+    }
+  `,
+  FieldLeadIcon: styled('span')`
+    display: flex;
+    flex-shrink: 0;
+    width: 2rem;
+    justify-content: center;
+    padding-top: 0.35rem;
+    box-sizing: border-box;
+  `,
+  /** 내 활동 요약 `미리보기` 버튼과 동일한 아웃라인 톤 (뒤로가기·이전 공통) */
   BackButton: styled(MuiButton)(({ theme }) => ({
     minWidth: '7.5rem',
     padding: '0.5rem 1rem 0.5rem 0.75rem',
