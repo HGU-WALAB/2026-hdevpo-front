@@ -1,20 +1,26 @@
-import { DownloadIcon } from '@/assets';
 import { Button, Flex, Footer, Text } from '@/components';
 import { ROUTE_PATH } from '@/constants/routePath';
 import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { palette } from '@/styles/palette';
 import { useTrackPageView } from '@/service/amplitude/useTrackPageView';
 import CodeIcon from '@mui/icons-material/Code';
+import DescriptionIcon from '@mui/icons-material/Description';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FolderIcon from '@mui/icons-material/Folder';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import { Button as MuiButton, useMediaQuery } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { useCallback, useRef, useState } from 'react';
+import {
+  useCallback,
+  useRef,
+  useState,
+  type FunctionComponent,
+  type SVGProps,
+} from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
-import { getExportPrompt, putPortfolioSettings } from '../apis/portfolio';
+import { putPortfolioSettings } from '../apis/portfolio';
 import {
   SECTION_TITLES,
   type DraggableSectionKey,
@@ -56,6 +62,11 @@ function getGithubUsernameFromStorage(): string | null {
     return null;
   }
 }
+
+/** MUI SvgIcon은 Button `icon` 타입과 달라 래핑 */
+const ResumePaperIcon: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
+  <DescriptionIcon sx={{ fontSize: 20 }} />
+);
 
 const SECTION_ICONS: Record<DraggableSectionKey, React.ReactNode> = {
   tech: <CodeIcon sx={{ fontSize: 20, color: palette.grey500 }} />,
@@ -144,33 +155,6 @@ const SummaryEditPage = () => {
     }
   };
 
-  const handleCopyPrompt = useCallback(async () => {
-    let prompt: string;
-    try {
-      prompt = await getExportPrompt();
-    } catch {
-      toast.error('프롬프트를 불러오지 못했습니다.');
-      return;
-    }
-    try {
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(prompt);
-      } else {
-        const textArea = document.createElement('textarea');
-        textArea.value = prompt;
-        textArea.style.position = 'fixed';
-        textArea.style.left = '-9999px';
-        document.body.appendChild(textArea);
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-      }
-      toast.success('프롬프트가 클립보드에 복사되었습니다.');
-    } catch {
-      toast.error('클립보드 복사에 실패했습니다.');
-    }
-  }, []);
-
   const repoHeaderRight =
     hasGithub ? (
       <S.RepoSelectButton
@@ -208,13 +192,12 @@ const SummaryEditPage = () => {
             미리보기
           </S.PreviewButton>
           <Button
-            label="프롬프트 복사"
+            label="이력서 관리"
             variant="contained"
             color="blue"
             size="large"
-            icon={DownloadIcon}
+            icon={ResumePaperIcon}
             iconPosition="start"
-            onClick={handleCopyPrompt}
           />
         </S.ButtonGroup>
       </S.TopRow>
