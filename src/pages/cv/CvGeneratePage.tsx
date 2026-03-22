@@ -1,6 +1,6 @@
 import { BASE_URL } from '@/apis/config';
 import { ENDPOINT } from '@/apis/endPoint';
-import { Button, Flex, Text } from '@/components';
+import { Button, Flex, Heading, Text } from '@/components';
 import { ROUTE_PATH } from '@/constants/routePath';
 import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { useTrackPageView } from '@/service/amplitude/useTrackPageView';
@@ -12,7 +12,7 @@ import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FolderIcon from '@mui/icons-material/Folder';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
-import { Button as MuiButton, Checkbox, useMediaQuery } from '@mui/material';
+import { Button as MuiButton, Checkbox, useMediaQuery, useTheme } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import {
   Fragment,
@@ -62,6 +62,7 @@ function toggleInList(ids: number[], id: number): number[] {
 const CvGeneratePage = () => {
   useTrackPageView({ eventName: '[View] CV 생성기' });
   const navigate = useNavigate();
+  const theme = useTheme();
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
   const { userInfo, repos, mileageItems, activities } = useSummaryContext();
 
@@ -151,7 +152,14 @@ const CvGeneratePage = () => {
       margin="1rem"
       gap="1.25rem"
       width="100%"
-      style={{ maxWidth: '56rem', marginLeft: 'auto', marginRight: 'auto', minWidth: 0 }}
+      style={{
+        maxWidth: '56rem',
+        marginLeft: 'auto',
+        marginRight: 'auto',
+        minWidth: 0,
+        boxSizing: 'border-box',
+        ...(isMobile ? { paddingLeft: '0.75rem', paddingRight: '0.75rem' } : {}),
+      }}
     >
       <Flex.Row align="center" gap="0.75rem" wrap="wrap">
         <S.BackButton
@@ -166,17 +174,17 @@ const CvGeneratePage = () => {
       </Flex.Row>
 
       <Flex.Column gap="0.35rem" width="100%">
+        <Heading as="h1" margin="0" color={theme.palette.text.primary}>
+          이력서 생성하기
+        </Heading>
         <Text
-          as="h1"
           margin="0"
-          bold
-          color={palette.nearBlack}
-          style={{ fontSize: isMobile ? '1.5rem' : '1.75rem', lineHeight: 1.35 }}
+          style={{
+            ...theme.typography.body1,
+            color: theme.palette.grey[600],
+          }}
         >
-          CV 생성기
-        </Text>
-        <Text margin="0" color={palette.grey600} style={{ fontSize: '0.9375rem', lineHeight: 1.5 }}>
-          마일리지 항목으로 맞춤 CV 프롬프트를 만들고 히스토리로 관리하세요
+          마일리지 항목으로 맞춤 이력서 프롬프트를 만들고 히스토리로 관리하세요
         </Text>
       </Flex.Column>
 
@@ -205,10 +213,16 @@ const CvGeneratePage = () => {
 
         <Flex.Column gap="1.25rem" width="100%" style={{ marginTop: '1.5rem' }}>
           <Flex.Column gap="0.35rem" width="100%">
-            <Text as="h2" margin="0" bold style={{ fontSize: '1.125rem' }}>
+            <Heading as="h3" margin="0" color={theme.palette.text.primary}>
               어떤 항목을 포함할까요?
-            </Text>
-            <Text margin="0" color={palette.grey600} style={{ fontSize: '0.875rem', lineHeight: 1.5 }}>
+            </Heading>
+            <Text
+              margin="0"
+              style={{
+                ...theme.typography.body2,
+                color: theme.palette.grey[600],
+              }}
+            >
               CV에 넣을 마일리지·레포지토리·활동을 선택하세요. 프로필과 기술 스택은 자동으로 포함됩니다.
             </Text>
           </Flex.Column>
@@ -216,11 +230,17 @@ const CvGeneratePage = () => {
           <S.HighlightSection>
             <Flex.Row align="center" gap="0.5rem" wrap="wrap">
               <PersonOutlineIcon sx={{ fontSize: 22, color: palette.blue500 }} />
-              <Text margin="0" bold style={{ fontSize: '1rem' }}>
+              <Heading as="h4" margin="0" color={theme.palette.text.primary}>
                 프로필 (자동 포함)
-              </Text>
+              </Heading>
             </Flex.Row>
-            <Text margin="0" color={palette.grey600} style={{ fontSize: '0.8125rem' }}>
+            <Text
+              margin="0"
+              style={{
+                ...theme.typography.body2,
+                color: theme.palette.grey[600],
+              }}
+            >
               My Info에서 프로필을 먼저 작성해 두면 CV 프롬프트에 반영됩니다.
             </Text>
             <S.ProfileInner align="flex-start" gap="1rem" wrap="wrap">
@@ -230,17 +250,35 @@ const CvGeneratePage = () => {
                 ) : null}
               </S.AvatarBox>
               <Flex.Column gap="0.35rem" style={{ flex: '1 1 12rem', minWidth: 0 }}>
-                <Text margin="0" bold style={{ fontSize: '1.25rem' }}>
+                <Heading as="h2" margin="0" color={theme.palette.text.primary}>
                   {name}
-                </Text>
-                <Text margin="0" color={palette.grey600} style={{ fontSize: '0.9375rem' }}>
+                </Heading>
+                <Text
+                  margin="0"
+                  style={{
+                    ...theme.typography.body1,
+                    color: theme.palette.grey[600],
+                  }}
+                >
                   {bio || '-'}
                 </Text>
-                <Text margin="0" color={palette.grey600} style={{ fontSize: '0.9375rem' }}>
+                <Text
+                  margin="0"
+                  style={{
+                    ...theme.typography.body1,
+                    color: theme.palette.grey[600],
+                  }}
+                >
                   {departmentMajorLine}
                 </Text>
                 {gradeLine ? (
-                  <Text margin="0" color={palette.grey500} style={{ fontSize: '0.875rem' }}>
+                  <Text
+                    margin="0"
+                    style={{
+                      ...theme.typography.body2,
+                      color: theme.palette.grey[500],
+                    }}
+                  >
                     {gradeLine}
                   </Text>
                 ) : null}
@@ -251,9 +289,9 @@ const CvGeneratePage = () => {
           <S.SectionBlock>
             <Flex.Row align="center" gap="0.5rem" wrap="wrap" style={{ marginBottom: '0.65rem' }}>
               <MenuBookIcon sx={{ fontSize: 20, color: palette.grey600 }} />
-              <Text margin="0" bold style={{ fontSize: '1rem' }}>
+              <Heading as="h4" margin="0" color={theme.palette.text.primary}>
                 기술 스택 (자동 포함)
-              </Text>
+              </Heading>
             </Flex.Row>
             <TechStackSectionContent readOnly />
           </S.SectionBlock>
@@ -359,6 +397,7 @@ function SelectableSection({
   emptyText: string;
   children: ReactNode;
 }) {
+  const theme = useTheme();
   const isEmpty = itemCount === 0;
 
   return (
@@ -366,14 +405,20 @@ function SelectableSection({
       <Flex.Row align="center" justify="space-between" gap="0.75rem" wrap="wrap" style={{ marginBottom: '0.65rem' }}>
         <Flex.Row align="center" gap="0.5rem" wrap="wrap">
           {icon}
-          <Text margin="0" bold style={{ fontSize: '1rem' }}>
+          <Heading as="h4" margin="0" color={theme.palette.text.primary}>
             {title}
-          </Text>
+          </Heading>
           <S.CountPill>{countLabel}</S.CountPill>
         </Flex.Row>
       </Flex.Row>
       {isEmpty ? (
-        <Text margin="0" color={palette.grey500} style={{ fontSize: '0.875rem' }}>
+        <Text
+          margin="0"
+          style={{
+            ...theme.typography.body2,
+            color: theme.palette.grey[500],
+          }}
+        >
           {emptyText}
         </Text>
       ) : (
@@ -394,6 +439,7 @@ function MileageSelectableRow({
   disabled: boolean;
   onToggle: () => void;
 }) {
+  const theme = useTheme();
   return (
     <S.SelectRow $disabled={disabled} style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}>
       <Flex.Row align="flex-start" gap="0.75rem" width="100%" style={{ minWidth: 0 }}>
@@ -408,20 +454,46 @@ function MileageSelectableRow({
         <Flex.Column gap="0.25rem" style={{ flex: 1, minWidth: 0 }}>
           <Flex.Row align="center" gap="0.5rem" wrap="wrap">
             <S.CategoryTag>{item.category}</S.CategoryTag>
-            <Text margin="0" style={{ fontWeight: 600, fontSize: '0.9375rem', wordBreak: 'break-word' }}>
+            <Text
+              margin="0"
+              style={{
+                ...theme.typography.body2,
+                fontWeight: 600,
+                wordBreak: 'break-word',
+              }}
+            >
               {item.item}
             </Text>
-            <Text margin="0" color={palette.grey500} style={{ fontSize: '0.8125rem' }}>
+            <Text
+              margin="0"
+              style={{
+                ...theme.typography.body2,
+                color: theme.palette.grey[500],
+              }}
+            >
               {item.semester}
             </Text>
           </Flex.Row>
           {item.additional_info?.trim() ? (
-            <Text margin="0" color={palette.grey600} style={{ fontSize: '0.8125rem', lineHeight: 1.45 }}>
+            <Text
+              margin="0"
+              style={{
+                ...theme.typography.body2,
+                color: theme.palette.grey[600],
+                lineHeight: 1.45,
+              }}
+            >
               {item.additional_info}
             </Text>
           ) : null}
           {disabled ? (
-            <Text margin="0" color={palette.pink500} style={{ fontSize: '0.75rem' }}>
+            <Text
+              margin="0"
+              style={{
+                ...theme.typography.caption,
+                color: palette.pink500,
+              }}
+            >
               포트폴리오에 연결된 항목만 선택할 수 있습니다.
             </Text>
           ) : null}
@@ -440,6 +512,7 @@ function RepoSelectableRow({
   selected: boolean;
   onToggle: () => void;
 }) {
+  const theme = useTheme();
   const title =
     repo.custom_title != null && repo.custom_title.trim() !== ''
       ? repo.custom_title.trim()
@@ -456,12 +529,26 @@ function RepoSelectableRow({
         />
         <Flex.Column gap="0.25rem" style={{ flex: 1, minWidth: 0 }}>
           <Flex.Row align="center" gap="0.5rem" wrap="wrap">
-            <Text margin="0" style={{ fontWeight: 600, fontSize: '0.9375rem', wordBreak: 'break-word' }}>
+            <Text
+              margin="0"
+              style={{
+                ...theme.typography.body2,
+                fontWeight: 600,
+                wordBreak: 'break-word',
+              }}
+            >
               {title}
             </Text>
           </Flex.Row>
           {repo.description?.trim() ? (
-            <Text margin="0" color={palette.grey600} style={{ fontSize: '0.8125rem', lineHeight: 1.45 }}>
+            <Text
+              margin="0"
+              style={{
+                ...theme.typography.body2,
+                color: theme.palette.grey[600],
+                lineHeight: 1.45,
+              }}
+            >
               {repo.description}
             </Text>
           ) : null}
@@ -480,6 +567,7 @@ function ActivitySelectableRow({
   selected: boolean;
   onToggle: () => void;
 }) {
+  const theme = useTheme();
   const range = formatDateRange(activity.start_date, activity.end_date);
   return (
     <S.SelectRow style={{ cursor: 'pointer' }}>
@@ -494,15 +582,35 @@ function ActivitySelectableRow({
         <Flex.Column gap="0.25rem" style={{ flex: 1, minWidth: 0 }}>
           <Flex.Row align="center" gap="0.5rem" wrap="wrap">
             <S.CategoryTag>{activity.category}</S.CategoryTag>
-            <Text margin="0" style={{ fontWeight: 600, fontSize: '0.9375rem', wordBreak: 'break-word' }}>
+            <Text
+              margin="0"
+              style={{
+                ...theme.typography.body2,
+                fontWeight: 600,
+                wordBreak: 'break-word',
+              }}
+            >
               {activity.title}
             </Text>
-            <Text margin="0" color={palette.grey500} style={{ fontSize: '0.8125rem' }}>
+            <Text
+              margin="0"
+              style={{
+                ...theme.typography.body2,
+                color: theme.palette.grey[500],
+              }}
+            >
               {range}
             </Text>
           </Flex.Row>
           {activity.description?.trim() ? (
-            <Text margin="0" color={palette.grey600} style={{ fontSize: '0.8125rem', lineHeight: 1.45 }}>
+            <Text
+              margin="0"
+              style={{
+                ...theme.typography.body2,
+                color: theme.palette.grey[600],
+                lineHeight: 1.45,
+              }}
+            >
               {activity.description}
             </Text>
           ) : null}
@@ -533,32 +641,34 @@ const S = {
     width: 100%;
     flex-wrap: nowrap;
   `,
-  StepCircle: styled('span')<{ $active?: boolean; $muted?: boolean }>`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 2rem;
-    height: 2rem;
-    border-radius: 50%;
-    font-size: 0.875rem;
-    font-weight: 700;
-    flex-shrink: 0;
-    box-sizing: border-box;
-    border: 2px solid
-      ${({ $active }) => ($active ? palette.blue500 : palette.grey300)};
-    background-color: ${({ $active }) => ($active ? palette.blue500 : palette.white)};
-    color: ${({ $active }) => ($active ? palette.white : palette.grey600)};
-    ${({ $muted, $active }) =>
-      $muted && !$active ? `opacity: 0.85;` : ''}
-  `,
-  StepLabel: styled('span')<{ $active?: boolean }>`
-    font-size: 0.6875rem;
-    font-weight: ${({ $active }) => ($active ? 700 : 500)};
-    color: ${({ $active }) => ($active ? palette.blue600 : palette.grey600)};
-    text-align: center;
-    line-height: 1.25;
-    word-break: keep-all;
-  `,
+  StepCircle: styled('span', {
+    shouldForwardProp: p => p !== '$active' && p !== '$muted',
+  })<{ $active?: boolean; $muted?: boolean }>(({ theme, $active, $muted }) => ({
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    width: '2rem',
+    height: '2rem',
+    borderRadius: '50%',
+    ...theme.typography.body2,
+    fontWeight: 700,
+    flexShrink: 0,
+    boxSizing: 'border-box',
+    border: `2px solid ${$active ? palette.blue500 : palette.grey300}`,
+    backgroundColor: $active ? palette.blue500 : palette.white,
+    color: $active ? palette.white : theme.palette.grey[600],
+    ...($muted && !$active ? { opacity: 0.85 } : {}),
+  })),
+  StepLabel: styled('span', {
+    shouldForwardProp: p => p !== '$active',
+  })<{ $active?: boolean }>(({ theme, $active }) => ({
+    ...theme.typography.caption,
+    fontWeight: $active ? 700 : 500,
+    color: $active ? palette.blue600 : theme.palette.text.secondary,
+    textAlign: 'center',
+    lineHeight: 1.25,
+    wordBreak: 'keep-all',
+  })),
   StepConnector: styled('div')`
     flex: 1 1 0;
     min-width: 0.5rem;
@@ -626,42 +736,42 @@ const S = {
     opacity: ${({ $disabled }) => ($disabled ? 0.75 : 1)};
     box-sizing: border-box;
   `,
-  CategoryTag: styled('span')`
-    display: inline-flex;
-    align-items: center;
-    padding: 0.125rem 0.45rem;
-    border-radius: 0.375rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: ${palette.blue600};
-    background-color: ${palette.blue300};
-    flex-shrink: 0;
-  `,
-  CountPill: styled('span')`
-    display: inline-flex;
-    align-items: center;
-    padding: 0.125rem 0.5rem;
-    border-radius: 1rem;
-    font-size: 0.75rem;
-    font-weight: 600;
-    color: ${palette.grey600};
-    background-color: ${palette.grey200};
-  `,
+  CategoryTag: styled('span')(({ theme }) => ({
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '0.125rem 0.45rem',
+    borderRadius: '0.375rem',
+    ...theme.typography.caption,
+    fontWeight: 600,
+    color: palette.blue600,
+    backgroundColor: palette.blue300,
+    flexShrink: 0,
+  })),
+  CountPill: styled('span')(({ theme }) => ({
+    display: 'inline-flex',
+    alignItems: 'center',
+    padding: '0.125rem 0.5rem',
+    borderRadius: '1rem',
+    ...theme.typography.caption,
+    fontWeight: 600,
+    color: theme.palette.grey[600],
+    backgroundColor: palette.grey200,
+  })),
   /** 내 활동 요약 `미리보기` 버튼과 동일한 아웃라인 톤 */
-  BackButton: styled(MuiButton)`
-    min-width: 7.5rem;
-    padding: 0.5rem 1rem 0.5rem 0.75rem;
-    border-color: ${palette.blue400};
-    color: ${palette.blue400};
-    border-radius: 0.75rem;
-    text-transform: none;
-    font-weight: 600;
-    font-size: 0.9375rem;
-    line-height: 1.2;
-    &:hover {
-      border-color: ${palette.blue600};
-      color: ${palette.blue600};
-      background-color: rgba(91, 140, 241, 0.08);
-    }
-  `,
+  BackButton: styled(MuiButton)(({ theme }) => ({
+    minWidth: '7.5rem',
+    padding: '0.5rem 1rem 0.5rem 0.75rem',
+    borderColor: palette.blue400,
+    color: palette.blue400,
+    borderRadius: '0.75rem',
+    textTransform: 'none',
+    fontWeight: 600,
+    fontSize: theme.typography.body1.fontSize,
+    lineHeight: 1.2,
+    '&:hover': {
+      borderColor: palette.blue600,
+      color: palette.blue600,
+      backgroundColor: 'rgba(91, 140, 241, 0.08)',
+    },
+  })),
 };
