@@ -1,4 +1,4 @@
-import { Button, Flex, Text } from '@/components';
+import { Button, Flex, Heading, Text } from '@/components';
 import { QUERY_KEYS } from '@/constants/queryKeys';
 import { palette } from '@/styles/palette';
 import AddIcon from '@mui/icons-material/Add';
@@ -91,9 +91,18 @@ const CvManagementPanel = ({ onClose }: CvManagementPanelProps) => {
         padding="0.75rem 1rem"
       >
         <Flex.Row align="center" gap="0.5rem" wrap="wrap">
-          <Text as="span" bold margin="0" color={palette.nearBlack}>
+          <Heading
+            as="h3"
+            margin="0"
+            color={palette.nearBlack}
+            style={{
+              fontWeight: 700,
+              fontSize: '1.125rem',
+              lineHeight: 1.5,
+            }}
+          >
             이력서 관리
-          </Text>
+          </Heading>
         </Flex.Row>
         <Flex.Row align="center" gap="0.5rem" wrap="wrap">
           <Button
@@ -130,7 +139,7 @@ const CvManagementPanel = ({ onClose }: CvManagementPanelProps) => {
         style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'auto' }}
       >
         <Text
-          as="h3"
+          // as="h5"
           margin="0"
           bold
           color={palette.grey600}
