@@ -9,35 +9,16 @@ import {
 } from '@/constants/routePath';
 import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { useTrackPageView } from '@/service/amplitude/useTrackPageView';
+import useCvWizardStore, { getValidatedWizardStep } from '@/stores/useCvWizardStore';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckIcon from '@mui/icons-material/Check';
 import { useMediaQuery, useTheme } from '@mui/material';
-import {
-  Fragment,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import { Fragment, useCallback, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import { useSummaryContext } from '@/pages/summary/SummaryPage/context/SummaryContext';
 
-import {
-  readCvWizardPendingCvId,
-  readCvWizardPendingPrompt,
-  readCvWizardStep1Selection,
-  readCvWizardStep2Draft,
-  readCvWizardStep4Html,
-  readCvWizardUiStep,
-  writeCvWizardPendingCvId,
-  writeCvWizardPendingPrompt,
-  writeCvWizardStep1Selection,
-  writeCvWizardStep2Draft,
-  writeCvWizardStep4Html,
-  writeCvWizardUiStep,
-} from '../constants/cvWizardStorage';
 import usePatchPortfolioCvMutation from '../hooks/usePatchPortfolioCvMutation';
 import usePostPortfolioCvBuildPromptMutation from '../hooks/usePostPortfolioCvBuildPromptMutation';
 import { repoSelectionId } from '../utils/cvWizardSelection';
@@ -59,20 +40,6 @@ const STEPS = [
 type WizardStep = 1 | 2 | 3 | 4;
 
 type StepVisualState = 'completed' | 'active' | 'upcoming';
-
-function readInitialWizardStep(): WizardStep {
-  const s = readCvWizardUiStep();
-  if (s === 4) {
-    const cvId = readCvWizardPendingCvId();
-    const hasPrompt = Boolean(readCvWizardPendingPrompt()?.trim());
-    if (cvId !== null && hasPrompt) return 4;
-    if (hasPrompt) return 3;
-    return 2;
-  }
-  if (s === 3) return readCvWizardPendingPrompt()?.trim() ? 3 : 2;
-  if (s === 2) return 2;
-  return 1;
-}
 
 function stepVisual(stepN: number, wizardStep: WizardStep): StepVisualState {
   if (wizardStep === 1) return stepN === 1 ? 'active' : 'upcoming';
@@ -104,91 +71,75 @@ const CvGeneratePage = () => {
   const buildPromptMutation = usePostPortfolioCvBuildPromptMutation();
   const patchCvMutation = usePatchPortfolioCvMutation();
 
-  const [wizardStep, setWizardStep] = useState<WizardStep>(readInitialWizardStep);
-  const [generatedPrompt, setGeneratedPrompt] = useState(
-    () => readCvWizardPendingPrompt() ?? '',
-  );
-  const [htmlResultDraft, setHtmlResultDraft] = useState(() => readCvWizardStep4Html());
+  const {
+    wizardStep,
+    setWizardStep,
+    selectedMileageIds,
+    setSelectedMileageIds,
+    selectedActivityIds,
+    setSelectedActivityIds,
+    selectedRepoIds,
+    setSelectedRepoIds,
+    draftTitle,
+    setDraftTitle,
+    jobPosting,
+    setJobPosting,
+    targetPosition,
+    setTargetPosition,
+    additionalNotes,
+    setAdditionalNotes,
+    generatedPrompt,
+    setGeneratedPrompt,
+    htmlResultDraft,
+    setHtmlResultDraft,
+    pendingCvId,
+    setPendingCvId,
+  } = useCvWizardStore();
 
-  const [selectedMileageIds, setSelectedMileageIds] = useState<number[]>(
-    () => readCvWizardStep1Selection()?.selected_mileage_ids ?? [],
-  );
-  const [selectedActivityIds, setSelectedActivityIds] = useState<number[]>(
-    () => readCvWizardStep1Selection()?.selected_activity_ids ?? [],
-  );
-  const [selectedRepoIds, setSelectedRepoIds] = useState<number[]>(
-    () => readCvWizardStep1Selection()?.selected_repo_ids ?? [],
-  );
-
-  const step2DraftInit = useMemo(() => readCvWizardStep2Draft(), []);
-  const [draftTitle, setDraftTitle] = useState(step2DraftInit?.title ?? '');
-  const [jobPosting, setJobPosting] = useState(step2DraftInit?.job_posting ?? '');
-  const [targetPosition, setTargetPosition] = useState(
-    step2DraftInit?.target_position ?? '',
-  );
-  const [additionalNotes, setAdditionalNotes] = useState(
-    step2DraftInit?.additional_notes ?? '',
-  );
+  // 마운트 시 불완전한 저장 상태 보정
+  useEffect(() => {
+    const validStep = getValidatedWizardStep();
+    if (validStep !== useCvWizardStore.getState().wizardStep) {
+      setWizardStep(validStep);
+    }
+  }, [setWizardStep]);
 
   const visibleRepos = useMemo(
     () => (Array.isArray(repos) ? repos.filter(r => r.is_visible) : []),
     [repos],
   );
 
+  // 데이터 로드 후 유효하지 않은 선택값 제거
   useEffect(() => {
     if (mileageItems.length === 0) return;
-    setSelectedMileageIds(prev =>
-      prev.filter(id => mileageItems.some(m => m.id === id)),
-    );
-  }, [mileageItems]);
+    const current = useCvWizardStore.getState().selectedMileageIds;
+    setSelectedMileageIds(current.filter(id => mileageItems.some(m => m.id === id)));
+  }, [mileageItems, setSelectedMileageIds]);
 
   useEffect(() => {
     if (activities.length === 0) return;
-    setSelectedActivityIds(prev =>
-      prev.filter(id => activities.some(a => a.id === id)),
-    );
-  }, [activities]);
+    const current = useCvWizardStore.getState().selectedActivityIds;
+    setSelectedActivityIds(current.filter(id => activities.some(a => a.id === id)));
+  }, [activities, setSelectedActivityIds]);
 
   useEffect(() => {
     if (visibleRepos.length === 0) return;
-    setSelectedRepoIds(prev =>
-      prev.filter(id => visibleRepos.some(r => repoSelectionId(r) === id)),
-    );
-  }, [visibleRepos]);
-
-  useEffect(() => {
-    writeCvWizardStep2Draft({
-      title: draftTitle,
-      job_posting: jobPosting,
-      target_position: targetPosition,
-      additional_notes: additionalNotes,
-    });
-  }, [draftTitle, jobPosting, targetPosition, additionalNotes]);
-
-  useEffect(() => {
-    writeCvWizardPendingPrompt(generatedPrompt);
-  }, [generatedPrompt]);
-
-  useEffect(() => {
-    writeCvWizardUiStep(wizardStep);
-  }, [wizardStep]);
-
-  useEffect(() => {
-    writeCvWizardStep4Html(htmlResultDraft);
-  }, [htmlResultDraft]);
+    const current = useCvWizardStore.getState().selectedRepoIds;
+    setSelectedRepoIds(current.filter(id => visibleRepos.some(r => repoSelectionId(r) === id)));
+  }, [visibleRepos, setSelectedRepoIds]);
 
   useEffect(() => {
     if (wizardStep !== 3) return;
     if (!generatedPrompt.trim()) setWizardStep(2);
-  }, [wizardStep, generatedPrompt]);
+  }, [wizardStep, generatedPrompt, setWizardStep]);
 
   useEffect(() => {
     if (wizardStep !== 4) return;
-    if (readCvWizardPendingCvId() === null) {
+    if (pendingCvId === null) {
       toast.warn('CV 정보가 없습니다. 프롬프트 생성 단계부터 다시 진행해 주세요.');
       setWizardStep(3);
     }
-  }, [wizardStep]);
+  }, [wizardStep, pendingCvId, setWizardStep]);
 
   const getCommittedSelection = useCallback(() => {
     const mileageIds = mileageItems
@@ -219,33 +170,31 @@ const CvGeneratePage = () => {
   }, [navigate]);
 
   const handleNextFromStep1 = useCallback(() => {
-    writeCvWizardStep1Selection(getCommittedSelection());
     setWizardStep(2);
-  }, [getCommittedSelection]);
+  }, [setWizardStep]);
 
   const handlePrevFromStep2 = useCallback(() => {
     setWizardStep(1);
-  }, []);
+  }, [setWizardStep]);
 
   const handlePrevFromStep3 = useCallback(() => {
     setWizardStep(2);
-  }, []);
+  }, [setWizardStep]);
 
   const handleGoToStep4 = useCallback(() => {
-    if (readCvWizardPendingCvId() === null) {
+    if (pendingCvId === null) {
       toast.warn('먼저 프롬프트를 생성해 주세요.');
       return;
     }
     setWizardStep(4);
-  }, []);
+  }, [pendingCvId, setWizardStep]);
 
   const handlePrevFromStep4 = useCallback(() => {
     setWizardStep(3);
-  }, []);
+  }, [setWizardStep]);
 
   const handleSaveHistory = useCallback(() => {
-    const id = readCvWizardPendingCvId();
-    if (id === null) {
+    if (pendingCvId === null) {
       toast.error('저장할 CV를 찾을 수 없습니다.');
       return;
     }
@@ -256,7 +205,7 @@ const CvGeneratePage = () => {
     }
     const html_content = sanitizeCvHtml(raw);
     patchCvMutation.mutate(
-      { id, body: { html_content } },
+      { id: pendingCvId, body: { html_content } },
       {
         onSuccess: () => {
           toast.success('히스토리에 저장되었습니다.');
@@ -272,7 +221,7 @@ const CvGeneratePage = () => {
         },
       },
     );
-  }, [htmlResultDraft, navigate, patchCvMutation]);
+  }, [htmlResultDraft, navigate, patchCvMutation, pendingCvId]);
 
   const handleBuildPrompt = useCallback(() => {
     const tt = draftTitle.trim();
@@ -283,7 +232,6 @@ const CvGeneratePage = () => {
       return;
     }
     const ids = getCommittedSelection();
-    writeCvWizardStep1Selection(ids);
     buildPromptMutation.mutate(
       {
         title: tt,
@@ -297,8 +245,7 @@ const CvGeneratePage = () => {
       {
         onSuccess: data => {
           setGeneratedPrompt(data.prompt);
-          writeCvWizardPendingPrompt(data.prompt);
-          writeCvWizardPendingCvId(data.cv_id);
+          setPendingCvId(data.cv_id);
           setWizardStep(3);
           toast.success('프롬프트가 생성되었습니다.');
         },
@@ -313,6 +260,9 @@ const CvGeneratePage = () => {
     draftTitle,
     getCommittedSelection,
     jobPosting,
+    setGeneratedPrompt,
+    setPendingCvId,
+    setWizardStep,
     targetPosition,
   ]);
 

@@ -1,19 +1,19 @@
 import { GlobalErrorBoundary, GlobalSuspense } from '@/components';
 import { ROUTE_PATH } from '@/constants/routePath';
-import { clearAllCvWizardSession } from '@/pages/cv/constants/cvWizardStorage';
+import useCvWizardStore from '@/stores/useCvWizardStore';
 import { QueryErrorResetBoundary } from '@tanstack/react-query';
 import { useEffect, useRef } from 'react';
 import { Outlet, useLocation } from 'react-router-dom';
 
-/** /cv 가 아닌 경로로 이동하면 CV 생성 마법사 sessionStorage 를 비웁니다. */
-function ClearCvWizardSessionOnLeaveCvRoute() {
+/** /cv 가 아닌 경로로 이동하면 CV 생성 마법사 상태를 초기화합니다. */
+function ClearCvWizardOnLeaveCvRoute() {
   const location = useLocation();
   const prevPathnameRef = useRef<string | null>(null);
 
   useEffect(() => {
     const prev = prevPathnameRef.current;
     if (prev === ROUTE_PATH.cv && location.pathname !== ROUTE_PATH.cv) {
-      clearAllCvWizardSession();
+      useCvWizardStore.getState().resetAll();
     }
     prevPathnameRef.current = location.pathname;
   }, [location.pathname]);
@@ -21,7 +21,7 @@ function ClearCvWizardSessionOnLeaveCvRoute() {
   useEffect(() => {
     return () => {
       if (prevPathnameRef.current === ROUTE_PATH.cv) {
-        clearAllCvWizardSession();
+        useCvWizardStore.getState().resetAll();
       }
     };
   }, []);
@@ -35,7 +35,7 @@ const ErrorResetBoundary = () => {
       <GlobalErrorBoundary>
         <GlobalSuspense>
           <>
-            <ClearCvWizardSessionOnLeaveCvRoute />
+            <ClearCvWizardOnLeaveCvRoute />
             <Outlet />
           </>
         </GlobalSuspense>
