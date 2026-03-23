@@ -231,7 +231,7 @@ const S = {
     height: 6px;
     border-radius: 3px;
     overflow: hidden;
-    background-color: ${palette.grey200};
+    background-color: ${palette.blue300};
   `,
   CardBarFill: styled('div')`
     height: 100%;
