@@ -21,9 +21,24 @@ export const CvGeneratePageS = {
     flex-direction: row;
     align-items: flex-start;
     justify-content: space-between;
-    gap: 0.25rem;
+    gap: 0.125rem;
     width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
     flex-wrap: nowrap;
+    @media (min-width: 901px) {
+      gap: 0.25rem;
+    }
+  `,
+  StepItemColumn: styled(Flex.Column)`
+    align-items: center;
+    gap: 0.35rem;
+    flex: 1 1 0;
+    min-width: 0;
+    @media (min-width: 901px) {
+      flex: 0 0 auto;
+      width: 4.75rem;
+    }
   `,
   StepCircle: styled('span', {
     shouldForwardProp: p => p !== '$active' && p !== '$muted' && p !== '$completed',
@@ -38,6 +53,7 @@ export const CvGeneratePageS = {
         height: '2rem',
         borderRadius: '50%',
         ...theme.typography.body2,
+        fontSize: '0.8125rem',
         fontWeight: 700,
         flexShrink: 0,
         boxSizing: 'border-box',
@@ -45,6 +61,11 @@ export const CvGeneratePageS = {
         backgroundColor: filled ? palette.blue500 : palette.white,
         color: filled ? palette.white : theme.palette.grey[600],
         ...($muted && !filled ? { opacity: 0.85 } : {}),
+        '@media (max-width: 900px)': {
+          width: '1.625rem',
+          height: '1.625rem',
+          fontSize: '0.6875rem',
+        },
       };
     },
   ),
@@ -57,14 +78,24 @@ export const CvGeneratePageS = {
     textAlign: 'center',
     lineHeight: 1.25,
     wordBreak: 'keep-all',
+    width: '100%',
+    maxWidth: '100%',
+    '@media (max-width: 900px)': {
+      fontSize: '0.625rem',
+      lineHeight: 1.2,
+    },
   })),
   StepConnector: styled('div')`
     flex: 1 1 0;
-    min-width: 0.5rem;
+    min-width: 0;
     height: 2px;
-    margin-top: 1rem;
+    margin-top: 0.8125rem;
     align-self: flex-start;
     background-color: ${palette.grey200};
+    @media (min-width: 901px) {
+      min-width: 0.5rem;
+      margin-top: 1rem;
+    }
   `,
   HighlightSection: styled('div')`
     display: flex;

@@ -381,11 +381,7 @@ const CvGeneratePage = () => {
             const vs = stepVisual(step.n, wizardStep);
             return (
               <Fragment key={step.n}>
-                <Flex.Column
-                  align="center"
-                  gap="0.35rem"
-                  style={{ width: '4.75rem', flexShrink: 0 }}
-                >
+                <S.StepItemColumn align="center">
                   <S.StepCircle
                     $active={vs === 'active'}
                     $completed={vs === 'completed'}
@@ -393,7 +389,7 @@ const CvGeneratePage = () => {
                     aria-current={vs === 'active' ? 'step' : undefined}
                   >
                     {vs === 'completed' ? (
-                      <CheckIcon sx={{ fontSize: 18 }} aria-hidden />
+                      <CheckIcon sx={{ fontSize: 14 }} aria-hidden />
                     ) : (
                       step.n
                     )}
@@ -401,7 +397,7 @@ const CvGeneratePage = () => {
                   <S.StepLabel $active={vs === 'active'} $completed={vs === 'completed'}>
                     {step.label}
                   </S.StepLabel>
-                </Flex.Column>
+                </S.StepItemColumn>
                 {idx < STEPS.length - 1 ? <S.StepConnector aria-hidden /> : null}
               </Fragment>
             );
