@@ -27,6 +27,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
 import { CvManagementPanel } from '@/pages/cv';
+import useGetGitHubStatusQuery from '@/pages/profile/hooks/useGetGitHubStatusQuery';
 import { putPortfolioSettings } from '../apis/portfolio';
 import {
   SECTION_TITLES,
@@ -50,25 +51,6 @@ import {
   PROMPT_QUALITY_SECTION_HINTS,
   usePortfolioPromptProgress,
 } from './utils/portfolioPromptProgress';
-
-const GITHUB_STORAGE_KEY = 'github-storage';
-function getGithubUsernameFromStorage(): string | null {
-  try {
-    const raw =
-      typeof window !== 'undefined'
-        ? localStorage.getItem(GITHUB_STORAGE_KEY)
-        : null;
-    if (!raw) return null;
-    const data = JSON.parse(raw) as {
-      state?: { connected?: boolean; githubName?: string | null };
-      githubUsername?: string;
-    } | null;
-    const name = data?.state?.githubName ?? data?.githubUsername;
-    return typeof name === 'string' && name.trim() ? name.trim() : null;
-  } catch {
-    return null;
-  }
-}
 
 /** MUI SvgIcon은 Button `icon` 타입과 달라 래핑 */
 const ResumePaperIcon: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
@@ -109,7 +91,8 @@ const SummaryEditPage = () => {
     next.delete(SUMMARY_CV_PANEL_QUERY_KEY);
     setSearchParams(next, { replace: true });
   }, [searchParams, setSearchParams]);
-  const hasGithub = getGithubUsernameFromStorage() != null;
+  const { data: githubStatus } = useGetGitHubStatusQuery();
+  const hasGithub = githubStatus?.connected === true && !!githubStatus?.githubUsername;
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
   const techStackRef = useRef<TechStackSectionContentHandle>(null);
   const activitiesRef = useRef<ActivitiesSectionContentHandle>(null);
