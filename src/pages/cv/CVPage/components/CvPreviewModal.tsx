@@ -387,9 +387,14 @@ const CvPreviewModal = ({
                     rows={14}
                   />
                 ) : showHtmlPreview ? (
-                  <S.HtmlRenderBox
-                    dangerouslySetInnerHTML={{ __html: htmlRaw }}
-                  />
+                  <S.HtmlPreviewShell>
+                    {/* iframe으로 격리: 삽입 HTML의 <style>이 앱 전체 html/body에 적용되지 않음 */}
+                    <iframe
+                      title="HTML 미리보기"
+                      srcDoc={htmlRaw}
+                      sandbox="allow-same-origin"
+                    />
+                  </S.HtmlPreviewShell>
                 ) : (
                   <S.PreWrapScrollable>
                     {htmlRaw.trim() ? htmlRaw : '—'}
@@ -471,16 +476,20 @@ const S = {
     border: 1px solid ${palette.grey200};
     font-family: ui-monospace, monospace;
   `,
-  HtmlRenderBox: styled('div')`
-    padding: 0.75rem 1rem;
-    font-size: 0.875rem;
-    line-height: 1.55;
-    color: ${palette.nearBlack};
-    background-color: ${palette.white};
+  HtmlPreviewShell: styled('div')`
     border-radius: 0.5rem;
     border: 1px solid ${palette.grey200};
-    word-break: break-word;
+    overflow: hidden;
+    background-color: ${palette.white};
     min-height: 3rem;
+    & > iframe {
+      display: block;
+      width: 100%;
+      min-height: min(42vh, 400px);
+      height: min(50vh, 480px);
+      border: none;
+      vertical-align: top;
+    }
   `,
   Pill: styled('span')`
     display: inline-flex;
