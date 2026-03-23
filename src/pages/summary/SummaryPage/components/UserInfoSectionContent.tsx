@@ -139,35 +139,42 @@ const UserInfoSectionContent = ({ readOnly = false }: UserInfoSectionContentProp
           )}
         </S.AvatarWrap>
         <Flex.Column gap="0.375rem" style={{ minWidth: 0, flex: 1 }}>
-          <Text
-            style={{
-              fontWeight: 700,
-              fontSize: '1.5rem',
-              lineHeight: 1.4,
-              color: palette.nearBlack,
-              margin: 0,
-            }}
+          <Flex.Row
+            align="center"
+            gap="0.5rem"
+            wrap="wrap"
+            style={{ minWidth: 0 }}
           >
-            {name}
-          </Text>
+            <Text
+              style={{
+                fontWeight: 700,
+                fontSize: '1.5rem',
+                lineHeight: 1.4,
+                color: palette.nearBlack,
+                margin: 0,
+                minWidth: 0,
+                wordBreak: 'break-word',
+              }}
+            >
+              {name}
+            </Text>
+            {!readOnly && !isEditingBio ? (
+              <S.EditBioButton type="button" onClick={handleStartEditBio}>
+                <EditIcon sx={{ fontSize: 18 }} />
+                수정
+              </S.EditBioButton>
+            ) : null}
+          </Flex.Row>
           {!isEditingBio ? (
-            <Flex.Row align="center" gap="0.5rem" wrap="wrap">
-              <Text
-                style={{
-                  color: palette.grey600,
-                  fontSize: '1.125rem',
-                  margin: 0,
-                }}
-              >
-                {bio || '-'}
-              </Text>
-              {!readOnly && (
-                <S.EditBioButton type="button" onClick={handleStartEditBio}>
-                  <EditIcon sx={{ fontSize: 18 }} />
-                  수정
-                </S.EditBioButton>
-              )}
-            </Flex.Row>
+            <Text
+              style={{
+                color: palette.grey600,
+                fontSize: '1.125rem',
+                margin: 0,
+              }}
+            >
+              {bio || '-'}
+            </Text>
           ) : !readOnly ? (
             <Flex.Column gap="0.5rem" style={{ width: '100%' }}>
               <S.BioTextarea

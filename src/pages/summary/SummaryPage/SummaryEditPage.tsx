@@ -7,6 +7,7 @@ import {
 import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { palette } from '@/styles/palette';
 import { useTrackPageView } from '@/service/amplitude/useTrackPageView';
+import AddIcon from '@mui/icons-material/Add';
 import CodeIcon from '@mui/icons-material/Code';
 import DescriptionIcon from '@mui/icons-material/Description';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
@@ -72,6 +73,10 @@ function getGithubUsernameFromStorage(): string | null {
 /** MUI SvgIcon은 Button `icon` 타입과 달라 래핑 */
 const ResumePaperIcon: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
   <DescriptionIcon sx={{ fontSize: 20 }} />
+);
+
+const AddPlusIcon: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
+  <AddIcon sx={{ fontSize: 20 }} />
 );
 
 const SECTION_ICONS: Record<DraggableSectionKey, React.ReactNode> = {
@@ -201,8 +206,8 @@ const SummaryEditPage = () => {
     <Flex.Column margin="1rem" gap="1.5rem">
       <S.TopRow align="center" justify="space-between" gap="1rem" wrap="wrap">
         <S.GuideText>
-          포트폴리오를 제작하기 위한 페이지입니다. 아래 항목을 통해
-          포트폴리오가 생성됩니다.
+          이력서를 제작하기 위한 페이지입니다. 아래 항목을 통해
+          이력서가 생성됩니다.
         </S.GuideText>
         <S.ButtonGroup gap="0.5rem">
           <S.PreviewButton
@@ -264,6 +269,8 @@ const SummaryEditPage = () => {
                         variant="outlined"
                         color="blue"
                         size="medium"
+                        icon={AddPlusIcon}
+                        iconPosition="start"
                         onClick={() => techStackRef.current?.openAddDialog()}
                       />
                     )
@@ -273,6 +280,8 @@ const SummaryEditPage = () => {
                         variant="outlined"
                         color="blue"
                         size="medium"
+                        icon={AddPlusIcon}
+                        iconPosition="start"
                         onClick={() =>
                           activitiesRef.current?.openAddActivity()
                         }
