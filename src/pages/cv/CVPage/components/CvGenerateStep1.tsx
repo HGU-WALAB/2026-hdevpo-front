@@ -447,6 +447,22 @@ function ActivitySelectableRow({
               {activity.description}
             </Text>
           ) : null}
+          {activity.url?.trim() ? (
+            <S.ActivityUrlLink
+              href={activity.url.trim()}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              {activity.url.trim()}
+            </S.ActivityUrlLink>
+          ) : null}
+          {activity.tags && activity.tags.length > 0 ? (
+            <Flex.Row gap="0.375rem" wrap="wrap" style={{ width: '100%' }}>
+              {activity.tags.map(tag => (
+                <S.TagChip key={`${activity.id}-${tag}`}>{tag}</S.TagChip>
+              ))}
+            </Flex.Row>
+          ) : null}
         </Flex.Column>
       </Flex.Row>
     </S.SelectRow>

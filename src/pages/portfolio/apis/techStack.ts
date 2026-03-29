@@ -28,7 +28,7 @@ export const getTechStack = async () => {
 };
 
 export const putTechStack = async (body: TechStackPutRequest) => {
-  const response = await http.put<TechStackResponse>(
+  const response = await http.put<TechStackPutRequest, TechStackResponse>(
     ENDPOINT.PORTFOLIO_TECH_STACK,
     body,
   );

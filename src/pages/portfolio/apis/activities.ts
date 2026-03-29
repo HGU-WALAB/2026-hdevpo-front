@@ -11,6 +11,8 @@ export interface ActivityApiItem {
   /** 사용자 정의 카테고리 문자열 */
   category: string;
   display_order: number;
+  url?: string;
+  tags?: string[];
 }
 
 export interface ActivitiesResponse {
@@ -23,15 +25,30 @@ export interface ActivityPostRequest {
   start_date: string;
   end_date: string;
   category: string;
+  url?: string;
+  tags?: string[];
 }
 
-/** PATCH /api/portfolio/activities/{id} 요청 본문 */
-export interface ActivityPatchByIdRequest {
+/** PUT /api/portfolio/activities/{id} — 본문 전체 덮어쓰기 */
+export interface ActivityPutByIdRequest {
   title: string;
   description: string;
   start_date: string;
   end_date: string;
   category: string;
+  url: string;
+  tags: string[];
+}
+
+/** PATCH /api/portfolio/activities/{id} — null이 아닌 필드만 */
+export interface ActivityPatchByIdRequest {
+  title?: string;
+  description?: string;
+  start_date?: string;
+  end_date?: string;
+  category?: string;
+  url?: string | null;
+  tags?: string[] | null;
 }
 
 /** PATCH /api/portfolio/activities 일괄 수정 요청 한 건 */
@@ -42,6 +59,8 @@ export interface ActivityPatchItem {
   start_date: string;
   end_date: string;
   category: string;
+  url?: string;
+  tags?: string[];
 }
 
 /** 활동 목록 조회. `category` 쿼리 생략 시 전체 */
@@ -74,7 +93,16 @@ export const patchActivities = async (body: ActivityPatchItem[]) => {
   return response;
 };
 
-/** 활동 단건 수정 PATCH /api/portfolio/activities/{id} */
+/** 활동 단건 전체 수정 PUT /api/portfolio/activities/{id} */
+export const putActivityById = async (id: number, body: ActivityPutByIdRequest) => {
+  const response = await http.put<ActivityPutByIdRequest, ActivityApiItem>(
+    `${ENDPOINT.PORTFOLIO_ACTIVITIES}/${id}`,
+    body,
+  );
+  return response;
+};
+
+/** 활동 단건 일부 수정 PATCH /api/portfolio/activities/{id} */
 export const patchActivityById = async (
   id: number,
   body: ActivityPatchByIdRequest,

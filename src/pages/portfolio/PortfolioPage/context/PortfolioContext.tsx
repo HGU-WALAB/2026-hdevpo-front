@@ -17,8 +17,8 @@ import {
   getPortfolioSettings,
   getTechStack,
   getUserInfo,
-  patchActivityById,
   postActivity,
+  putActivityById,
   putTechStack,
 } from '../../apis/portfolio';
 import type {
@@ -84,6 +84,24 @@ export interface ActivityItem {
   category: string;
   /** API 응답용. 0이 맨 위. 로컬 추가분은 없을 수 있음 */
   display_order?: number;
+  /** 관련 링크 */
+  url: string;
+  /** 태그 목록 */
+  tags: string[];
+}
+
+function normalizeActivityTags(raw: string[] | undefined): string[] {
+  if (!raw?.length) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const t of raw) {
+    const s = String(t).trim();
+    if (s && !seen.has(s)) {
+      seen.add(s);
+      out.push(s);
+    }
+  }
+  return out;
 }
 
 function apiActivityToItem(
@@ -97,6 +115,8 @@ function apiActivityToItem(
     end_date: a.end_date,
     category: (a.category ?? '').trim() || '기타',
     display_order: a.display_order,
+    url: (a.url ?? '').trim(),
+    tags: normalizeActivityTags(a.tags),
   };
 }
 
@@ -167,7 +187,7 @@ export interface PortfolioState {
   deleteActivity: (id: number) => void;
   /** 새 활동(id<0) 저장 버튼 클릭 시 POST. 실패 시 throw */
   postNewActivity: (item: ActivityItem) => Promise<void>;
-  /** 기존 활동(id>0) 저장 버튼 클릭 시 PUT. 실패 시 throw */
+  /** 기존 활동(id>0) 저장 시 PUT 전체 덮어쓰기. 실패 시 throw */
   saveExistingActivity: (item: ActivityItem) => Promise<void>;
   activitiesNextId: number;
   setActivitiesNextId: (v: number | ((p: number) => number)) => void;
@@ -355,12 +375,15 @@ export const PortfolioProvider = ({ children }: PortfolioProviderProps) => {
   const postNewActivity = useCallback(async (item: ActivityItem) => {
     if (item.id >= 0) return;
     try {
+      const tags = normalizeActivityTags(item.tags);
       const posted = await postActivity({
         title: item.title,
         description: item.description,
         start_date: item.start_date,
         end_date: item.end_date,
         category: item.category.trim() || '기타',
+        url: (item.url ?? '').trim() || undefined,
+        tags: tags.length > 0 ? tags : undefined,
       });
       setActivities(prev =>
         prev.map(a => (a.id === item.id ? apiActivityToItem(posted) : a)),
@@ -374,12 +397,14 @@ export const PortfolioProvider = ({ children }: PortfolioProviderProps) => {
   const saveExistingActivity = useCallback(async (item: ActivityItem) => {
     if (item.id <= 0) return;
     try {
-      const updated = await patchActivityById(item.id, {
+      const updated = await putActivityById(item.id, {
         title: item.title,
-        description: item.description,
+        description: item.description ?? '',
         start_date: item.start_date,
         end_date: item.end_date,
         category: item.category.trim() || '기타',
+        url: (item.url ?? '').trim(),
+        tags: normalizeActivityTags(item.tags),
       });
       setActivities(prev =>
         prev.map(a => (a.id === item.id ? apiActivityToItem(updated) : a)),

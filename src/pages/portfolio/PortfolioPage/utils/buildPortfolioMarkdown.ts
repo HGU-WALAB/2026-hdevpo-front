@@ -119,7 +119,12 @@ function sectionActivities(activities: ActivityItem[]): string {
   const blocks = groups.map(([cat, groupItems]) => {
     const lines = groupItems.map(a => {
       const desc = a.description ? ` · ${a.description}` : '';
-      return `- **${escapeMarkdown(a.title)}** (${a.start_date} ~ ${a.end_date})${escapeMarkdown(desc)}`;
+      const urlPart = a.url?.trim()
+        ? ` · ${escapeMarkdown(a.url.trim())}`
+        : '';
+      const tagsPart =
+        a.tags?.length ? ` · #${a.tags.map(escapeMarkdown).join(' #')}` : '';
+      return `- **${escapeMarkdown(a.title)}** (${a.start_date} ~ ${a.end_date})${escapeMarkdown(desc)}${urlPart}${tagsPart}`;
     });
     return `### ${escapeMarkdown(cat)}\n\n${lines.join('\n')}`;
   });

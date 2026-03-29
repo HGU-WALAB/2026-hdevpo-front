@@ -167,6 +167,28 @@ export const CvGeneratePageS = {
     backgroundColor: palette.blue300,
     flexShrink: 0,
   })),
+  ActivityUrlLink: styled('a')`
+    display: inline-block;
+    max-width: 100%;
+    font-size: 0.8125rem;
+    color: ${palette.blue500};
+    text-decoration: underline;
+    word-break: break-all;
+    &:hover {
+      color: ${palette.blue600};
+    }
+  `,
+  TagChip: styled('span')`
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    background-color: ${palette.grey100};
+    color: ${palette.grey600};
+    border: 1px solid ${palette.grey200};
+    font-size: 0.75rem;
+    font-weight: 500;
+  `,
   CountPill: styled('span')(({ theme }) => ({
     display: 'inline-flex',
     alignItems: 'center',

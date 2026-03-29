@@ -11,6 +11,10 @@ export const INPUT_MAX_LENGTH = {
   ACTIVITY_CATEGORY: 40,
   /** 활동 설명 */
   ACTIVITY_DESCRIPTION: 300,
+  /** 활동 관련 URL */
+  ACTIVITY_URL: 2048,
+  /** 활동 태그(쉼표로 구분해 입력하는 문자열 전체) */
+  ACTIVITY_TAGS_INPUT: 400,
   /** 마일리지 추가 설명 */
   MILEAGE_ADDITIONAL_INFO: 300,
   /** 기술 스택 태그 (짧은 키워드이므로 별도 제한) */
