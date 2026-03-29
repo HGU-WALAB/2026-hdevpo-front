@@ -124,8 +124,8 @@ export const DRAWER_MENU_ENTRIES: DrawerMenuEntry[] = [
       },
       {
         id: 'cv-generate',
-        text: '이력서 생성',
-        shortText: '이력서',
+        text: '포트폴리오 생성',
+        shortText: '포폴',
         route: ROUTE_PATH.cv,
         icon: EditIcon,
         selectedIcon: EditIcon,
