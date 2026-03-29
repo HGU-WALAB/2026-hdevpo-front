@@ -1,18 +1,25 @@
 import { ENDPOINT } from '@/apis/endPoint';
 import { http } from '@/apis/http';
 
-export interface TechStackItem {
+/** 도메인 내 기술 한 줄 (GET/PUT 공통) */
+export interface TechStackSkill {
   name: string;
-  domain: string;
   level: number;
 }
 
+export interface TechStackDomain {
+  id?: number;
+  name: string;
+  order_index: number;
+  tech_stacks: TechStackSkill[];
+}
+
 export interface TechStackResponse {
-  tech_stack: TechStackItem[];
+  domains: TechStackDomain[];
 }
 
 export interface TechStackPutRequest {
-  tech_stack: TechStackItem[];
+  domains: TechStackDomain[];
 }
 
 export const getTechStack = async () => {

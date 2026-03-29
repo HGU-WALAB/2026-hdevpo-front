@@ -3,7 +3,7 @@ import {
   INPUT_DATA_LABEL,
   PORTFOLIO_PROMPT_TEMPLATE,
 } from '../../constants/promptTemplate';
-import type { TechStackItem, UserInfoResponse } from '../../apis/portfolio';
+import type { TechStackDomain, UserInfoResponse } from '../../apis/portfolio';
 import type {
   ActivityItem,
   MileageItem,
@@ -12,15 +12,15 @@ import type {
 import { SECTION_TITLES } from '../../constants/constants';
 import { groupActivitiesByCategory } from '../../utils/activityGrouping';
 import {
-  getTechLevelBand,
-  getTechLevelBandLabel,
+  levelToProficiencyTier,
+  PROFICIENCY_TIER_LABELS,
 } from '../../utils/techStackLevel';
 
 /** 미리보기에 보여지는 데이터만 사용해 마크다운 문자열 생성 */
 export interface BuildPortfolioMarkdownParams {
   userInfo: UserInfoResponse | null;
   sectionOrder: DraggableSectionKey[];
-  techStackItems: TechStackItem[];
+  techStackDomains: TechStackDomain[];
   repos: RepoItem[];
   mileageItems: MileageItem[];
   activities: ActivityItem[];
@@ -69,13 +69,22 @@ function sectionUserInfo(userInfo: UserInfoResponse | null): string {
   return lines.join('\n');
 }
 
-function sectionTechStack(items: TechStackItem[]): string {
-  if (items.length === 0) return '';
+function sectionTechStack(domains: TechStackDomain[]): string {
+  const sorted = [...domains].sort((a, b) => a.order_index - b.order_index);
+  const lines: string[] = [];
+  for (const d of sorted) {
+    const domainName = d.name.trim() || '기타';
+    for (const t of d.tech_stacks ?? []) {
+      const name = (t.name ?? '').trim();
+      if (name === '') continue;
+      const tier = PROFICIENCY_TIER_LABELS[levelToProficiencyTier(t.level)];
+      lines.push(
+        `- **${escapeMarkdown(domainName)}** · ${escapeMarkdown(name)} (${tier})`,
+      );
+    }
+  }
+  if (lines.length === 0) return '';
   const title = SECTION_TITLES.tech;
-  const lines = items.map(i => {
-    const band = getTechLevelBandLabel(getTechLevelBand(i.level));
-    return `- **${escapeMarkdown(i.domain.trim() || '기타')}** · ${escapeMarkdown(i.name)} (${i.level}%, ${band})`;
-  });
   return `## ${escapeMarkdown(title)}\n\n${lines.join('\n')}`;
 }
 
@@ -121,7 +130,7 @@ const SECTION_BUILDERS: Record<
   DraggableSectionKey,
   (params: BuildPortfolioMarkdownParams) => string
 > = {
-  tech: p => sectionTechStack(p.techStackItems),
+  tech: p => sectionTechStack(p.techStackDomains),
   repo: p => sectionRepos(p.repos),
   mileage: p => sectionMileage(p.mileageItems),
   activities: p => sectionActivities(p.activities),

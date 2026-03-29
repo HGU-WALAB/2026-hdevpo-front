@@ -3,8 +3,8 @@ import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { palette } from '@/styles/palette';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
-import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 import TextFieldsOutlinedIcon from '@mui/icons-material/TextFieldsOutlined';
+import ViewWeekOutlinedIcon from '@mui/icons-material/ViewWeekOutlined';
 import {
   Dialog,
   DialogActions,
@@ -20,19 +20,21 @@ import {
   useImperativeHandle,
   useMemo,
   useState,
-  type CSSProperties,
   type FunctionComponent,
   type SVGProps,
 } from 'react';
 
-import type { TechStackItem } from '../../apis/portfolio';
+import type { TechStackDomain, TechStackSkill } from '../../apis/portfolio';
 import { INPUT_MAX_LENGTH } from '../../constants/inputLimits';
+import { nextTempDomainId } from '../../utils/techStackDomains';
 import {
-  clampTechLevel,
-  getLevelTagPair,
-  getLevelTierLegend,
-  getTechLevelBand,
-  getTechLevelBandLabel,
+  collectVisibleProficiencyTiers,
+  getProficiencyTierLegend,
+  getProficiencyTierTagPair,
+  levelToProficiencyTier,
+  type ProficiencyTierIndex,
+  PROFICIENCY_TIER_LABELS,
+  tierToRepresentativeLevel,
 } from '../../utils/techStackLevel';
 import { usePortfolioContext } from '../context/PortfolioContext';
 
@@ -41,43 +43,56 @@ interface TechStackSectionContentProps {
 }
 
 export type TechStackSectionContentHandle = {
-  openAddDialog: () => void;
+  openAddDomainDialog: () => void;
 };
-
-type GroupedEntry = { item: TechStackItem; flatIndex: number };
 
 const AddPlusButtonIcon: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
   <AddIcon sx={{ fontSize: 20 }} />
 );
 
-function groupByDomainWithIndex(
-  items: TechStackItem[],
-): [string, GroupedEntry[]][] {
-  const map = new Map<string, GroupedEntry[]>();
-  items.forEach((item, flatIndex) => {
-    const d = item.domain.trim() || '기타';
-    if (!map.has(d)) map.set(d, []);
-    map.get(d)!.push({ item, flatIndex });
+function sortDomains(domains: TechStackDomain[]): TechStackDomain[] {
+  return [...domains].sort((a, b) => a.order_index - b.order_index);
+}
+
+/** 칼럼별 스택 원본 인덱스 유지 (삭제용) */
+function bucketStacksByTier(stacks: TechStackSkill[]) {
+  const buckets: { skill: TechStackSkill; stackIndex: number }[][] = Array.from(
+    { length: PROFICIENCY_TIER_LABELS.length },
+    () => [],
+  );
+  stacks.forEach((skill, stackIndex) => {
+    const tier = levelToProficiencyTier(skill.level);
+    buckets[tier].push({ skill, stackIndex });
   });
-  for (const [, arr] of map) {
-    arr.sort((a, b) => a.item.name.localeCompare(b.item.name, 'ko'));
-  }
-  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0], 'ko'));
+  buckets.forEach(b =>
+    b.sort((a, c) => a.skill.name.localeCompare(c.skill.name, 'ko')),
+  );
+  return buckets;
+}
+
+/** 표에 그리는 칼럼(숙련도 단계)에 맞춰 버킷만 추림 */
+function bucketStacksForVisible(
+  stacks: TechStackSkill[],
+  visibleTiers: ProficiencyTierIndex[],
+) {
+  const full = bucketStacksByTier(stacks);
+  return visibleTiers.map(ti => full[ti]);
 }
 
 function NotionTag({
   item,
-  flatIndex,
+  stackIndex,
   readOnly,
   onRemove,
 }: {
-  item: TechStackItem;
-  flatIndex: number;
+  item: TechStackSkill;
+  stackIndex: number;
   readOnly: boolean;
-  onRemove: (index: number) => void;
+  onRemove: (stackIndex: number) => void;
 }) {
-  const pair = getLevelTagPair(item.level);
-  const lv = clampTechLevel(item.level);
+  const tier = levelToProficiencyTier(item.level);
+  const pair = getProficiencyTierTagPair(tier);
+  const tierLabel = PROFICIENCY_TIER_LABELS[tier];
 
   return (
     <S.NotionTag
@@ -87,14 +102,14 @@ function NotionTag({
         color: pair.fg,
         border: `1px solid ${pair.border}`,
       }}
-      title={`숙련도 ${lv}%`}
+      title={tierLabel}
     >
       <S.TagLabel>{item.name}</S.TagLabel>
       {!readOnly && (
         <S.TagRemove
           type="button"
           $fg={pair.fg}
-          onClick={() => onRemove(flatIndex)}
+          onClick={() => onRemove(stackIndex)}
           aria-label={`${item.name} 삭제`}
         >
           <CloseIcon sx={{ fontSize: 13 }} />
@@ -110,52 +125,130 @@ const TechStackSectionContent = forwardRef<
 >(function TechStackSectionContent({ readOnly = false }, ref) {
   const theme = useTheme();
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
-  const { techStackItems, setTechStackItems } = usePortfolioContext();
+  const { techStackDomains, setTechStackDomains } = usePortfolioContext();
 
-  const [addOpen, setAddOpen] = useState(false);
-  const [domainInput, setDomainInput] = useState('');
-  const [nameInput, setNameInput] = useState('');
-  const [levelInput, setLevelInput] = useState(50);
+  const [addDomainOpen, setAddDomainOpen] = useState(false);
+  const [domainNameInput, setDomainNameInput] = useState('');
 
-  const groupedRows = useMemo(
-    () => groupByDomainWithIndex(techStackItems),
-    [techStackItems],
+  const [addSkillOpen, setAddSkillOpen] = useState(false);
+  const [skillDomainId, setSkillDomainId] = useState<number | null>(null);
+  const [skillNameInput, setSkillNameInput] = useState('');
+  const [skillTier, setSkillTier] = useState<ProficiencyTierIndex>(2);
+
+  const sortedDomains = useMemo(
+    () => sortDomains(techStackDomains),
+    [techStackDomains],
   );
+
+  const visibleTierIndices = useMemo(
+    () => collectVisibleProficiencyTiers(sortedDomains),
+    [sortedDomains],
+  );
+
+  const tableGridColumns = useMemo(() => {
+    const tierPart =
+      visibleTierIndices.length > 0
+        ? visibleTierIndices.map(() => 'minmax(6rem, 1fr)').join(' ')
+        : '';
+    const actionPart = readOnly ? '' : ' minmax(6.75rem, 7.5rem)';
+    return tierPart
+      ? `minmax(8.75rem, 10rem) ${tierPart}${actionPart}`
+      : `minmax(8.75rem, 10rem)${actionPart}`;
+  }, [visibleTierIndices, readOnly]);
+
+  const tableMinWidthRem = useMemo(() => {
+    const n = visibleTierIndices.length;
+    const core =
+      10 +
+      n * (n > 0 ? 6 : 0) +
+      (readOnly ? 0 : 7.5);
+    return Math.max(18, core);
+  }, [visibleTierIndices.length, readOnly]);
 
   useEffect(() => {
-    if (!addOpen) {
-      setDomainInput('');
-      setNameInput('');
-      setLevelInput(50);
-    }
-  }, [addOpen]);
+    if (!addDomainOpen) setDomainNameInput('');
+  }, [addDomainOpen]);
 
-  const handleRemove = useCallback(
-    (flatIndex: number) => {
-      setTechStackItems(prev => prev.filter((_, i) => i !== flatIndex));
+  useEffect(() => {
+    if (!addSkillOpen) {
+      setSkillDomainId(null);
+      setSkillNameInput('');
+      setSkillTier(2);
+    }
+  }, [addSkillOpen]);
+
+  const openSkillDialog = useCallback((domainId: number) => {
+    if (readOnly) return;
+    setSkillDomainId(domainId);
+    setAddSkillOpen(true);
+  }, [readOnly]);
+
+  const handleRemoveSkill = useCallback(
+    (domainId: number, stackIndex: number) => {
+      setTechStackDomains(prev =>
+        prev.map(d =>
+          d.id === domainId
+            ? {
+                ...d,
+                tech_stacks: d.tech_stacks.filter((_, i) => i !== stackIndex),
+              }
+            : d,
+        ),
+      );
     },
-    [setTechStackItems],
+    [setTechStackDomains],
   );
 
-  const handleAddSubmit = useCallback(() => {
-    const name = nameInput.trim();
+  const handleDeleteDomain = useCallback(
+    (domainId: number) => {
+      setTechStackDomains(prev => {
+        const filtered = prev.filter(d => d.id !== domainId);
+        return filtered.map((d, i) => ({ ...d, order_index: i }));
+      });
+    },
+    [setTechStackDomains],
+  );
+
+  const handleAddDomainSubmit = useCallback(() => {
+    const name = domainNameInput.trim();
     if (name === '') return;
-    const domain = domainInput.trim() || '기타';
-    const level = clampTechLevel(levelInput);
-    setTechStackItems(prev => [...prev, { name, domain, level }]);
-    setAddOpen(false);
-  }, [domainInput, nameInput, levelInput, setTechStackItems]);
+    setTechStackDomains(prev => [
+      ...prev.map((d, i) => ({ ...d, order_index: i })),
+      {
+        id: nextTempDomainId(prev),
+        name,
+        order_index: prev.length,
+        tech_stacks: [],
+      },
+    ]);
+    setAddDomainOpen(false);
+  }, [domainNameInput, setTechStackDomains]);
 
-  const levelBand = getTechLevelBand(levelInput);
-  const previewTagPair = getLevelTagPair(levelInput);
+  const handleAddSkillSubmit = useCallback(() => {
+    const name = skillNameInput.trim();
+    if (name === '' || skillDomainId == null) return;
+    const level = tierToRepresentativeLevel(skillTier);
+    setTechStackDomains(prev =>
+      prev.map(d =>
+        d.id === skillDomainId
+          ? { ...d, tech_stacks: [...d.tech_stacks, { name, level }] }
+          : d,
+      ),
+    );
+    setAddSkillOpen(false);
+  }, [skillDomainId, skillNameInput, skillTier, setTechStackDomains]);
 
-  const levelLegend = useMemo(() => getLevelTierLegend(), []);
+  /** 표 칼럼은 데이터 있는 단계만 쓰더라도, 색상 기준 범례는 5단계 전부 표시 */
+  const levelLegend = useMemo(() => getProficiencyTierLegend(), []);
+
+  const skillDomainName =
+    sortedDomains.find(d => d.id === skillDomainId)?.name?.trim() ?? '';
 
   useImperativeHandle(
     ref,
     () => ({
-      openAddDialog: () => {
-        if (!readOnly) setAddOpen(true);
+      openAddDomainDialog: () => {
+        if (!readOnly) setAddDomainOpen(true);
       },
     }),
     [readOnly],
@@ -164,252 +257,429 @@ const TechStackSectionContent = forwardRef<
   const headerIconColor = theme.palette.grey[500];
   const headerLabelColor = theme.palette.grey[600];
 
-  const tableBlock = (
-    <S.Table role="table" aria-label="기술 스택">
-      <S.HeadRow role="row">
-        <S.HeadCell $domain>
-          <S.HeadInner>
-            <TextFieldsOutlinedIcon
-              sx={{ fontSize: 17, color: headerIconColor, flexShrink: 0 }}
-            />
-            <S.HeadLabel style={{ color: headerLabelColor }}>도메인</S.HeadLabel>
-          </S.HeadInner>
-        </S.HeadCell>
-        <S.HeadCell $grow>
-          <S.HeadInnerWide>
-            <S.HeadLeft>
-              <FormatListBulletedIcon
+  const desktopTable = (
+    <S.TableScroll>
+      <S.Table
+        role="table"
+        aria-label="기술 스택"
+        style={{ minWidth: `max(100%, ${tableMinWidthRem}rem)` }}
+      >
+        <S.GridRow $cols={tableGridColumns} $surface="head" role="row">
+          <S.GridHeadCell>
+            <S.HeadInner>
+              <TextFieldsOutlinedIcon
                 sx={{ fontSize: 17, color: headerIconColor, flexShrink: 0 }}
               />
-              <S.HeadLabel style={{ color: headerLabelColor }}>
-                다중 선택
-              </S.HeadLabel>
-            </S.HeadLeft>
-            {!readOnly && (
-              <S.AddCircleBtn
+              <S.HeadLabel style={{ color: headerLabelColor }}>도메인</S.HeadLabel>
+            </S.HeadInner>
+          </S.GridHeadCell>
+          {visibleTierIndices.map(tierIdx => (
+            <S.GridHeadCell key={tierIdx}>
+              <S.HeadInner>
+                <ViewWeekOutlinedIcon
+                  sx={{ fontSize: 17, color: headerIconColor, flexShrink: 0 }}
+                />
+                <S.HeadLabel $tier style={{ color: headerLabelColor }}>
+                  {PROFICIENCY_TIER_LABELS[tierIdx]}
+                </S.HeadLabel>
+              </S.HeadInner>
+            </S.GridHeadCell>
+          ))}
+          {!readOnly && (
+            <S.GridHeadCell>
+              <S.HeadInner>
+                <AddIcon
+                  sx={{ fontSize: 17, color: headerIconColor, flexShrink: 0 }}
+                />
+                <S.HeadLabel $tier style={{ color: headerLabelColor }}>
+                  기술
+                </S.HeadLabel>
+              </S.HeadInner>
+            </S.GridHeadCell>
+          )}
+        </S.GridRow>
+        {sortedDomains.map(domain => {
+          const rowBuckets = bucketStacksForVisible(
+            domain.tech_stacks,
+            visibleTierIndices,
+          );
+          return (
+            <S.GridRow
+              key={domain.id}
+              $cols={tableGridColumns}
+              $surface="body"
+              role="row"
+            >
+              <S.GridBodyCell $role="domain">
+                <Flex.Row
+                  align="flex-start"
+                  justify="space-between"
+                  gap="0.5rem"
+                  style={{ width: '100%', minWidth: 0 }}
+                >
+                  <S.DomainText style={{ flex: '1 1 auto', minWidth: 0 }}>
+                    {domain.name}
+                  </S.DomainText>
+                  {!readOnly && domain.id != null && (
+                    <S.IconGhostBtn
+                      type="button"
+                      onClick={() => handleDeleteDomain(domain.id!)}
+                      aria-label={`도메인 ${domain.name} 전체 삭제`}
+                    >
+                      <CloseIcon sx={{ fontSize: 18 }} />
+                    </S.IconGhostBtn>
+                  )}
+                </Flex.Row>
+              </S.GridBodyCell>
+              {rowBuckets.map((entries, colIdx) => (
+                <S.GridBodyCell
+                  $role="tier"
+                  key={`${domain.id}-tier-${visibleTierIndices[colIdx]}`}
+                >
+                  <S.TagCloudColumn>
+                    {entries.map(({ skill, stackIndex }) => (
+                      <NotionTag
+                        key={`${domain.id}-${stackIndex}`}
+                        item={skill}
+                        stackIndex={stackIndex}
+                        readOnly={readOnly}
+                        onRemove={idx => handleRemoveSkill(domain.id!, idx)}
+                      />
+                    ))}
+                  </S.TagCloudColumn>
+                </S.GridBodyCell>
+              ))}
+              {!readOnly && (
+                <S.GridBodyCell $role="skill">
+                  {domain.id != null ? (
+                    <Button
+                      label="기술 추가"
+                      variant="outlined"
+                      color="blue"
+                      size="small"
+                      onClick={() => openSkillDialog(domain.id!)}
+                    />
+                  ) : null}
+                </S.GridBodyCell>
+              )}
+            </S.GridRow>
+          );
+        })}
+        {!readOnly && (
+          <S.GridRow $cols={tableGridColumns} $surface="foot" role="row">
+            <S.FooterStripe>
+              <S.AddDomainFootBtn
                 type="button"
-                onClick={() => setAddOpen(true)}
-                aria-label="항목 추가"
+                onClick={() => setAddDomainOpen(true)}
               >
                 <AddIcon sx={{ fontSize: 20, color: palette.blue500 }} />
-              </S.AddCircleBtn>
-            )}
-          </S.HeadInnerWide>
-        </S.HeadCell>
-      </S.HeadRow>
-      {groupedRows.map(([domain, entries]) => (
-        <S.BodyRow key={domain} role="row">
-          <S.BodyCell $domain>
-            <S.DomainText>{domain}</S.DomainText>
-          </S.BodyCell>
-          <S.BodyCell $grow>
-            <S.TagCloud>
-              {entries.map(({ item, flatIndex }) => (
-                <NotionTag
-                  key={`${domain}-${flatIndex}`}
-                  item={item}
-                  flatIndex={flatIndex}
-                  readOnly={readOnly}
-                  onRemove={handleRemove}
-                />
-              ))}
-            </S.TagCloud>
-          </S.BodyCell>
-        </S.BodyRow>
-      ))}
-    </S.Table>
+                도메인 추가
+              </S.AddDomainFootBtn>
+            </S.FooterStripe>
+          </S.GridRow>
+        )}
+      </S.Table>
+    </S.TableScroll>
   );
 
   return (
     <Flex.Column gap="0.75rem" style={{ width: '100%' }}>
-      <S.LevelLegend aria-label="숙련도 구간별 색상">
+      <S.LevelLegend aria-label="숙련도 단계별 색상">
         <Text
           style={{
             ...theme.typography.caption,
             fontWeight: 600,
-            color: theme.palette.grey[700],
+            color: theme.palette.grey[600],
             margin: 0,
           }}
         >
-          숙련도 색상 기준
+          숙련도 단계 색상 기준
         </Text>
         <S.LegendGrid>
           {levelLegend.map(row => (
-            <S.LegendItem key={row.rangeLabel}>
+            <S.LegendItem key={row.label}>
               <S.LegendDot
                 style={{
                   backgroundColor: row.bg,
                   borderColor: row.border,
                 }}
               />
-              <S.LegendRange>{row.rangeLabel}</S.LegendRange>
+              <S.LegendRange>{row.label}</S.LegendRange>
             </S.LegendItem>
           ))}
         </S.LegendGrid>
       </S.LevelLegend>
 
-      {techStackItems.length === 0 ? (
+      {techStackDomains.length === 0 ? (
         <Flex.Column gap="0.75rem" style={{ width: '100%' }}>
-          {!readOnly && !isMobile && (
-            <Flex.Row justify="flex-end" style={{ width: '100%' }}>
+          {!readOnly && (
+            <Flex.Row justify="flex-start" style={{ width: '100%' }}>
               <Button
-                label="항목 추가"
+                label="도메인 추가"
                 variant="outlined"
                 color="blue"
                 size="medium"
                 icon={AddPlusButtonIcon}
                 iconPosition="start"
-                onClick={() => setAddOpen(true)}
+                onClick={() => setAddDomainOpen(true)}
               />
             </Flex.Row>
           )}
           <S.EmptyNote>
             등록된 기술 스택이 없습니다.
-            {!readOnly && ' 추가 버튼으로 항목을 등록할 수 있습니다.'}
+            {!readOnly && ' 도메인 추가로 분야를 만든 뒤, 행에서 기술을 넣을 수 있습니다.'}
           </S.EmptyNote>
         </Flex.Column>
       ) : isMobile ? (
         <Flex.Column gap="0.75rem" style={{ width: '100%' }}>
-          {groupedRows.map(([domain, entries]) => (
-            <S.MobileCard key={domain}>
-              <S.MobileHead>
-                <TextFieldsOutlinedIcon
-                  sx={{ fontSize: 16, color: headerIconColor }}
-                />
-                <S.HeadLabel style={{ color: headerLabelColor }}>
-                  {domain}
-                </S.HeadLabel>
-              </S.MobileHead>
-              <S.TagCloud>
-                {entries.map(({ item, flatIndex }) => (
-                  <NotionTag
-                    key={`${domain}-${flatIndex}`}
-                    item={item}
-                    flatIndex={flatIndex}
-                    readOnly={readOnly}
-                    onRemove={handleRemove}
+          {sortedDomains.map(domain => {
+            const buckets = bucketStacksByTier(domain.tech_stacks);
+            return (
+              <S.MobileCard key={domain.id}>
+                <S.MobileHead>
+                  <TextFieldsOutlinedIcon
+                    sx={{ fontSize: 16, color: headerIconColor, flexShrink: 0 }}
                   />
-                ))}
-              </S.TagCloud>
-            </S.MobileCard>
-          ))}
+                  <S.HeadLabel
+                    style={{
+                      color: headerLabelColor,
+                      flex: '1 1 auto',
+                      minWidth: 0,
+                    }}
+                  >
+                    {domain.name}
+                  </S.HeadLabel>
+                  {!readOnly && domain.id != null && (
+                    <S.IconGhostBtn
+                      type="button"
+                      onClick={() => handleDeleteDomain(domain.id!)}
+                      aria-label={`도메인 ${domain.name} 전체 삭제`}
+                      style={{ flexShrink: 0 }}
+                    >
+                      <CloseIcon sx={{ fontSize: 20 }} />
+                    </S.IconGhostBtn>
+                  )}
+                </S.MobileHead>
+                <Flex.Column gap="0.75rem" style={{ width: '100%' }}>
+                  {visibleTierIndices.map(tierIdx => (
+                    <S.MobileTierBlock
+                      key={`${domain.id}-${tierIdx}`}
+                    >
+                      <S.MobileTierTitle>
+                        {PROFICIENCY_TIER_LABELS[tierIdx]}
+                      </S.MobileTierTitle>
+                      <S.TagCloudColumn>
+                        {buckets[tierIdx].map(({ skill, stackIndex }) => (
+                          <NotionTag
+                            key={`${domain.id}-${stackIndex}`}
+                            item={skill}
+                            stackIndex={stackIndex}
+                            readOnly={readOnly}
+                            onRemove={idx =>
+                              handleRemoveSkill(domain.id!, idx)
+                            }
+                          />
+                        ))}
+                      </S.TagCloudColumn>
+                    </S.MobileTierBlock>
+                  ))}
+                  {!readOnly && domain.id != null && (
+                    <Flex.Row style={{ width: '100%' }}>
+                      <Button
+                        label="기술 추가"
+                        variant="outlined"
+                        color="blue"
+                        size="small"
+                        onClick={() => openSkillDialog(domain.id!)}
+                      />
+                    </Flex.Row>
+                  )}
+                </Flex.Column>
+              </S.MobileCard>
+            );
+          })}
+          {!readOnly && (
+            <S.MobileFooterBtn
+              type="button"
+              onClick={() => setAddDomainOpen(true)}
+            >
+              <AddIcon sx={{ fontSize: 20, color: palette.blue500 }} />
+              도메인 추가
+            </S.MobileFooterBtn>
+          )}
         </Flex.Column>
       ) : (
-        tableBlock
+        desktopTable
       )}
 
       {!readOnly && (
-        <Dialog
-          open={addOpen}
-          onClose={() => setAddOpen(false)}
-          fullWidth
-          maxWidth="sm"
-          PaperProps={{
-            sx: { borderRadius: '0.75rem' },
-          }}
-        >
-          <DialogContent sx={{ pt: 3 }}>
-            <Flex.Column gap="1rem" style={{ width: '100%' }}>
-              <Flex.Column gap="0.25rem">
-                <Text
-                  style={{
-                    ...theme.typography.h3,
-                    fontWeight: 700,
-                    margin: 0,
-                    letterSpacing: '-0.02em',
-                  }}
-                >
-                  기술 항목 추가
-                </Text>
-                <Text
-                  style={{
-                    ...theme.typography.body2,
-                    color: theme.palette.grey[600],
-                    margin: 0,
-                  }}
-                >
-                  도메인·기술 이름·숙련도(0~100)를 입력합니다.
-                </Text>
-              </Flex.Column>
-              <S.FieldGroup>
-                <S.FieldLabel>도메인</S.FieldLabel>
-                <S.FieldInput
-                  value={domainInput}
-                  onChange={e => setDomainInput(e.target.value)}
-                  placeholder="예: 프론트엔드, 백엔드, 인프라, 협업툴"
-                  maxLength={INPUT_MAX_LENGTH.TECH_STACK_DOMAIN}
-                  aria-label="도메인"
-                />
-              </S.FieldGroup>
-              <S.FieldGroup>
-                <S.FieldLabel>기술 이름</S.FieldLabel>
-                <S.FieldInput
-                  value={nameInput}
-                  onChange={e => setNameInput(e.target.value)}
-                  placeholder="예: SpringBoot, Swift, React.js, Git, Notion"
-                  maxLength={INPUT_MAX_LENGTH.TECH_STACK_NAME}
-                  aria-label="기술 이름"
-                  onKeyDown={e => {
-                    if (e.key === 'Enter') {
-                      e.preventDefault();
-                      handleAddSubmit();
-                    }
-                  }}
-                />
-              </S.FieldGroup>
-              <S.FieldGroup>
-                <Flex.Row align="center" justify="space-between" wrap="wrap">
-                  <S.FieldLabel style={{ margin: 0 }}>숙련도</S.FieldLabel>
+        <>
+          <Dialog
+            open={addDomainOpen}
+            onClose={() => setAddDomainOpen(false)}
+            fullWidth
+            maxWidth="sm"
+            PaperProps={{
+              sx: { borderRadius: '0.75rem' },
+            }}
+          >
+            <DialogContent sx={{ pt: 3 }}>
+              <Flex.Column gap="1rem" style={{ width: '100%' }}>
+                <Flex.Column gap="0.25rem">
                   <Text
                     style={{
-                      ...theme.typography.body1,
+                      ...theme.typography.h3,
                       fontWeight: 700,
-                      color: previewTagPair.fg,
+                      margin: 0,
+                      letterSpacing: '-0.02em',
+                    }}
+                  >
+                    도메인 추가
+                  </Text>
+                  <Text
+                    style={{
+                      ...theme.typography.body2,
+                      color: theme.palette.grey[600],
                       margin: 0,
                     }}
                   >
-                    {clampTechLevel(levelInput)}% ·{' '}
-                    {getTechLevelBandLabel(levelBand)}
+                    기술 스택을 묶을 도메인(분야) 이름만 입력합니다.
                   </Text>
-                </Flex.Row>
-                <S.Range
-                  type="range"
-                  min={0}
-                  max={100}
-                  value={levelInput}
-                  onChange={e =>
-                    setLevelInput(clampTechLevel(Number(e.target.value)))
-                  }
-                  aria-label="숙련도"
-                  style={
-                    {
-                      '--range-pct': `${clampTechLevel(levelInput)}%`,
-                      '--range-fill': previewTagPair.bg,
-                      '--range-border': previewTagPair.border,
-                      '--range-track': palette.white,
-                    } as CSSProperties
-                  }
-                />
-              </S.FieldGroup>
-            </Flex.Column>
-          </DialogContent>
-          <DialogActions sx={{ px: 3, pb: 2, gap: 1, flexWrap: 'wrap' }}>
-            <Button
-              label="취소"
-              variant="outlined"
-              color="blue"
-              size="medium"
-              onClick={() => setAddOpen(false)}
-            />
-            <Button
-              label="추가"
-              variant="contained"
-              color="blue"
-              size="medium"
-              onClick={handleAddSubmit}
-            />
-          </DialogActions>
-        </Dialog>
+                </Flex.Column>
+                <S.FieldGroup>
+                  <S.FieldLabel>도메인</S.FieldLabel>
+                  <S.FieldInput
+                    value={domainNameInput}
+                    onChange={e => setDomainNameInput(e.target.value)}
+                    placeholder="예: 프론트엔드, 백엔드, 인프라, 협업툴"
+                    maxLength={INPUT_MAX_LENGTH.TECH_STACK_DOMAIN}
+                    aria-label="도메인"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddDomainSubmit();
+                      }
+                    }}
+                  />
+                </S.FieldGroup>
+              </Flex.Column>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2, gap: 1, flexWrap: 'wrap' }}>
+              <Button
+                label="취소"
+                variant="outlined"
+                color="blue"
+                size="medium"
+                onClick={() => setAddDomainOpen(false)}
+              />
+              <Button
+                label="추가"
+                variant="contained"
+                color="blue"
+                size="medium"
+                onClick={handleAddDomainSubmit}
+              />
+            </DialogActions>
+          </Dialog>
+
+          <Dialog
+            open={addSkillOpen}
+            onClose={() => setAddSkillOpen(false)}
+            fullWidth
+            maxWidth="sm"
+            PaperProps={{
+              sx: { borderRadius: '0.75rem' },
+            }}
+          >
+            <DialogContent sx={{ pt: 3 }}>
+              <Flex.Column gap="1rem" style={{ width: '100%' }}>
+                <Flex.Column gap="0.25rem">
+                  <Text
+                    style={{
+                      ...theme.typography.h3,
+                      fontWeight: 700,
+                      margin: 0,
+                      letterSpacing: '-0.02em',
+                    }}
+                  >
+                    기술 항목 추가
+                  </Text>
+                  <Text
+                    style={{
+                      ...theme.typography.body2,
+                      color: theme.palette.grey[600],
+                      margin: 0,
+                    }}
+                  >
+                    기술 이름과 숙련도 단계(Beginner~Expert)를 선택합니다.
+                  </Text>
+                </Flex.Column>
+                <S.FieldGroup>
+                  <S.FieldLabel>도메인</S.FieldLabel>
+                  <S.FieldReadOnly>{skillDomainName || '—'}</S.FieldReadOnly>
+                </S.FieldGroup>
+                <S.FieldGroup>
+                  <S.FieldLabel>기술 이름</S.FieldLabel>
+                  <S.FieldInput
+                    value={skillNameInput}
+                    onChange={e => setSkillNameInput(e.target.value)}
+                    placeholder="예: SpringBoot, Swift, React.js, Git, Notion"
+                    maxLength={INPUT_MAX_LENGTH.TECH_STACK_NAME}
+                    aria-label="기술 이름"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        e.preventDefault();
+                        handleAddSkillSubmit();
+                      }
+                    }}
+                  />
+                </S.FieldGroup>
+                <S.FieldGroup>
+                  <S.FieldLabel>숙련도 단계</S.FieldLabel>
+                  <Flex.Row gap="0.5rem" wrap="wrap" style={{ width: '100%' }}>
+                    {PROFICIENCY_TIER_LABELS.map((label, tier) => {
+                      const pair = getProficiencyTierTagPair(
+                        tier as ProficiencyTierIndex,
+                      );
+                      const selected = skillTier === tier;
+                      return (
+                        <S.TierChoice
+                          key={label}
+                          type="button"
+                          $selected={selected}
+                          onClick={() => setSkillTier(tier as ProficiencyTierIndex)}
+                          style={{
+                            borderColor: pair.border,
+                            backgroundColor: selected ? pair.bg : palette.white,
+                            color: pair.fg,
+                          }}
+                        >
+                          {label}
+                        </S.TierChoice>
+                      );
+                    })}
+                  </Flex.Row>
+                </S.FieldGroup>
+              </Flex.Column>
+            </DialogContent>
+            <DialogActions sx={{ px: 3, pb: 2, gap: 1, flexWrap: 'wrap' }}>
+              <Button
+                label="취소"
+                variant="outlined"
+                color="blue"
+                size="medium"
+                onClick={() => setAddSkillOpen(false)}
+              />
+              <Button
+                label="추가"
+                variant="contained"
+                color="blue"
+                size="medium"
+                onClick={handleAddSkillSubmit}
+              />
+            </DialogActions>
+          </Dialog>
+        </>
       )}
     </Flex.Column>
   );
@@ -457,6 +727,15 @@ const S = {
     color: ${palette.grey600};
     white-space: nowrap;
   `,
+  TableScroll: styled('div')`
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: visible;
+    -webkit-overflow-scrolling: touch;
+  `,
   Table: styled('div')`
     display: flex;
     flex-direction: column;
@@ -465,82 +744,74 @@ const S = {
     border-radius: 6px;
     overflow: hidden;
     background-color: ${palette.white};
+    box-sizing: border-box;
   `,
-  HeadRow: styled('div')`
-    display: flex;
-    flex-direction: row;
-    align-items: stretch;
+  GridRow: styled('div')<{ $cols: string; $surface: 'head' | 'body' | 'foot' }>`
+    display: grid;
+    grid-template-columns: ${p => p.$cols};
     width: 100%;
-    border-bottom: 1px solid ${palette.grey200};
-    background-color: ${palette.grey100};
+    box-sizing: border-box;
+    ${p =>
+      p.$surface === 'head'
+        ? `
+      background-color: ${palette.grey100};
+      border-bottom: 1px solid ${palette.grey200};
+      align-items: center;
+    `
+        : ''}
+    ${p =>
+      p.$surface === 'body'
+        ? `
+      border-bottom: 1px solid ${palette.grey200};
+      align-items: stretch;
+    `
+        : ''}
   `,
-  HeadCell: styled('div')<{ $domain?: boolean; $grow?: boolean }>`
-    flex: ${p => (p.$domain ? '0 0 180px' : '1 1 0')};
+  GridHeadCell: styled('div')`
+    padding: 10px 10px;
+    border-right: 1px solid ${palette.grey200};
     min-width: 0;
-    padding: 10px 14px;
-    border-right: ${p => (p.$domain ? `1px solid ${palette.grey200}` : 'none')};
     display: flex;
     align-items: center;
+    box-sizing: border-box;
+    &:last-child {
+      border-right: none;
+    }
+  `,
+  GridBodyCell: styled('div')<{ $role: 'domain' | 'tier' | 'skill' }>`
+    padding: 12px 10px;
+    border-right: 1px solid ${palette.grey200};
+    min-width: 0;
+    display: flex;
+    box-sizing: border-box;
+    align-items: ${p => (p.$role === 'skill' ? 'center' : 'flex-start')};
+    &:last-child {
+      border-right: none;
+    }
+  `,
+  FooterStripe: styled('div')`
+    grid-column: 1 / -1;
+    padding: 10px 14px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    background-color: ${palette.white};
+    border-top: 1px solid ${palette.grey200};
+    box-sizing: border-box;
+    width: 100%;
   `,
   HeadInner: styled('div')`
     display: flex;
     flex-direction: row;
     align-items: center;
     gap: 8px;
-  `,
-  HeadInnerWide: styled('div')`
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
-    width: 100%;
-    gap: 8px;
-  `,
-  HeadLeft: styled('div')`
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
     min-width: 0;
   `,
-  HeadLabel: styled('span')`
-    font-size: 13px;
+  HeadLabel: styled('span')<{ $tier?: boolean }>`
+    font-size: ${p => (p.$tier ? '11px' : '13px')};
     font-weight: 600;
     letter-spacing: -0.01em;
-  `,
-  AddCircleBtn: styled('button')`
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    width: 32px;
-    height: 32px;
-    padding: 0;
-    border: none;
-    border-radius: 4px;
-    background: transparent;
-    cursor: pointer;
-    flex-shrink: 0;
-    &:hover {
-      background-color: ${palette.blue300};
-    }
-  `,
-  BodyRow: styled('div')`
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    width: 100%;
-    border-bottom: 1px solid ${palette.grey200};
-    &:last-child {
-      border-bottom: none;
-    }
-  `,
-  BodyCell: styled('div')<{ $domain?: boolean; $grow?: boolean }>`
-    flex: ${p => (p.$domain ? '0 0 180px' : '1 1 0')};
-    min-width: 0;
-    padding: 12px 14px;
-    border-right: ${p => (p.$domain ? `1px solid ${palette.grey200}` : 'none')};
-    display: flex;
-    align-items: flex-start;
+    line-height: 1.25;
   `,
   DomainText: styled('span')`
     font-size: 14px;
@@ -548,12 +819,13 @@ const S = {
     color: ${palette.nearBlack};
     line-height: 1.4;
   `,
-  TagCloud: styled('div')`
+  TagCloudColumn: styled('div')`
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     gap: 8px;
     align-items: center;
+    align-content: flex-start;
     width: 100%;
   `,
   NotionTag: styled('div')<{ $readOnly?: boolean }>`
@@ -597,10 +869,62 @@ const S = {
       background-color: rgba(0, 0, 0, 0.06);
     }
   `,
+  IconGhostBtn: styled('button')`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 6px;
+    border: none;
+    border-radius: 6px;
+    background: transparent;
+    color: ${palette.grey600};
+    cursor: pointer;
+    &:hover {
+      background-color: ${palette.grey100};
+      color: ${palette.nearBlack};
+    }
+  `,
+  AddDomainFootBtn: styled('button')`
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 8px;
+    padding: 6px 4px;
+    border: none;
+    background: none;
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: ${palette.grey600};
+    &:hover {
+      color: ${palette.blue500};
+    }
+  `,
+  MobileFooterBtn: styled('button')`
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    width: 100%;
+    padding: 12px 14px;
+    border: 1px dashed ${palette.grey200};
+    border-radius: 6px;
+    background: ${palette.white};
+    cursor: pointer;
+    font-size: 14px;
+    font-weight: 500;
+    color: ${palette.grey600};
+    box-sizing: border-box;
+    &:hover {
+      border-color: ${palette.blue300};
+      color: ${palette.blue500};
+    }
+  `,
   MobileCard: styled('div')`
     display: flex;
     flex-direction: column;
-    gap: 10px;
+    gap: 12px;
     width: 100%;
     padding: 14px;
     border: 1px solid ${palette.grey200};
@@ -615,6 +939,19 @@ const S = {
     gap: 8px;
     padding-bottom: 8px;
     border-bottom: 1px solid ${palette.grey200};
+    flex-wrap: wrap;
+  `,
+  MobileTierBlock: styled('div')`
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    width: 100%;
+  `,
+  MobileTierTitle: styled('span')`
+    font-size: 11px;
+    font-weight: 700;
+    color: ${palette.grey600};
+    letter-spacing: 0.02em;
   `,
   EmptyNote: styled('p')`
     margin: 0;
@@ -646,71 +983,32 @@ const S = {
       box-shadow: 0 0 0 2px ${palette.blue300};
     }
   `,
-  /** 네이티브 range 오른쪽 트랙이 검게 보이지 않도록 트랙·썸 직접 스타일 */
-  Range: styled('input')`
+  FieldReadOnly: styled('div')`
     width: 100%;
-    height: 32px;
-    margin: 0;
+    padding: 10px 12px;
+    border-radius: 8px;
+    border: 1px solid ${palette.grey200};
+    font-size: 0.9375rem;
+    color: ${palette.nearBlack};
+    background-color: ${palette.grey100};
+    box-sizing: border-box;
+  `,
+  TierChoice: styled('button')<{ $selected: boolean }>`
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border-radius: 8px;
+    border-width: ${p => (p.$selected ? '2px' : '1px')};
+    border-style: solid;
+    font-size: 12px;
+    font-weight: 600;
     cursor: pointer;
-    -webkit-appearance: none;
-    appearance: none;
-    background: transparent;
-
-    &:focus {
-      outline: none;
-    }
+    letter-spacing: -0.01em;
+    box-sizing: border-box;
     &:focus-visible {
       outline: 2px solid ${palette.blue300};
       outline-offset: 2px;
-    }
-
-    &::-webkit-slider-runnable-track {
-      height: 10px;
-      border-radius: 999px;
-      background: linear-gradient(
-        to right,
-        var(--range-fill) 0%,
-        var(--range-fill) var(--range-pct),
-        var(--range-track) var(--range-pct),
-        var(--range-track) 100%
-      );
-      border: 1px solid var(--range-border);
-      box-sizing: border-box;
-    }
-    &::-webkit-slider-thumb {
-      -webkit-appearance: none;
-      appearance: none;
-      width: 16px;
-      height: 16px;
-      margin-top: -4px;
-      border-radius: 50%;
-      background: var(--range-fill);
-      border: 2px solid var(--range-border);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-      cursor: pointer;
-    }
-
-    &::-moz-range-track {
-      height: 10px;
-      border-radius: 999px;
-      background: var(--range-track);
-      border: 1px solid var(--range-border);
-      box-sizing: border-box;
-    }
-    &::-moz-range-progress {
-      height: 10px;
-      border-radius: 999px 0 0 999px;
-      background: var(--range-fill);
-      box-sizing: border-box;
-    }
-    &::-moz-range-thumb {
-      width: 14px;
-      height: 14px;
-      border: 2px solid var(--range-border);
-      border-radius: 50%;
-      background: var(--range-fill);
-      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
-      cursor: pointer;
     }
   `,
 };

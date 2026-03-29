@@ -24,10 +24,13 @@ import {
 import type {
   PortfolioRepositoryLanguage,
   PortfolioRepositoryItem,
-  TechStackItem,
+  TechStackDomain,
   UserInfoResponse,
 } from '../../apis/portfolio';
-import { clampTechLevel } from '../../utils/techStackLevel';
+import {
+  normalizeTechStackDomainsForPersist,
+  normalizeTechStackDomainsFromResponse,
+} from '../../utils/techStackDomains';
 import {
   DRAGGABLE_SECTION_ORDER,
   type DraggableSectionKey,
@@ -150,9 +153,9 @@ export interface PortfolioState {
   setUserInfo: (v: UserInfo | null | ((p: UserInfo | null) => UserInfo | null)) => void;
   sectionOrder: DraggableSectionKey[];
   setSectionOrder: (v: DraggableSectionKey[] | ((p: DraggableSectionKey[]) => DraggableSectionKey[])) => void;
-  techStackItems: TechStackItem[];
-  setTechStackItems: (
-    v: TechStackItem[] | ((p: TechStackItem[]) => TechStackItem[]),
+  techStackDomains: TechStackDomain[];
+  setTechStackDomains: (
+    v: TechStackDomain[] | ((p: TechStackDomain[]) => TechStackDomain[]),
   ) => void;
   repos: RepoItem[];
   setRepos: (v: RepoItem[] | ((p: RepoItem[]) => RepoItem[])) => void;
@@ -183,15 +186,6 @@ export const usePortfolioContext = () => {
 interface PortfolioProviderProps {
   children: ReactNode;
 }
-
-const normalizeTechStackList = (list: TechStackItem[]) =>
-  list
-    .map(item => ({
-      name: (item.name ?? '').trim(),
-      domain: (item.domain ?? '').trim() || '기타',
-      level: clampTechLevel(item.level ?? 0),
-    }))
-    .filter(item => item.name !== '');
 
 const QUERY_CONFIG = { retry: 1, refetchOnWindowFocus: false } as const;
 
@@ -250,22 +244,29 @@ export const PortfolioProvider = ({ children }: PortfolioProviderProps) => {
   );
 
   // ── 기술 스택 ──────────────────────────────────────────────────────────────
-  const techStackQuery = useQuery<TechStackItem[]>({
+  const techStackQuery = useQuery<TechStackDomain[]>({
     queryKey: [QUERY_KEYS.portfolioTechStack],
     queryFn: async () => {
       const res = await getTechStack();
-      return normalizeTechStackList(res.tech_stack ?? []);
+      return normalizeTechStackDomainsFromResponse(res.domains);
     },
     ...QUERY_CONFIG,
   });
 
-  const setTechStackItems = useCallback(
-    (v: TechStackItem[] | ((p: TechStackItem[]) => TechStackItem[])) => {
-      const prev = queryClient.getQueryData<TechStackItem[]>([QUERY_KEYS.portfolioTechStack]) ?? [];
+  const setTechStackDomains = useCallback(
+    (v: TechStackDomain[] | ((p: TechStackDomain[]) => TechStackDomain[])) => {
+      const prev =
+        queryClient.getQueryData<TechStackDomain[]>([QUERY_KEYS.portfolioTechStack]) ?? [];
       const next = typeof v === 'function' ? v(prev) : v;
-      queryClient.setQueryData<TechStackItem[]>([QUERY_KEYS.portfolioTechStack], next);
-      putTechStack({ tech_stack: normalizeTechStackList(next) })
-        .then(() => toast.success('변경사항이 저장되었습니다.', SAVED_TOAST_OPTIONS))
+      queryClient.setQueryData<TechStackDomain[]>([QUERY_KEYS.portfolioTechStack], next);
+      putTechStack({ domains: normalizeTechStackDomainsForPersist(next) })
+        .then(res => {
+          queryClient.setQueryData<TechStackDomain[]>(
+            [QUERY_KEYS.portfolioTechStack],
+            normalizeTechStackDomainsFromResponse(res.domains),
+          );
+          toast.success('변경사항이 저장되었습니다.', SAVED_TOAST_OPTIONS);
+        })
         .catch(() => toast.error('기술 스택 저장에 실패했습니다.'));
     },
     [queryClient],
@@ -397,8 +398,8 @@ export const PortfolioProvider = ({ children }: PortfolioProviderProps) => {
       setUserInfo,
       sectionOrder: settingsQuery.data ?? DRAGGABLE_SECTION_ORDER,
       setSectionOrder,
-      techStackItems: techStackQuery.data ?? [],
-      setTechStackItems,
+      techStackDomains: techStackQuery.data ?? [],
+      setTechStackDomains,
       repos: reposQuery.data ?? [],
       setRepos,
       mileageItems: mileageQuery.data ?? [],
@@ -417,7 +418,7 @@ export const PortfolioProvider = ({ children }: PortfolioProviderProps) => {
       settingsQuery.data,
       setSectionOrder,
       techStackQuery.data,
-      setTechStackItems,
+      setTechStackDomains,
       reposQuery.data,
       setRepos,
       mileageQuery.data,

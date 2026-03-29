@@ -188,13 +188,13 @@ const PortfolioEditPage = () => {
                   ? mileageHeaderRight
                   : key === 'tech' && isMobile ? (
                       <Button
-                        label="항목 추가"
+                        label="도메인 추가"
                         variant="outlined"
                         color="blue"
                         size="medium"
                         icon={AddPlusIcon}
                         iconPosition="start"
-                        onClick={() => techStackRef.current?.openAddDialog()}
+                        onClick={() => techStackRef.current?.openAddDomainDialog()}
                       />
                     )
                   : key === 'activities' ? (

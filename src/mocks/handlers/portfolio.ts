@@ -11,7 +11,8 @@ import type {
   UserInfoPatchRequest,
   UserInfoResponse,
 } from '@/pages/portfolio/apis/portfolio';
-import type { TechStackItem } from '@/pages/portfolio/apis/portfolio';
+import type { TechStackPutRequest } from '@/pages/portfolio/apis/portfolio';
+import { clampTechLevel } from '@/pages/portfolio/utils/techStackLevel';
 import type { PatchRepositoryBody } from '@/pages/portfolio/apis/repositories';
 import { DRAGGABLE_SECTION_ORDER } from '@/pages/portfolio/constants/constants';
 import { mockActivitiesResponse } from '@/mocks/fixtures/portfolioActivities';
@@ -27,7 +28,7 @@ import type {
 } from '@/pages/cv/apis/cv';
 
 const techStackStore = {
-  tech_stack: [...mockTechStackResponse.tech_stack],
+  domains: mockTechStackResponse.domains.map(d => ({ ...d, tech_stacks: [...d.tech_stacks] })),
 };
 
 const settingsStore: { section_order: string[] } = {
@@ -81,17 +82,45 @@ function buildPortfolioMileageItem(
 export const PortfolioHandlers = [
   http.get(BASE_URL + ENDPOINT.PORTFOLIO_TECH_STACK, () => {
     return HttpResponse.json(
-      { tech_stack: techStackStore.tech_stack },
+      {
+        domains: techStackStore.domains.map(d => ({
+          ...d,
+          tech_stacks: d.tech_stacks.map(t => ({ ...t })),
+        })),
+      },
       { status: 200 },
     );
   }),
 
   http.put(BASE_URL + ENDPOINT.PORTFOLIO_TECH_STACK, async ({ request }) => {
-    const body = (await request.json()) as { tech_stack: TechStackItem[] };
-    techStackStore.tech_stack = [...(body.tech_stack ?? [])];
+    const body = (await request.json()) as TechStackPutRequest;
+    const raw = body.domains ?? [];
+    const cleaned = raw
+      .map(d => ({
+        name: (d.name ?? '').trim(),
+        tech_stacks: (d.tech_stacks ?? [])
+          .map(t => ({
+            name: (t.name ?? '').trim(),
+            level: clampTechLevel(t.level ?? 0),
+          }))
+          .filter(t => t.name !== ''),
+      }))
+      .filter(d => d.name !== '');
+
+    techStackStore.domains = cleaned.map((d, i) => ({
+      id: i + 1,
+      name: d.name,
+      order_index: i,
+      tech_stacks: d.tech_stacks,
+    }));
 
     return HttpResponse.json(
-      { tech_stack: [...techStackStore.tech_stack] },
+      {
+        domains: techStackStore.domains.map(d => ({
+          ...d,
+          tech_stacks: d.tech_stacks.map(t => ({ ...t })),
+        })),
+      },
       { status: 200 },
     );
   }),

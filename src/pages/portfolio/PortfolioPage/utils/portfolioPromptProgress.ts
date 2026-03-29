@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 
-import type { TechStackItem } from '../../apis/portfolio';
+import type { TechStackDomain } from '../../apis/portfolio';
 
 import {
   usePortfolioContext,
@@ -31,7 +31,7 @@ export const PROMPT_QUALITY_SECTION_HINTS = {
 
 export interface PortfolioPromptProgressInput {
   bio: string;
-  techStackItems: TechStackItem[];
+  techStackDomains: TechStackDomain[];
   repos: RepoItem[];
   mileageItems: MileageItem[];
   activities: ActivityItem[];
@@ -57,13 +57,16 @@ function clampPct(value: number): number {
   return Math.max(0, Math.min(100, Math.round(value)));
 }
 
-function effectiveTechRows(items: TechStackItem[]) {
-  return items
-    .map(item => ({
-      name: (item.name ?? '').trim(),
-      domain: (item.domain ?? '').trim() || '기타',
-    }))
-    .filter(row => row.name !== '');
+function effectiveTechRows(domains: TechStackDomain[]) {
+  const rows: { name: string; domain: string }[] = [];
+  for (const d of domains) {
+    const domain = (d.name ?? '').trim() || '기타';
+    for (const t of d.tech_stacks ?? []) {
+      const name = (t.name ?? '').trim();
+      if (name !== '') rows.push({ name, domain });
+    }
+  }
+  return rows;
 }
 
 /**
@@ -77,8 +80,8 @@ export function computeIntroProgress(bio: string): number {
 /**
  * 기술 스택: (고유 도메인 수 / 2)와 (항목 수 / 5)의 평균, 각각 상한 100%
  */
-export function computeTechProgress(items: TechStackItem[]): number {
-  const rows = effectiveTechRows(items);
+export function computeTechProgress(domains: TechStackDomain[]): number {
+  const rows = effectiveTechRows(domains);
   if (rows.length === 0) return 0;
   const domainCount = new Set(rows.map(r => r.domain)).size;
   const domainPart = Math.min(domainCount / PROMPT_PROGRESS_TECH_DOMAINS_FULL, 1);
@@ -120,7 +123,7 @@ export function computePortfolioPromptProgress(
   input: PortfolioPromptProgressInput,
 ): PortfolioPromptProgress {
   const intro = computeIntroProgress(input.bio);
-  const tech = computeTechProgress(input.techStackItems);
+  const tech = computeTechProgress(input.techStackDomains);
   const repo = computeRepoProgress(input.repos);
   const activities = computeActivitiesProgress(input.activities);
   const mileage = computeMileageProgress(input.mileageItems);
@@ -133,7 +136,7 @@ export function computePortfolioPromptProgress(
 export function usePortfolioPromptProgress(): PortfolioPromptProgress {
   const {
     userInfo,
-    techStackItems,
+    techStackDomains,
     repos,
     mileageItems,
     activities,
@@ -143,14 +146,14 @@ export function usePortfolioPromptProgress(): PortfolioPromptProgress {
     () =>
       computePortfolioPromptProgress({
         bio: userInfo?.bio ?? '',
-        techStackItems,
+        techStackDomains,
         repos: Array.isArray(repos) ? repos : [],
         mileageItems,
         activities,
       }),
     [
       userInfo?.bio,
-      techStackItems,
+      techStackDomains,
       repos,
       mileageItems,
       activities,
