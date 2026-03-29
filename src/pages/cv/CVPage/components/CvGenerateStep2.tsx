@@ -89,13 +89,13 @@ const CvGenerateStep2 = ({
               required
               fullWidth
               label="제목"
-              helperText="이력서 히스토리에서 구분할 이름을 짧게 입력하세요."
+              helperText="포트폴리오 히스토리에서 구분할 이름을 짧게 입력하세요."
               placeholder={TITLE_PLACEHOLDER}
               value={draftTitle}
               onChange={e => onDraftTitleChange(e.target.value)}
               inputProps={{
                 maxLength: INPUT_MAX_LENGTH.REPO_TITLE,
-                'aria-label': '이력서 제목',
+                'aria-label': '포트폴리오 제목',
               }}
             />
           </Flex.Column>

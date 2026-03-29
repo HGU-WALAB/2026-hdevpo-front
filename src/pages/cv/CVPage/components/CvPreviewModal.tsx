@@ -186,7 +186,7 @@ const CvPreviewModal = ({
                     value={editTitle}
                     onChange={e => setEditTitle(e.target.value)}
                     maxLength={200}
-                    aria-label="이력서 제목"
+                    aria-label="포트폴리오 제목"
                   />
                 </Flex.Row>
                 <Text
@@ -207,7 +207,7 @@ const CvPreviewModal = ({
                   color={palette.nearBlack}
                   style={{ fontSize: '1.0625rem', lineHeight: 1.35, wordBreak: 'break-word' }}
                 >
-                  {data ? `${data.title} — ${data.target_position}` : '이력서 미리보기'}
+                  {data ? `${data.title} — ${data.target_position}` : '포트폴리오 미리보기'}
                 </Text>
               </Flex.Row>
             )}
@@ -312,7 +312,7 @@ const CvPreviewModal = ({
             >
               <LoadingIcon width={88} height={88} aria-hidden />
               <Text margin="0" color={palette.grey600} style={{ fontSize: '0.875rem' }}>
-                이력서 정보를 불러오는 중입니다…
+                포트폴리오 정보를 불러오는 중입니다…
               </Text>
             </S.LoadingArea>
           ) : null}

@@ -88,7 +88,7 @@ const CvManagementPanel = ({ onClose }: CvManagementPanelProps) => {
     (id: number) => {
       deleteMutation.mutate(id, {
         onSuccess: () => {
-          toast.success('이력서가 삭제되었습니다.', { position: 'top-center' });
+          toast.success('포트폴리오가 삭제되었습니다.', { position: 'top-center' });
           setPreviewId(current => (current === id ? null : current));
         },
         onError: () => {
@@ -127,12 +127,12 @@ const CvManagementPanel = ({ onClose }: CvManagementPanelProps) => {
               lineHeight: 1.5,
             }}
           >
-            이력서 관리
+            포트폴리오 관리
           </Heading>
         </Flex.Row>
         <Flex.Row align="center" gap="0.5rem" wrap="wrap">
           <Button
-            label="이력서 생성"
+            label="포트폴리오 생성"
             variant="contained"
             color="blue"
             size="medium"
@@ -146,7 +146,7 @@ const CvManagementPanel = ({ onClose }: CvManagementPanelProps) => {
           <IconButton
             type="button"
             onClick={onClose}
-            aria-label="이력서 패널 닫기"
+            aria-label="포트폴리오 패널 닫기"
             size="small"
             sx={{ color: palette.grey600 }}
           >
@@ -180,7 +180,7 @@ const CvManagementPanel = ({ onClose }: CvManagementPanelProps) => {
         ) : null}
         {!listQuery.isPending && cvs.length === 0 ? (
           <S.EmptyConnectCard>
-            <S.EmptyConnectMessage>저장된 이력서가 없습니다.</S.EmptyConnectMessage>
+            <S.EmptyConnectMessage>저장된 포트폴리오가 없습니다.</S.EmptyConnectMessage>
           </S.EmptyConnectCard>
         ) : null}
         {cvs.map(item => (

@@ -157,7 +157,7 @@ const CvGenerateStep3 = ({ value, onChange, onPrev, onNextToStep4 }: CvGenerateS
             lineHeight: 1.5,
           }}
         >
-          복사한 프롬프트를 아래 AI 서비스에 붙여넣어 이력서를 html로 생성하세요.
+          복사한 프롬프트를 아래 AI 서비스에 붙여넣어 포트폴리오를 html로 생성하세요.
         </Text>
         <Flex.Row
           align="stretch"

@@ -26,7 +26,7 @@ const PortfolioPromptQualityDashboard = ({
         <Flex.Column gap="0.25rem" style={{ flex: 1, minWidth: 0 }}>
           <S.Title>프롬프트 품질 점수</S.Title>
           <S.Guide>
-            진행도를 채우면 더 정교하고 퀄리티 높은 이력서 프롬프트를 받을 수
+            진행도를 채우면 더 정교하고 퀄리티 높은 포트폴리오 프롬프트를 받을 수
             있어요!
           </S.Guide>
         </Flex.Column>

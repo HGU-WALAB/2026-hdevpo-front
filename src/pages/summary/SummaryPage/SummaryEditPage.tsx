@@ -182,15 +182,15 @@ const SummaryEditPage = () => {
     </S.RepoSelectButton>
   );
 
-  /** 모바일에서 이력서 패널만 표시 (내 활동 본문 숨김) */
+  /** 모바일에서 포트폴리오 패널만 표시 (내 활동 본문 숨김) */
   const mobileCvOnly = isMobile && cvPanelOpen;
 
   return (
     <Flex.Column margin="1rem" gap="1.5rem">
       <S.TopRow align="center" justify="space-between" gap="1rem" wrap="wrap">
         <S.GuideText>
-          이력서를 제작하기 위한 페이지입니다. 아래 항목을 통해
-          이력서가 생성됩니다.
+          포트폴리오를 제작하기 위한 페이지입니다. 아래 항목을 통해
+          포트폴리오가 생성됩니다.
         </S.GuideText>
         <S.ButtonGroup gap="0.5rem">
           <S.PreviewButton
@@ -201,7 +201,7 @@ const SummaryEditPage = () => {
             미리보기
           </S.PreviewButton>
           <Button
-            label="이력서 관리"
+            label="포트폴리오 관리"
             variant="contained"
             color="blue"
             size="large"
@@ -235,9 +235,9 @@ const SummaryEditPage = () => {
             title={SECTION_TITLES[key]}
             subtitle={
               key === 'activities'
-                ? '교내·외 수상 경력, 동아리, 대외활동 등을 추가하면 더 풍부한 이력서 설명을 생성할 수 있습니다.'
+                ? '교내·외 수상 경력, 동아리, 대외활동 등을 추가하면 더 풍부한 포트폴리오 설명을 생성할 수 있습니다.'
                 : key === 'mileage'
-                  ? '해당 마일리지 활동의 구체적인 내용을 입력하면 더욱 완성도 높은 이력서 설명을 생성할 수 있습니다.'
+                  ? '해당 마일리지 활동의 구체적인 내용을 입력하면 더욱 완성도 높은 포트폴리오 설명을 생성할 수 있습니다.'
                   : undefined
             }
             icon={SECTION_ICONS[key]}
