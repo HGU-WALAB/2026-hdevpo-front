@@ -278,6 +278,17 @@ const UserInfoSectionContent = ({ readOnly = false }: UserInfoSectionContentProp
     },
   } as const;
 
+  /** 긴 URL: 한 줄 + 가로 스크롤 (모바일에서 입력·버튼 한 줄 배치 시) */
+  const profileLinkUrlFieldSx = {
+    ...profileLinkFieldSx,
+    '& .MuiInputBase-input': {
+      fontSize: '0.875rem',
+      overflowX: 'auto',
+      whiteSpace: 'nowrap',
+      WebkitOverflowScrolling: 'touch',
+    },
+  } as const;
+
   const labelColStyle = {
     flex: isMobile ? undefined : '0 0 8.5rem',
     width: isMobile ? '100%' : undefined,
@@ -408,112 +419,63 @@ const UserInfoSectionContent = ({ readOnly = false }: UserInfoSectionContentProp
                     등록된 링크가 없습니다.
                   </Text>
                 ) : (
-                  profileLinks.map((link, idx) => (
-                    <S.ProfileLinkRow
-                      key={`${link.url}-${idx}`}
-                      align="center"
-                      gap="0.75rem"
-                      wrap="wrap"
-                      width="100%"
-                    >
-                      <Flex.Column style={labelColStyle}>
-                        <Text
-                          style={{
-                            margin: 0,
-                            fontSize: '0.9375rem',
-                            fontWeight: 700,
-                            color: palette.nearBlack,
-                          }}
+                  profileLinks.map((link, idx) =>
+                    isMobile ? (
+                      <S.ProfileLinkStack key={`${link.url}-${idx}`} gap="0.5rem">
+                        <Flex.Column style={{ width: '100%' }}>
+                          <Text
+                            style={{
+                              margin: 0,
+                              fontSize: '0.9375rem',
+                              fontWeight: 700,
+                              color: palette.nearBlack,
+                            }}
+                          >
+                            {link.label.trim() || '링크'}
+                          </Text>
+                        </Flex.Column>
+                        <Flex.Row
+                          align="center"
+                          gap="0.5rem"
+                          wrap="nowrap"
+                          width="100%"
+                          style={{ minWidth: 0 }}
                         >
-                          {link.label.trim() || '링크'}
-                        </Text>
-                      </Flex.Column>
-                      <Flex.Column style={{ flex: 1, minWidth: isMobile ? '100%' : '8rem' }}>
-                        <Input
-                          value={link.url}
-                          size="small"
-                          fullWidth
-                          sx={profileLinkFieldSx}
-                          inputProps={{
-                            readOnly: true,
-                            'aria-label': `${link.label} URL`,
-                          }}
-                        />
-                      </Flex.Column>
-                      <S.ProfileLinkAnchor
-                        href={normalizePortfolioProfileUrl(link.url)}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        style={{ fontSize: '0.8125rem' }}
-                      >
-                        열기
-                      </S.ProfileLinkAnchor>
-                    </S.ProfileLinkRow>
-                  ))
-                )}
-              </Flex.Column>
-            ) : (
-              <>
-                {profileLinks.map((link, idx) => (
-                  <S.ProfileLinkRow
-                    key={`${link.url}-${idx}`}
-                    align="center"
-                    gap="0.5rem"
-                    wrap="wrap"
-                    width="100%"
-                  >
-                    {editingLinkIndex === idx ? (
-                      <>
-                        <Flex.Column style={labelColStyle}>
-                          <Input
-                            value={editLinkLabel}
-                            onChange={e => setEditLinkLabel(e.target.value)}
-                            size="small"
-                            fullWidth
-                            placeholder="라벨"
-                            disabled={linkActionLoading}
-                            sx={profileLinkFieldSx}
-                            inputProps={{
-                              maxLength: INPUT_MAX_LENGTH.PROFILE_LINK_LABEL,
-                              'aria-label': '프로필 링크 라벨 편집',
-                            }}
-                          />
-                        </Flex.Column>
-                        <Flex.Column style={{ flex: 1, minWidth: isMobile ? '100%' : '6rem' }}>
-                          <Input
-                            value={editLinkUrl}
-                            onChange={e => setEditLinkUrl(e.target.value)}
-                            size="small"
-                            fullWidth
-                            placeholder="http://github.com/username/repo"
-                            disabled={linkActionLoading}
-                            sx={profileLinkFieldSx}
-                            inputProps={{
-                              maxLength: INPUT_MAX_LENGTH.PROFILE_LINK_URL,
-                              'aria-label': '프로필 링크 URL 편집',
-                            }}
-                          />
-                        </Flex.Column>
-                        <Flex.Row gap="0.375rem" wrap="wrap">
-                          <S.RowActionButton
-                            type="button"
-                            $variant="primary"
-                            onClick={handleSaveEditLink}
-                            disabled={!canSubmitEditLink || linkActionLoading}
+                          <Flex.Column
+                            style={{ flex: 1, minWidth: 0, width: '100%' }}
                           >
-                            저장
-                          </S.RowActionButton>
-                          <S.RowActionButton
-                            type="button"
-                            onClick={cancelEditLink}
-                            disabled={linkActionLoading}
+                            <Input
+                              value={link.url}
+                              size="small"
+                              fullWidth
+                              sx={profileLinkUrlFieldSx}
+                              inputProps={{
+                                readOnly: true,
+                                'aria-label': `${link.label} URL`,
+                              }}
+                            />
+                          </Flex.Column>
+                          <S.ProfileLinkAnchor
+                            href={normalizePortfolioProfileUrl(link.url)}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            style={{
+                              fontSize: '0.8125rem',
+                              flexShrink: 0,
+                            }}
                           >
-                            취소
-                          </S.RowActionButton>
+                            열기
+                          </S.ProfileLinkAnchor>
                         </Flex.Row>
-                      </>
+                      </S.ProfileLinkStack>
                     ) : (
-                      <>
+                      <S.ProfileLinkRow
+                        key={`${link.url}-${idx}`}
+                        align="center"
+                        gap="0.75rem"
+                        wrap="wrap"
+                        width="100%"
+                      >
                         <Flex.Column style={labelColStyle}>
                           <Text
                             style={{
@@ -521,110 +483,424 @@ const UserInfoSectionContent = ({ readOnly = false }: UserInfoSectionContentProp
                               fontSize: '0.9375rem',
                               fontWeight: 700,
                               color: palette.nearBlack,
-                              lineHeight: 1.4,
                             }}
                           >
                             {link.label.trim() || '링크'}
                           </Text>
                         </Flex.Column>
-                        <Flex.Column style={{ flex: 1, minWidth: isMobile ? '100%' : '6rem' }}>
+                        <Flex.Column
+                          style={{ flex: 1, minWidth: '8rem' }}
+                        >
                           <Input
                             value={link.url}
                             size="small"
                             fullWidth
-                            sx={profileLinkFieldSx}
+                            sx={profileLinkUrlFieldSx}
                             inputProps={{
                               readOnly: true,
                               'aria-label': `${link.label} URL`,
                             }}
                           />
                         </Flex.Column>
-                        <Flex.Row gap="0.375rem" wrap="wrap">
-                          <S.RowActionButton
-                            type="button"
-                            $variant="edit"
-                            onClick={() => startEditLink(idx)}
-                            disabled={
-                              linkActionLoading ||
-                              editingLinkIndex !== null ||
-                              showAddLinkForm
-                            }
+                        <S.ProfileLinkAnchor
+                          href={normalizePortfolioProfileUrl(link.url)}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          style={{ fontSize: '0.8125rem' }}
+                        >
+                          열기
+                        </S.ProfileLinkAnchor>
+                      </S.ProfileLinkRow>
+                    ),
+                  )
+                )}
+              </Flex.Column>
+            ) : (
+              <>
+                {profileLinks.map((link, idx) =>
+                  isMobile ? (
+                    <S.ProfileLinkStack key={`${link.url}-${idx}`} gap="0.5rem">
+                      {editingLinkIndex === idx ? (
+                        <>
+                          <Flex.Column style={{ width: '100%' }}>
+                            <Input
+                              value={editLinkLabel}
+                              onChange={e => setEditLinkLabel(e.target.value)}
+                              size="small"
+                              fullWidth
+                              placeholder="라벨"
+                              disabled={linkActionLoading}
+                              sx={profileLinkFieldSx}
+                              inputProps={{
+                                maxLength: INPUT_MAX_LENGTH.PROFILE_LINK_LABEL,
+                                'aria-label': '프로필 링크 라벨 편집',
+                              }}
+                            />
+                          </Flex.Column>
+                          <Flex.Row
+                            align="center"
+                            gap="0.5rem"
+                            wrap="nowrap"
+                            width="100%"
+                            style={{ minWidth: 0 }}
                           >
-                            수정
-                          </S.RowActionButton>
-                          <S.RowActionButton
-                            type="button"
-                            $variant="danger"
-                            onClick={() => handleRemoveLink(idx)}
-                            disabled={
-                              linkActionLoading ||
-                              editingLinkIndex !== null ||
-                              showAddLinkForm
-                            }
+                            <Flex.Column
+                              style={{ flex: 1, minWidth: 0, width: '100%' }}
+                            >
+                              <Input
+                                value={editLinkUrl}
+                                onChange={e => setEditLinkUrl(e.target.value)}
+                                size="small"
+                                fullWidth
+                                placeholder="http://github.com/username/repo"
+                                disabled={linkActionLoading}
+                                sx={profileLinkUrlFieldSx}
+                                inputProps={{
+                                  maxLength: INPUT_MAX_LENGTH.PROFILE_LINK_URL,
+                                  'aria-label': '프로필 링크 URL 편집',
+                                }}
+                              />
+                            </Flex.Column>
+                            <Flex.Row
+                              gap="0.375rem"
+                              wrap="nowrap"
+                              style={{ flexShrink: 0 }}
+                            >
+                              <S.RowActionButton
+                                type="button"
+                                $variant="primary"
+                                onClick={handleSaveEditLink}
+                                disabled={
+                                  !canSubmitEditLink || linkActionLoading
+                                }
+                              >
+                                저장
+                              </S.RowActionButton>
+                              <S.RowActionButton
+                                type="button"
+                                onClick={cancelEditLink}
+                                disabled={linkActionLoading}
+                              >
+                                취소
+                              </S.RowActionButton>
+                            </Flex.Row>
+                          </Flex.Row>
+                        </>
+                      ) : (
+                        <>
+                          <Flex.Column style={{ width: '100%' }}>
+                            <Text
+                              style={{
+                                margin: 0,
+                                fontSize: '0.9375rem',
+                                fontWeight: 700,
+                                color: palette.nearBlack,
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {link.label.trim() || '링크'}
+                            </Text>
+                          </Flex.Column>
+                          <Flex.Row
+                            align="center"
+                            gap="0.5rem"
+                            wrap="nowrap"
+                            width="100%"
+                            style={{ minWidth: 0 }}
                           >
-                            삭제
-                          </S.RowActionButton>
-                        </Flex.Row>
-                      </>
-                    )}
-                  </S.ProfileLinkRow>
-                ))}
+                            <Flex.Column
+                              style={{ flex: 1, minWidth: 0, width: '100%' }}
+                            >
+                              <Input
+                                value={link.url}
+                                size="small"
+                                fullWidth
+                                sx={profileLinkUrlFieldSx}
+                                inputProps={{
+                                  readOnly: true,
+                                  'aria-label': `${link.label} URL`,
+                                }}
+                              />
+                            </Flex.Column>
+                            <Flex.Row
+                              gap="0.375rem"
+                              wrap="nowrap"
+                              style={{ flexShrink: 0 }}
+                            >
+                              <S.RowActionButton
+                                type="button"
+                                $variant="edit"
+                                onClick={() => startEditLink(idx)}
+                                disabled={
+                                  linkActionLoading ||
+                                  editingLinkIndex !== null ||
+                                  showAddLinkForm
+                                }
+                              >
+                                수정
+                              </S.RowActionButton>
+                              <S.RowActionButton
+                                type="button"
+                                $variant="danger"
+                                onClick={() => handleRemoveLink(idx)}
+                                disabled={
+                                  linkActionLoading ||
+                                  editingLinkIndex !== null ||
+                                  showAddLinkForm
+                                }
+                              >
+                                삭제
+                              </S.RowActionButton>
+                            </Flex.Row>
+                          </Flex.Row>
+                        </>
+                      )}
+                    </S.ProfileLinkStack>
+                  ) : (
+                    <S.ProfileLinkRow
+                      key={`${link.url}-${idx}`}
+                      align="center"
+                      gap="0.5rem"
+                      wrap="wrap"
+                      width="100%"
+                    >
+                      {editingLinkIndex === idx ? (
+                        <>
+                          <Flex.Column style={labelColStyle}>
+                            <Input
+                              value={editLinkLabel}
+                              onChange={e => setEditLinkLabel(e.target.value)}
+                              size="small"
+                              fullWidth
+                              placeholder="라벨"
+                              disabled={linkActionLoading}
+                              sx={profileLinkFieldSx}
+                              inputProps={{
+                                maxLength: INPUT_MAX_LENGTH.PROFILE_LINK_LABEL,
+                                'aria-label': '프로필 링크 라벨 편집',
+                              }}
+                            />
+                          </Flex.Column>
+                          <Flex.Column
+                            style={{ flex: 1, minWidth: '6rem' }}
+                          >
+                            <Input
+                              value={editLinkUrl}
+                              onChange={e => setEditLinkUrl(e.target.value)}
+                              size="small"
+                              fullWidth
+                              placeholder="http://github.com/username/repo"
+                              disabled={linkActionLoading}
+                              sx={profileLinkUrlFieldSx}
+                              inputProps={{
+                                maxLength: INPUT_MAX_LENGTH.PROFILE_LINK_URL,
+                                'aria-label': '프로필 링크 URL 편집',
+                              }}
+                            />
+                          </Flex.Column>
+                          <Flex.Row gap="0.375rem" wrap="wrap">
+                            <S.RowActionButton
+                              type="button"
+                              $variant="primary"
+                              onClick={handleSaveEditLink}
+                              disabled={
+                                !canSubmitEditLink || linkActionLoading
+                              }
+                            >
+                              저장
+                            </S.RowActionButton>
+                            <S.RowActionButton
+                              type="button"
+                              onClick={cancelEditLink}
+                              disabled={linkActionLoading}
+                            >
+                              취소
+                            </S.RowActionButton>
+                          </Flex.Row>
+                        </>
+                      ) : (
+                        <>
+                          <Flex.Column style={labelColStyle}>
+                            <Text
+                              style={{
+                                margin: 0,
+                                fontSize: '0.9375rem',
+                                fontWeight: 700,
+                                color: palette.nearBlack,
+                                lineHeight: 1.4,
+                              }}
+                            >
+                              {link.label.trim() || '링크'}
+                            </Text>
+                          </Flex.Column>
+                          <Flex.Column
+                            style={{ flex: 1, minWidth: '6rem' }}
+                          >
+                            <Input
+                              value={link.url}
+                              size="small"
+                              fullWidth
+                              sx={profileLinkUrlFieldSx}
+                              inputProps={{
+                                readOnly: true,
+                                'aria-label': `${link.label} URL`,
+                              }}
+                            />
+                          </Flex.Column>
+                          <Flex.Row gap="0.375rem" wrap="wrap">
+                            <S.RowActionButton
+                              type="button"
+                              $variant="edit"
+                              onClick={() => startEditLink(idx)}
+                              disabled={
+                                linkActionLoading ||
+                                editingLinkIndex !== null ||
+                                showAddLinkForm
+                              }
+                            >
+                              수정
+                            </S.RowActionButton>
+                            <S.RowActionButton
+                              type="button"
+                              $variant="danger"
+                              onClick={() => handleRemoveLink(idx)}
+                              disabled={
+                                linkActionLoading ||
+                                editingLinkIndex !== null ||
+                                showAddLinkForm
+                              }
+                            >
+                              삭제
+                            </S.RowActionButton>
+                          </Flex.Row>
+                        </>
+                      )}
+                    </S.ProfileLinkRow>
+                  ),
+                )}
 
                 {showAddLinkForm ? (
-                  <S.ProfileLinkRow
-                    align="center"
-                    gap="0.5rem"
-                    wrap="wrap"
-                    width="100%"
-                  >
-                    <Flex.Column style={labelColStyle}>
-                      <Input
-                        value={newLinkLabel}
-                        onChange={e => setNewLinkLabel(e.target.value)}
-                        size="small"
-                        fullWidth
-                        placeholder="라벨"
-                        disabled={linkActionLoading}
-                        sx={profileLinkFieldSx}
-                        inputProps={{
-                          maxLength: INPUT_MAX_LENGTH.PROFILE_LINK_LABEL,
-                          'aria-label': '새 프로필 링크 라벨',
-                        }}
-                      />
-                    </Flex.Column>
-                    <Flex.Column style={{ flex: 1, minWidth: isMobile ? '100%' : '6rem' }}>
-                      <Input
-                        value={newLinkUrl}
-                        onChange={e => setNewLinkUrl(e.target.value)}
-                        size="small"
-                        fullWidth
-                        placeholder="http://github.com/username/repo"
-                        disabled={linkActionLoading}
-                        sx={profileLinkFieldSx}
-                        inputProps={{
-                          maxLength: INPUT_MAX_LENGTH.PROFILE_LINK_URL,
-                          'aria-label': '새 프로필 링크 URL',
-                        }}
-                      />
-                    </Flex.Column>
-                    <Flex.Row gap="0.375rem" wrap="wrap" align="center">
-                      <S.RowActionButton
-                        type="button"
-                        $variant="primary"
-                        onClick={handleConfirmAddLink}
-                        disabled={!canSubmitNewLink || linkActionLoading}
+                  isMobile ? (
+                    <S.ProfileLinkStack gap="0.5rem">
+                      <Flex.Column style={{ width: '100%' }}>
+                        <Input
+                          value={newLinkLabel}
+                          onChange={e => setNewLinkLabel(e.target.value)}
+                          size="small"
+                          fullWidth
+                          placeholder="라벨"
+                          disabled={linkActionLoading}
+                          sx={profileLinkFieldSx}
+                          inputProps={{
+                            maxLength: INPUT_MAX_LENGTH.PROFILE_LINK_LABEL,
+                            'aria-label': '새 프로필 링크 라벨',
+                          }}
+                        />
+                      </Flex.Column>
+                      <Flex.Row
+                        align="center"
+                        gap="0.5rem"
+                        wrap="nowrap"
+                        width="100%"
+                        style={{ minWidth: 0 }}
                       >
-                        확인
-                      </S.RowActionButton>
-                      <S.RowActionButton
-                        type="button"
-                        onClick={handleCancelAddLink}
-                        disabled={linkActionLoading}
-                      >
-                        취소
-                      </S.RowActionButton>
-                    </Flex.Row>
-                  </S.ProfileLinkRow>
+                        <Flex.Column
+                          style={{ flex: 1, minWidth: 0, width: '100%' }}
+                        >
+                          <Input
+                            value={newLinkUrl}
+                            onChange={e => setNewLinkUrl(e.target.value)}
+                            size="small"
+                            fullWidth
+                            placeholder="http://github.com/username/repo"
+                            disabled={linkActionLoading}
+                            sx={profileLinkUrlFieldSx}
+                            inputProps={{
+                              maxLength: INPUT_MAX_LENGTH.PROFILE_LINK_URL,
+                              'aria-label': '새 프로필 링크 URL',
+                            }}
+                          />
+                        </Flex.Column>
+                        <Flex.Row
+                          gap="0.375rem"
+                          wrap="nowrap"
+                          align="center"
+                          style={{ flexShrink: 0 }}
+                        >
+                          <S.RowActionButton
+                            type="button"
+                            $variant="primary"
+                            onClick={handleConfirmAddLink}
+                            disabled={!canSubmitNewLink || linkActionLoading}
+                          >
+                            확인
+                          </S.RowActionButton>
+                          <S.RowActionButton
+                            type="button"
+                            onClick={handleCancelAddLink}
+                            disabled={linkActionLoading}
+                          >
+                            취소
+                          </S.RowActionButton>
+                        </Flex.Row>
+                      </Flex.Row>
+                    </S.ProfileLinkStack>
+                  ) : (
+                    <S.ProfileLinkRow
+                      align="center"
+                      gap="0.5rem"
+                      wrap="wrap"
+                      width="100%"
+                    >
+                      <Flex.Column style={labelColStyle}>
+                        <Input
+                          value={newLinkLabel}
+                          onChange={e => setNewLinkLabel(e.target.value)}
+                          size="small"
+                          fullWidth
+                          placeholder="라벨"
+                          disabled={linkActionLoading}
+                          sx={profileLinkFieldSx}
+                          inputProps={{
+                            maxLength: INPUT_MAX_LENGTH.PROFILE_LINK_LABEL,
+                            'aria-label': '새 프로필 링크 라벨',
+                          }}
+                        />
+                      </Flex.Column>
+                      <Flex.Column style={{ flex: 1, minWidth: '6rem' }}>
+                        <Input
+                          value={newLinkUrl}
+                          onChange={e => setNewLinkUrl(e.target.value)}
+                          size="small"
+                          fullWidth
+                          placeholder="http://github.com/username/repo"
+                          disabled={linkActionLoading}
+                          sx={profileLinkUrlFieldSx}
+                          inputProps={{
+                            maxLength: INPUT_MAX_LENGTH.PROFILE_LINK_URL,
+                            'aria-label': '새 프로필 링크 URL',
+                          }}
+                        />
+                      </Flex.Column>
+                      <Flex.Row gap="0.375rem" wrap="wrap" align="center">
+                        <S.RowActionButton
+                          type="button"
+                          $variant="primary"
+                          onClick={handleConfirmAddLink}
+                          disabled={!canSubmitNewLink || linkActionLoading}
+                        >
+                          확인
+                        </S.RowActionButton>
+                        <S.RowActionButton
+                          type="button"
+                          onClick={handleCancelAddLink}
+                          disabled={linkActionLoading}
+                        >
+                          취소
+                        </S.RowActionButton>
+                      </Flex.Row>
+                    </S.ProfileLinkRow>
+                  )
                 ) : null}
 
                 {showProfileLinkAddBar ? (
@@ -665,6 +941,13 @@ const UserInfoSectionContent = ({ readOnly = false }: UserInfoSectionContentProp
 export default UserInfoSectionContent;
 
 const S = {
+  ProfileLinkStack: styled(Flex.Column)`
+    padding: 0.75rem 0;
+    border-bottom: 1px solid ${palette.grey200};
+    box-sizing: border-box;
+    width: 100%;
+    min-width: 0;
+  `,
   ProfileLinkRow: styled(Flex.Row)`
     padding: 0.75rem 0;
     border-bottom: 1px solid ${palette.grey200};
