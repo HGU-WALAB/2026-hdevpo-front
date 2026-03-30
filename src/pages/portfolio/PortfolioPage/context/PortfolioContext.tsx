@@ -171,18 +171,23 @@ export type UserInfo = UserInfoResponse;
 export interface PortfolioState {
   userInfo: UserInfo | null;
   setUserInfo: (v: UserInfo | null | ((p: UserInfo | null) => UserInfo | null)) => void;
+  isUserInfoLoading: boolean;
   sectionOrder: DraggableSectionKey[];
   setSectionOrder: (v: DraggableSectionKey[] | ((p: DraggableSectionKey[]) => DraggableSectionKey[])) => void;
   techStackDomains: TechStackDomain[];
   setTechStackDomains: (
     v: TechStackDomain[] | ((p: TechStackDomain[]) => TechStackDomain[]),
   ) => void;
+  isTechStackLoading: boolean;
   repos: RepoItem[];
   setRepos: (v: RepoItem[] | ((p: RepoItem[]) => RepoItem[])) => void;
+  isReposLoading: boolean;
   mileageItems: MileageItem[];
   setMileageItems: (v: MileageItem[] | ((p: MileageItem[]) => MileageItem[])) => void;
+  isMileageLoading: boolean;
   activities: ActivityItem[];
   setActivities: (v: ActivityItem[] | ((p: ActivityItem[]) => ActivityItem[])) => void;
+  isActivitiesLoading: boolean;
   /** 활동 삭제 (즉시 DELETE API 호출) */
   deleteActivity: (id: number) => void;
   /** 새 활동(id<0) 저장 버튼 클릭 시 POST. 실패 시 throw */
@@ -421,16 +426,21 @@ export const PortfolioProvider = ({ children }: PortfolioProviderProps) => {
     () => ({
       userInfo: userInfoQuery.data ?? null,
       setUserInfo,
+      isUserInfoLoading: userInfoQuery.isLoading,
       sectionOrder: settingsQuery.data ?? DRAGGABLE_SECTION_ORDER,
       setSectionOrder,
       techStackDomains: techStackQuery.data ?? [],
       setTechStackDomains,
+      isTechStackLoading: techStackQuery.isLoading,
       repos: reposQuery.data ?? [],
       setRepos,
+      isReposLoading: reposQuery.isLoading,
       mileageItems: mileageQuery.data ?? [],
       setMileageItems,
+      isMileageLoading: mileageQuery.isLoading,
       activities: activitiesQuery.data ?? [],
       setActivities,
+      isActivitiesLoading: activitiesQuery.isLoading,
       deleteActivity,
       postNewActivity,
       saveExistingActivity,
@@ -439,16 +449,21 @@ export const PortfolioProvider = ({ children }: PortfolioProviderProps) => {
     }),
     [
       userInfoQuery.data,
+      userInfoQuery.isLoading,
       setUserInfo,
       settingsQuery.data,
       setSectionOrder,
       techStackQuery.data,
+      techStackQuery.isLoading,
       setTechStackDomains,
       reposQuery.data,
+      reposQuery.isLoading,
       setRepos,
       mileageQuery.data,
+      mileageQuery.isLoading,
       setMileageItems,
       activitiesQuery.data,
+      activitiesQuery.isLoading,
       setActivities,
       deleteActivity,
       postNewActivity,

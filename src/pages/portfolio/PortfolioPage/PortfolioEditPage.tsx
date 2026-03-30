@@ -64,7 +64,14 @@ const SECTION_ICONS: Record<DraggableSectionKey, React.ReactNode> = {
 const PortfolioEditPage = () => {
   useTrackPageView({ eventName: '[View] 활동 요약' });
   const navigate = useNavigate();
-  const { sectionOrder, setSectionOrder } = usePortfolioContext();
+  const {
+    sectionOrder,
+    setSectionOrder,
+    isTechStackLoading,
+    isReposLoading,
+    isMileageLoading,
+    isActivitiesLoading,
+  } = usePortfolioContext();
   const { cvPanelOpen, setCvPanelOpen } = useCvPanelOpenFromQuery();
   const [repoModalOpen, setRepoModalOpen] = useState(false);
   const [mileageModalOpen, setMileageModalOpen] = useState(false);
@@ -173,6 +180,13 @@ const PortfolioEditPage = () => {
             key={key}
             sectionId={key}
             title={SECTION_TITLES[key]}
+            isLoading={
+              key === 'tech' ? isTechStackLoading
+              : key === 'repo' ? isReposLoading
+              : key === 'mileage' ? isMileageLoading
+              : key === 'activities' ? isActivitiesLoading
+              : false
+            }
             subtitle={
               key === 'activities'
                 ? '교내·외 수상 경력, 동아리, 대외활동 등을 추가하면 더 풍부한 포트폴리오 설명을 생성할 수 있습니다.'

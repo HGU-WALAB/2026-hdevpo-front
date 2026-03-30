@@ -7,7 +7,7 @@ import { palette } from '@/styles/palette';
 import AddIcon from '@mui/icons-material/Add';
 import CameraAltIcon from '@mui/icons-material/CameraAlt';
 import EditIcon from '@mui/icons-material/Edit';
-import { styled, useMediaQuery } from '@mui/material';
+import { LinearProgress, Skeleton, styled, useMediaQuery } from '@mui/material';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 
@@ -36,7 +36,7 @@ interface UserInfoSectionContentProps {
 
 /** 유저정보. 상단 고정, 타이틀 없음. name/department/major1·2 표시, bio만 수정 가능 */
 const UserInfoSectionContent = ({ readOnly = false }: UserInfoSectionContentProps) => {
-  const { userInfo, setUserInfo } = usePortfolioContext();
+  const { userInfo, setUserInfo, isUserInfoLoading } = usePortfolioContext();
   const promptProgress = usePortfolioPromptProgress();
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
   const [isEditingBio, setIsEditingBio] = useState(false);
@@ -294,6 +294,23 @@ const UserInfoSectionContent = ({ readOnly = false }: UserInfoSectionContentProp
     width: isMobile ? '100%' : undefined,
     flexShrink: 0,
   };
+
+  if (isUserInfoLoading) {
+    return (
+      <S.Card id={PORTFOLIO_SECTION_ELEMENT_ID.intro}>
+        <S.LoadingBar color="primary" />
+        <Flex.Row gap="1.25rem" align="flex-start" style={{ flexWrap: 'wrap' }}>
+          <Skeleton variant="rounded" width={96} height={96} style={{ borderRadius: '0.5rem', flexShrink: 0 }} />
+          <Flex.Column gap="0.5rem" style={{ flex: 1, minWidth: '10rem' }}>
+            <Skeleton variant="text" width="40%" height={28} />
+            <Skeleton variant="text" width="60%" height={20} />
+            <Skeleton variant="text" width="80%" height={20} />
+            <Skeleton variant="text" width="55%" height={20} />
+          </Flex.Column>
+        </Flex.Row>
+      </S.Card>
+    );
+  }
 
   return (
     <S.Card id={PORTFOLIO_SECTION_ELEMENT_ID.intro}>
@@ -1035,6 +1052,16 @@ const S = {
     padding: 1.25rem;
     width: 100%;
     ${boxShadow};
+    position: relative;
+    overflow: hidden;
+  `,
+  LoadingBar: styled(LinearProgress)`
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 0.75rem 0.75rem 0 0;
   `,
   Inner: styled(Flex.Row)`
     gap: 1.25rem;

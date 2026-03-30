@@ -1,12 +1,14 @@
 import { Flex, Heading, Text } from '@/components';
 import { boxShadow } from '@/styles/common';
 import DragIndicatorIcon from '@mui/icons-material/DragIndicator';
-import { styled, useTheme } from '@mui/material';
+import { LinearProgress, styled, useTheme } from '@mui/material';
 import {
   type DragEvent,
   type ReactNode,
   useCallback,
 } from 'react';
+
+import PortfolioSectionSkeleton from './PortfolioSectionSkeleton';
 
 import {
   PORTFOLIO_SECTION_ELEMENT_ID,
@@ -29,6 +31,8 @@ interface DraggableSectionProps {
   onDragLeave: (e: DragEvent<HTMLElement>) => void;
   onDrop: (targetId: DraggableSectionKey) => void;
   isDragOver?: boolean;
+  /** 데이터 로딩 중 여부 — 카드 상단 LinearProgress + 스켈레톤 표시 */
+  isLoading?: boolean;
   /** 포트폴리오 프롬프트 품질 진행도 (카드 하단 오른쪽 정렬 바) */
   promptFooter?: { percent: number; hint: string };
   children: ReactNode;
@@ -46,6 +50,7 @@ const DraggableSection = ({
   onDragLeave,
   onDrop,
   isDragOver = false,
+  isLoading = false,
   promptFooter,
   children,
 }: DraggableSectionProps) => {
@@ -86,6 +91,9 @@ const DraggableSection = ({
       onDrop={handleDrop}
       $isDragOver={isDragOver}
     >
+      {isLoading && (
+        <S.LoadingBar color="primary" />
+      )}
       <S.Header $hasRight={headerRight != null}>
         <Flex.Column gap="0.25rem" style={{ flex: 1, minWidth: 0 }}>
           <Flex.Row align="center" gap="0.5rem">
@@ -119,7 +127,7 @@ const DraggableSection = ({
           <S.HeaderRight $compact={compactHeaderRight}>{headerRight}</S.HeaderRight>
         )}
       </S.Header>
-      <S.Content>{children}</S.Content>
+      <S.Content>{isLoading ? <PortfolioSectionSkeleton /> : children}</S.Content>
       {promptFooter != null && (
         <SectionPromptQualityFooter
           hint={promptFooter.hint}
@@ -141,6 +149,16 @@ const S = {
     ${boxShadow};
     opacity: ${({ $isDragOver }) => ($isDragOver ? 0.85 : 1)};
     transition: opacity 0.15s ease;
+    position: relative;
+    overflow: hidden;
+  `,
+  LoadingBar: styled(LinearProgress)`
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 3px;
+    border-radius: 0.75rem 0.75rem 0 0;
   `,
   Header: styled('div')<{ $hasRight?: boolean }>`
     display: flex;

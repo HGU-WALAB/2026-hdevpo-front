@@ -11,3 +11,4 @@ export { default as StaticSection } from './StaticSection';
 export { default as TechStackSectionContent } from './TechStackSectionContent';
 export type { TechStackSectionContentHandle } from './TechStackSectionContent';
 export { default as UserInfoSectionContent } from './UserInfoSectionContent';
+export { default as PortfolioSectionSkeleton } from './PortfolioSectionSkeleton';
