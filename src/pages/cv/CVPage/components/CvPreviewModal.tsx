@@ -64,7 +64,7 @@ const CvPreviewModal = ({
   onRequestDelete,
   isDeletePending = false,
 }: CvPreviewModalProps) => {
-  const [showHtmlPreview, setShowHtmlPreview] = useState(false);
+  const [showHtmlPreview, setShowHtmlPreview] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editHtml, setEditHtml] = useState('');
@@ -78,7 +78,7 @@ const CvPreviewModal = ({
   }, [open]);
 
   useEffect(() => {
-    setShowHtmlPreview(false);
+    setShowHtmlPreview(true);
     setIsEditing(false);
   }, [data?.id]);
 
@@ -121,6 +121,7 @@ const CvPreviewModal = ({
     if (!data) return;
     setEditTitle(data.title);
     setEditHtml(data.html_content ?? '');
+    setShowHtmlPreview(true);
     setIsEditing(false);
   }, [data]);
 
@@ -137,6 +138,7 @@ const CvPreviewModal = ({
       {
         onSuccess: () => {
           toast.success('저장되었습니다.', { position: 'top-center' });
+          setShowHtmlPreview(true);
           setIsEditing(false);
         },
         onError: () => {
@@ -176,7 +178,7 @@ const CvPreviewModal = ({
           minHeight: 0,
         }}
       >
-        <S.HeaderBar direction="column" gap="0.5rem" padding="1rem 1.25rem">
+        <S.HeaderBar direction="column" gap="0.5rem" padding="1rem 2.75rem">
           <Flex.Row align="flex-start" justify="space-between" gap="0.75rem" wrap="wrap">
             {isEditing && data ? (
               <Flex.Column gap="0.35rem" style={{ flex: '1 1 12rem', minWidth: 0 }}>
@@ -298,7 +300,7 @@ const CvPreviewModal = ({
         <S.ScrollBody
           direction="column"
           gap="1.25rem"
-          padding={isPending ? '0' : '1.25rem 1.25rem 1.5rem'}
+          padding={isPending ? '0' : '1.25rem 2.75rem 1.5rem'}
           $loading={isPending}
         >
           {isPending ? (
