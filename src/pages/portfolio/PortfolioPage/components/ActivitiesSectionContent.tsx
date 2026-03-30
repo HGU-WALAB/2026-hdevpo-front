@@ -14,6 +14,7 @@ import { styled, useTheme } from '@mui/material';
 
 import { INPUT_MAX_LENGTH } from '../../constants/inputLimits';
 import { groupActivitiesByCategory } from '../../utils/activityGrouping';
+import { formatActivityPeriodRange } from '../../utils/date';
 import {
   type ActivityItem,
   usePortfolioContext,
@@ -536,7 +537,10 @@ const ActivitiesSectionContent = forwardRef<
                               margin: 0,
                             }}
                           >
-                            {item.start_date} ~ {item.end_date}
+                            {formatActivityPeriodRange(
+                              item.start_date,
+                              item.end_date,
+                            )}
                           </Text>
                           <Text
                             as="span"

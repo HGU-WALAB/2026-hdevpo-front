@@ -20,3 +20,13 @@ export function formatDateRange(createdAt: string, updatedAt: string): string {
   if (to) return to;
   return '-';
 }
+
+/** 포트폴리오 활동 기간: 종료일이 없으면 "YYYY-MM-DD ~ 현재" */
+export function formatActivityPeriodRange(start: string, end: string): string {
+  const from = formatDateOnly(start);
+  const to = formatDateOnly(end);
+  if (from && to) return `${from} ~ ${to}`;
+  if (from) return `${from} ~ 현재`;
+  if (to) return to;
+  return '-';
+}

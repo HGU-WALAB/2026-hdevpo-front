@@ -11,6 +11,7 @@ import type {
 } from '../context/PortfolioContext';
 import { SECTION_TITLES } from '../../constants/constants';
 import { groupActivitiesByCategory } from '../../utils/activityGrouping';
+import { formatActivityPeriodRange } from '../../utils/date';
 import {
   levelToProficiencyTier,
   PROFICIENCY_TIER_LABELS,
@@ -124,7 +125,8 @@ function sectionActivities(activities: ActivityItem[]): string {
         : '';
       const tagsPart =
         a.tags?.length ? ` · #${a.tags.map(escapeMarkdown).join(' #')}` : '';
-      return `- **${escapeMarkdown(a.title)}** (${a.start_date} ~ ${a.end_date})${escapeMarkdown(desc)}${urlPart}${tagsPart}`;
+      const period = formatActivityPeriodRange(a.start_date, a.end_date);
+      return `- **${escapeMarkdown(a.title)}** (${escapeMarkdown(period)})${escapeMarkdown(desc)}${urlPart}${tagsPart}`;
     });
     return `### ${escapeMarkdown(cat)}\n\n${lines.join('\n')}`;
   });

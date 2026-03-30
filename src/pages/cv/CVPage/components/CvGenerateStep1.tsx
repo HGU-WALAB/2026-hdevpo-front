@@ -9,7 +9,7 @@ import { Checkbox, useTheme } from '@mui/material';
 import { type ReactNode } from 'react';
 
 import { TechStackSectionContent } from '@/pages/portfolio/PortfolioPage/components';
-import { formatDateRange } from '@/pages/portfolio/utils/date';
+import { formatActivityPeriodRange } from '@/pages/portfolio/utils/date';
 import {
   type ActivityItem,
   type MileageItem,
@@ -401,7 +401,10 @@ function ActivitySelectableRow({
   onToggle: () => void;
 }) {
   const theme = useTheme();
-  const range = formatDateRange(activity.start_date, activity.end_date);
+  const range = formatActivityPeriodRange(
+    activity.start_date,
+    activity.end_date,
+  );
   return (
     <S.SelectRow style={{ cursor: 'pointer' }}>
       <Flex.Row align="center" gap="0.75rem" width="100%" style={{ minWidth: 0 }}>
