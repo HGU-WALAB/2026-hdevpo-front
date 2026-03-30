@@ -1,12 +1,13 @@
 import { Button, Flex, Heading, Text } from '@/components';
 import { palette } from '@/styles/palette';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FolderIcon from '@mui/icons-material/Folder';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { Checkbox, useTheme } from '@mui/material';
-import { type ReactNode } from 'react';
+import { type FunctionComponent, type ReactNode, type SVGProps } from 'react';
 
 import { TechStackSectionContent } from '@/pages/portfolio/PortfolioPage/components';
 import { formatActivityPeriodRange } from '@/pages/portfolio/utils/date';
@@ -18,6 +19,10 @@ import {
 
 import { CvGeneratePageS as S } from '../cvGeneratePageStyles';
 import { repoSelectionId, toggleInList } from '../../utils/cvWizardSelection';
+
+const AutoAwesomeIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
+  <AutoAwesomeIcon sx={{ fontSize: 20 }} />
+);
 
 export interface CvGenerateStep1Props {
   name: string;
@@ -33,7 +38,9 @@ export interface CvGenerateStep1Props {
   onSelectedMileageIdsChange: (updater: (prev: number[]) => number[]) => void;
   onSelectedActivityIdsChange: (updater: (prev: number[]) => number[]) => void;
   onSelectedRepoIdsChange: (updater: (prev: number[]) => number[]) => void;
-  onNext: () => void;
+  onPrev: () => void;
+  onBuildPrompt: () => void;
+  buildPromptPending: boolean;
 }
 
 const CvGenerateStep1 = ({
@@ -50,7 +57,9 @@ const CvGenerateStep1 = ({
   onSelectedMileageIdsChange,
   onSelectedActivityIdsChange,
   onSelectedRepoIdsChange,
-  onNext,
+  onPrev,
+  onBuildPrompt,
+  buildPromptPending,
 }: CvGenerateStep1Props) => {
   const theme = useTheme();
 
@@ -181,7 +190,7 @@ const CvGenerateStep1 = ({
 
       <Flex.Row
         align="center"
-        justify="flex-end"
+        justify="space-between"
         gap="0.75rem"
         wrap="wrap"
         width="100%"
@@ -191,14 +200,24 @@ const CvGenerateStep1 = ({
           borderTop: `1px solid ${palette.grey200}`,
         }}
       >
+        <S.BackButton
+          type="button"
+          variant="outlined"
+          onClick={onPrev}
+          aria-label="JD 입력 단계로 돌아가기"
+          startIcon={<ArrowBackIcon sx={{ fontSize: 20, color: 'inherit' }} />}
+        >
+          이전 단계
+        </S.BackButton>
         <Button
-          label="다음: JD 입력"
+          label="프롬프트 생성"
           variant="contained"
           color="blue"
           size="large"
-          icon={() => <ArrowForwardIcon sx={{ fontSize: 20 }} />}
-          iconPosition="end"
-          onClick={onNext}
+          icon={AutoAwesomeIconWrap}
+          iconPosition="start"
+          disabled={buildPromptPending}
+          onClick={onBuildPrompt}
         />
       </Flex.Row>
     </>

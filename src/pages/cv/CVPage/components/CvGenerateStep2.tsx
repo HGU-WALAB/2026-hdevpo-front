@@ -1,6 +1,7 @@
 import { Button, Flex, Heading, Text } from '@/components';
 import { palette } from '@/styles/palette';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
+import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
@@ -41,9 +42,14 @@ export interface CvGenerateStep2Props {
   onTargetPositionChange: (v: string) => void;
   additionalNotes: string;
   onAdditionalNotesChange: (v: string) => void;
-  onPrev: () => void;
-  onBuildPrompt: () => void;
-  buildPromptPending: boolean;
+  /** 스텝 1(JD): 이전 마법사 단계 없음 → 생략 */
+  onPrev?: () => void;
+  /** 스텝 1(JD): 항목 선택으로 이동 */
+  onNext?: () => void;
+  nextButtonLabel?: string;
+  /** 스텝 2(항목 선택): 프롬프트 생성 — 스텝 1에서는 미사용 */
+  onBuildPrompt?: () => void;
+  buildPromptPending?: boolean;
 }
 
 const CvGenerateStep2 = ({
@@ -57,10 +63,14 @@ const CvGenerateStep2 = ({
   additionalNotes,
   onAdditionalNotesChange,
   onPrev,
+  onNext,
+  nextButtonLabel = '다음',
   onBuildPrompt,
-  buildPromptPending,
+  buildPromptPending = false,
 }: CvGenerateStep2Props) => {
   const theme = useTheme();
+  const showNext = typeof onNext === 'function';
+  const showBuild = typeof onBuildPrompt === 'function';
 
   return (
     <>
@@ -159,7 +169,7 @@ const CvGenerateStep2 = ({
 
       <Flex.Row
         align="center"
-        justify="space-between"
+        justify={onPrev ? 'space-between' : 'flex-end'}
         gap="0.75rem"
         wrap="wrap"
         width="100%"
@@ -169,25 +179,40 @@ const CvGenerateStep2 = ({
           borderTop: `1px solid ${palette.grey200}`,
         }}
       >
-        <S.BackButton
-          type="button"
-          variant="outlined"
-          onClick={onPrev}
-          aria-label="항목 선택 단계로 돌아가기"
-          startIcon={<ArrowBackIcon sx={{ fontSize: 20, color: 'inherit' }} />}
-        >
-          이전 단계
-        </S.BackButton>
-        <Button
-          label="프롬프트 생성"
-          variant="contained"
-          color="blue"
-          size="large"
-          icon={AutoAwesomeIconWrap}
-          iconPosition="start"
-          disabled={buildPromptPending}
-          onClick={onBuildPrompt}
-        />
+        {onPrev ? (
+          <S.BackButton
+            type="button"
+            variant="outlined"
+            onClick={onPrev}
+            aria-label="JD 입력 단계로 돌아가기"
+            startIcon={<ArrowBackIcon sx={{ fontSize: 20, color: 'inherit' }} />}
+          >
+            이전 단계
+          </S.BackButton>
+        ) : null}
+        {showNext ? (
+          <Button
+            label={nextButtonLabel}
+            variant="contained"
+            color="blue"
+            size="large"
+            icon={() => <ArrowForwardIcon sx={{ fontSize: 20 }} />}
+            iconPosition="end"
+            onClick={onNext}
+          />
+        ) : null}
+        {showBuild ? (
+          <Button
+            label="프롬프트 생성"
+            variant="contained"
+            color="blue"
+            size="large"
+            icon={AutoAwesomeIconWrap}
+            iconPosition="start"
+            disabled={buildPromptPending}
+            onClick={onBuildPrompt}
+          />
+        ) : null}
       </Flex.Row>
     </>
   );

@@ -9,11 +9,11 @@ type IdListSetterArg = number[] | ((prev: number[]) => number[]);
 
 interface CvWizardState {
   wizardStep: CvWizardUiStep;
-  // step 1
+  // 스텝 2 UI: 마일리지·활동·레포 선택
   selectedMileageIds: number[];
   selectedActivityIds: number[];
   selectedRepoIds: number[];
-  // step 2
+  // 스텝 1 UI: JD·제목 등
   draftTitle: string;
   jobPosting: string;
   targetPosition: string;

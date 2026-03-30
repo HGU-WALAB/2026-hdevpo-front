@@ -31,8 +31,8 @@ import CvGenerateStep3 from './components/CvGenerateStep3';
 import CvGenerateStep4 from './components/CvGenerateStep4';
 
 const STEPS = [
-  { n: 1, label: '항목 선택' },
-  { n: 2, label: 'JD 입력' },
+  { n: 1, label: 'JD 입력' },
+  { n: 2, label: '항목 선택' },
   { n: 3, label: '프롬프트 생성' },
   { n: 4, label: '결과 저장' },
 ] as const;
@@ -314,7 +314,7 @@ const CvGeneratePage = () => {
             color: theme.palette.grey[600],
           }}
         >
-          마일리지 항목으로 맞춤 포트폴리오 프롬프트를 만들고 히스토리로 관리하세요
+          채용 공고를 입력한 뒤 포함할 활동을 고르고, 맞춤 프롬프트를 만들어 히스토리로 관리하세요
         </Text>
       </Flex.Column>
 
@@ -382,6 +382,22 @@ const CvGeneratePage = () => {
         ) : (
           <>
             {wizardStep === 1 ? (
+              <CvGenerateStep2
+                isMobile={isMobile}
+                draftTitle={draftTitle}
+                onDraftTitleChange={setDraftTitle}
+                jobPosting={jobPosting}
+                onJobPostingChange={setJobPosting}
+                targetPosition={targetPosition}
+                onTargetPositionChange={setTargetPosition}
+                additionalNotes={additionalNotes}
+                onAdditionalNotesChange={setAdditionalNotes}
+                onNext={handleNextFromStep1}
+                nextButtonLabel="다음: 항목 선택"
+              />
+            ) : null}
+
+            {wizardStep === 2 ? (
               <CvGenerateStep1
                 name={name}
                 bio={bio}
@@ -396,21 +412,6 @@ const CvGeneratePage = () => {
                 onSelectedMileageIdsChange={setSelectedMileageIds}
                 onSelectedActivityIdsChange={setSelectedActivityIds}
                 onSelectedRepoIdsChange={setSelectedRepoIds}
-                onNext={handleNextFromStep1}
-              />
-            ) : null}
-
-            {wizardStep === 2 ? (
-              <CvGenerateStep2
-                isMobile={isMobile}
-                draftTitle={draftTitle}
-                onDraftTitleChange={setDraftTitle}
-                jobPosting={jobPosting}
-                onJobPostingChange={setJobPosting}
-                targetPosition={targetPosition}
-                onTargetPositionChange={setTargetPosition}
-                additionalNotes={additionalNotes}
-                onAdditionalNotesChange={setAdditionalNotes}
                 onPrev={handlePrevFromStep2}
                 onBuildPrompt={handleBuildPrompt}
                 buildPromptPending={buildPromptMutation.isPending}
