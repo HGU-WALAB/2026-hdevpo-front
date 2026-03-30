@@ -156,6 +156,37 @@ export const CvGeneratePageS = {
     background-color: ${palette.white};
     box-sizing: border-box;
   `,
+  SectionBulkBar: styled('div')`
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+  `,
+  SectionBulkButton: styled('button')`
+    margin: 0;
+    padding: 0.25rem 0.55rem;
+    border-radius: 0.375rem;
+    border: 1px solid ${palette.blue400};
+    background-color: ${palette.white};
+    color: ${palette.blue500};
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    line-height: 1.25;
+    text-transform: none;
+    font-family: inherit;
+    box-sizing: border-box;
+    &:hover:not(:disabled) {
+      background-color: ${palette.blue300};
+      border-color: ${palette.blue500};
+      color: ${palette.blue600};
+    }
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  `,
   ScrollList: styled('div')`
     display: flex;
     flex-direction: column;
@@ -165,6 +196,36 @@ export const CvGeneratePageS = {
     width: 100%;
     min-width: 0;
     padding-right: 0.25rem;
+  `,
+  /** 체크박스는 1행만 차지하고, 첫 텍스트 줄 높이 기준 세로 가운데 */
+  SelectRowInner: styled('div')`
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 0.75rem;
+    row-gap: 0.25rem;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  `,
+  SelectRowCheckCell: styled('div')`
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    display: flex;
+    align-items: center;
+  `,
+  SelectRowFirstLine: styled('div')`
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  `,
+  SelectRowBody: styled('div')`
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
   `,
   SelectRow: styled('div', {
     shouldForwardProp: p => p !== '$disabled' && p !== '$selected',

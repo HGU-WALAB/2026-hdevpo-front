@@ -8,7 +8,13 @@ import FolderIcon from '@mui/icons-material/Folder';
 import MenuBookIcon from '@mui/icons-material/MenuBook';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { Checkbox, useTheme } from '@mui/material';
-import { type FunctionComponent, type ReactNode, type SVGProps } from 'react';
+import {
+  useCallback,
+  useMemo,
+  type FunctionComponent,
+  type ReactNode,
+  type SVGProps,
+} from 'react';
 
 import {
   normalizePortfolioProfileUrl,
@@ -72,6 +78,89 @@ const CvGenerateStep1 = ({
   const visibleProfileLinks = (profileLinks ?? []).filter(
     l => l.url?.trim() || l.label?.trim(),
   );
+
+  const mileageSelectableIds = useMemo(
+    () =>
+      mileageItems
+        .filter((m): m is MileageItem & { id: number } => typeof m.id === 'number')
+        .map(m => m.id),
+    [mileageItems],
+  );
+
+  const mileageAllSelected = useMemo(
+    () =>
+      mileageSelectableIds.length > 0 &&
+      mileageSelectableIds.every(id => selectedMileageIds.includes(id)),
+    [mileageSelectableIds, selectedMileageIds],
+  );
+
+  const mileageHasSelection = useMemo(
+    () => mileageSelectableIds.some(id => selectedMileageIds.includes(id)),
+    [mileageSelectableIds, selectedMileageIds],
+  );
+
+  const handleMileageSelectAll = useCallback(() => {
+    onSelectedMileageIdsChange(prev => [...new Set([...prev, ...mileageSelectableIds])]);
+  }, [mileageSelectableIds, onSelectedMileageIdsChange]);
+
+  const handleMileageDeselectAll = useCallback(() => {
+    onSelectedMileageIdsChange(prev =>
+      prev.filter(id => !mileageSelectableIds.includes(id)),
+    );
+  }, [mileageSelectableIds, onSelectedMileageIdsChange]);
+
+  const repoSelectableIds = useMemo(
+    () => visibleRepos.map(r => repoSelectionId(r)),
+    [visibleRepos],
+  );
+
+  const repoAllSelected = useMemo(
+    () =>
+      repoSelectableIds.length > 0 &&
+      repoSelectableIds.every(id => selectedRepoIds.includes(id)),
+    [repoSelectableIds, selectedRepoIds],
+  );
+
+  const repoHasSelection = useMemo(
+    () => repoSelectableIds.some(id => selectedRepoIds.includes(id)),
+    [repoSelectableIds, selectedRepoIds],
+  );
+
+  const handleRepoSelectAll = useCallback(() => {
+    onSelectedRepoIdsChange(prev => [...new Set([...prev, ...repoSelectableIds])]);
+  }, [onSelectedRepoIdsChange, repoSelectableIds]);
+
+  const handleRepoDeselectAll = useCallback(() => {
+    onSelectedRepoIdsChange(prev =>
+      prev.filter(id => !repoSelectableIds.includes(id)),
+    );
+  }, [onSelectedRepoIdsChange, repoSelectableIds]);
+
+  const activitySelectableIds = useMemo(() => activities.map(a => a.id), [activities]);
+
+  const activityAllSelected = useMemo(
+    () =>
+      activitySelectableIds.length > 0 &&
+      activitySelectableIds.every(id => selectedActivityIds.includes(id)),
+    [activitySelectableIds, selectedActivityIds],
+  );
+
+  const activityHasSelection = useMemo(
+    () => activitySelectableIds.some(id => selectedActivityIds.includes(id)),
+    [activitySelectableIds, selectedActivityIds],
+  );
+
+  const handleActivitySelectAll = useCallback(() => {
+    onSelectedActivityIdsChange(prev =>
+      [...new Set([...prev, ...activitySelectableIds])],
+    );
+  }, [activitySelectableIds, onSelectedActivityIdsChange]);
+
+  const handleActivityDeselectAll = useCallback(() => {
+    onSelectedActivityIdsChange(prev =>
+      prev.filter(id => !activitySelectableIds.includes(id)),
+    );
+  }, [activitySelectableIds, onSelectedActivityIdsChange]);
 
   return (
     <>
@@ -193,6 +282,12 @@ const CvGenerateStep1 = ({
           itemCount={mileageItems.length}
           icon={<MenuBookIcon sx={{ fontSize: 20, color: palette.grey600 }} />}
           emptyText="포트폴리오에 등록된 마일리지가 없습니다. 내 활동 관리에서 마일리지를 추가하세요."
+          onSelectAll={handleMileageSelectAll}
+          onDeselectAll={handleMileageDeselectAll}
+          selectAllDisabled={
+            mileageSelectableIds.length === 0 || mileageAllSelected
+          }
+          deselectAllDisabled={!mileageHasSelection}
         >
           {mileageItems.map(m => (
             <MileageSelectableRow
@@ -215,6 +310,10 @@ const CvGenerateStep1 = ({
           itemCount={visibleRepos.length}
           icon={<FolderIcon sx={{ fontSize: 20, color: palette.grey600 }} />}
           emptyText="표시 중인 레포지토리가 없습니다. 내 활동 관리에서 레포를 선택·노출하세요."
+          onSelectAll={handleRepoSelectAll}
+          onDeselectAll={handleRepoDeselectAll}
+          selectAllDisabled={repoSelectableIds.length === 0 || repoAllSelected}
+          deselectAllDisabled={!repoHasSelection}
         >
           {visibleRepos.map(r => {
             const sid = repoSelectionId(r);
@@ -235,6 +334,12 @@ const CvGenerateStep1 = ({
           itemCount={activities.length}
           icon={<EmojiEventsIcon sx={{ fontSize: 20, color: palette.grey600 }} />}
           emptyText="등록된 활동이 없습니다. 내 활동 관리에서 활동을 추가하세요."
+          onSelectAll={handleActivitySelectAll}
+          onDeselectAll={handleActivityDeselectAll}
+          selectAllDisabled={
+            activitySelectableIds.length === 0 || activityAllSelected
+          }
+          deselectAllDisabled={!activityHasSelection}
         >
           {activities.map(a => (
             <ActivitySelectableRow
@@ -292,6 +397,10 @@ function SelectableSection({
   icon,
   emptyText,
   children,
+  onSelectAll,
+  onDeselectAll,
+  selectAllDisabled,
+  deselectAllDisabled,
 }: {
   title: string;
   countLabel: string;
@@ -299,9 +408,14 @@ function SelectableSection({
   icon: ReactNode;
   emptyText: string;
   children: ReactNode;
+  onSelectAll: () => void;
+  onDeselectAll: () => void;
+  selectAllDisabled: boolean;
+  deselectAllDisabled: boolean;
 }) {
   const theme = useTheme();
   const isEmpty = itemCount === 0;
+  const showBulk = !isEmpty;
 
   return (
     <S.SectionBlock>
@@ -312,13 +426,33 @@ function SelectableSection({
         wrap="wrap"
         style={{ marginBottom: '0.65rem' }}
       >
-        <Flex.Row align="center" gap="0.5rem" wrap="wrap">
+        <Flex.Row align="center" gap="0.5rem" wrap="wrap" style={{ minWidth: 0 }}>
           {icon}
           <Heading as="h4" margin="0" color={theme.palette.text.primary}>
             {title}
           </Heading>
           <S.CountPill>{countLabel}</S.CountPill>
         </Flex.Row>
+        {showBulk ? (
+          <S.SectionBulkBar>
+            <S.SectionBulkButton
+              type="button"
+              onClick={onSelectAll}
+              disabled={selectAllDisabled}
+              aria-label={`${title} 전체 선택`}
+            >
+              전체 선택
+            </S.SectionBulkButton>
+            <S.SectionBulkButton
+              type="button"
+              onClick={onDeselectAll}
+              disabled={deselectAllDisabled}
+              aria-label={`${title} 전체 해제`}
+            >
+              전체 해제
+            </S.SectionBulkButton>
+          </S.SectionBulkBar>
+        ) : null}
       </Flex.Row>
       {isEmpty ? (
         <Text
@@ -355,16 +489,18 @@ function MileageSelectableRow({
       $selected={selected}
       style={{ cursor: disabled ? 'not-allowed' : 'pointer' }}
     >
-      <Flex.Row align="center" gap="0.75rem" width="100%" style={{ minWidth: 0 }}>
-        <Checkbox
-          checked={selected}
-          disabled={disabled}
-          onChange={onToggle}
-          size="small"
-          sx={{ padding: '4px', flexShrink: 0 }}
-          inputProps={{ 'aria-label': `${item.item} 선택` }}
-        />
-        <Flex.Column gap="0.25rem" style={{ flex: 1, minWidth: 0 }}>
+      <S.SelectRowInner>
+        <S.SelectRowCheckCell>
+          <Checkbox
+            checked={selected}
+            disabled={disabled}
+            onChange={onToggle}
+            size="small"
+            sx={{ padding: '4px', flexShrink: 0 }}
+            inputProps={{ 'aria-label': `${item.item} 선택` }}
+          />
+        </S.SelectRowCheckCell>
+        <S.SelectRowFirstLine>
           <Flex.Row align="center" gap="0.5rem" wrap="wrap">
             <S.CategoryTag>{item.category}</S.CategoryTag>
             <Text
@@ -387,31 +523,35 @@ function MileageSelectableRow({
               {item.semester}
             </Text>
           </Flex.Row>
-          {item.additional_info?.trim() ? (
-            <Text
-              margin="0"
-              style={{
-                ...theme.typography.body2,
-                color: theme.palette.grey[600],
-                lineHeight: 1.45,
-              }}
-            >
-              {item.additional_info}
-            </Text>
-          ) : null}
-          {disabled ? (
-            <Text
-              margin="0"
-              style={{
-                ...theme.typography.caption,
-                color: palette.pink500,
-              }}
-            >
-              포트폴리오에 연결된 항목만 선택할 수 있습니다.
-            </Text>
-          ) : null}
-        </Flex.Column>
-      </Flex.Row>
+        </S.SelectRowFirstLine>
+        {item.additional_info?.trim() || disabled ? (
+          <S.SelectRowBody>
+            {item.additional_info?.trim() ? (
+              <Text
+                margin="0"
+                style={{
+                  ...theme.typography.body2,
+                  color: theme.palette.grey[600],
+                  lineHeight: 1.45,
+                }}
+              >
+                {item.additional_info}
+              </Text>
+            ) : null}
+            {disabled ? (
+              <Text
+                margin="0"
+                style={{
+                  ...theme.typography.caption,
+                  color: palette.pink500,
+                }}
+              >
+                포트폴리오에 연결된 항목만 선택할 수 있습니다.
+              </Text>
+            ) : null}
+          </S.SelectRowBody>
+        ) : null}
+      </S.SelectRowInner>
     </S.SelectRow>
   );
 }
@@ -434,15 +574,17 @@ function RepoSelectableRow({
       : repo.name;
   return (
     <S.SelectRow $selected={selected} style={{ cursor: 'pointer' }}>
-      <Flex.Row align="center" gap="0.75rem" width="100%" style={{ minWidth: 0 }}>
-        <Checkbox
-          checked={selected}
-          onChange={onToggle}
-          size="small"
-          sx={{ padding: '4px', flexShrink: 0 }}
-          inputProps={{ 'aria-label': `${rowTitle} 선택` }}
-        />
-        <Flex.Column gap="0.25rem" style={{ flex: 1, minWidth: 0 }}>
+      <S.SelectRowInner>
+        <S.SelectRowCheckCell>
+          <Checkbox
+            checked={selected}
+            onChange={onToggle}
+            size="small"
+            sx={{ padding: '4px', flexShrink: 0 }}
+            inputProps={{ 'aria-label': `${rowTitle} 선택` }}
+          />
+        </S.SelectRowCheckCell>
+        <S.SelectRowFirstLine>
           <Flex.Row align="center" gap="0.5rem" wrap="wrap">
             <Text
               margin="0"
@@ -455,7 +597,9 @@ function RepoSelectableRow({
               {rowTitle}
             </Text>
           </Flex.Row>
-          {repo.description?.trim() ? (
+        </S.SelectRowFirstLine>
+        {repo.description?.trim() ? (
+          <S.SelectRowBody>
             <Text
               margin="0"
               style={{
@@ -466,9 +610,9 @@ function RepoSelectableRow({
             >
               {repo.description}
             </Text>
-          ) : null}
-        </Flex.Column>
-      </Flex.Row>
+          </S.SelectRowBody>
+        ) : null}
+      </S.SelectRowInner>
     </S.SelectRow>
   );
 }
@@ -487,17 +631,24 @@ function ActivitySelectableRow({
     activity.start_date,
     activity.end_date,
   );
+  const hasBody =
+    Boolean(activity.description?.trim()) ||
+    Boolean(activity.url?.trim()) ||
+    (activity.tags && activity.tags.length > 0);
+
   return (
     <S.SelectRow $selected={selected} style={{ cursor: 'pointer' }}>
-      <Flex.Row align="center" gap="0.75rem" width="100%" style={{ minWidth: 0 }}>
-        <Checkbox
-          checked={selected}
-          onChange={onToggle}
-          size="small"
-          sx={{ padding: '4px', flexShrink: 0 }}
-          inputProps={{ 'aria-label': `${activity.title} 선택` }}
-        />
-        <Flex.Column gap="0.25rem" style={{ flex: 1, minWidth: 0 }}>
+      <S.SelectRowInner>
+        <S.SelectRowCheckCell>
+          <Checkbox
+            checked={selected}
+            onChange={onToggle}
+            size="small"
+            sx={{ padding: '4px', flexShrink: 0 }}
+            inputProps={{ 'aria-label': `${activity.title} 선택` }}
+          />
+        </S.SelectRowCheckCell>
+        <S.SelectRowFirstLine>
           <Flex.Row align="center" gap="0.5rem" wrap="wrap">
             <S.CategoryTag>{activity.category}</S.CategoryTag>
             <Text
@@ -520,36 +671,40 @@ function ActivitySelectableRow({
               {range}
             </Text>
           </Flex.Row>
-          {activity.description?.trim() ? (
-            <Text
-              margin="0"
-              style={{
-                ...theme.typography.body2,
-                color: theme.palette.grey[600],
-                lineHeight: 1.45,
-              }}
-            >
-              {activity.description}
-            </Text>
-          ) : null}
-          {activity.url?.trim() ? (
-            <S.ActivityUrlLink
-              href={activity.url.trim()}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              {activity.url.trim()}
-            </S.ActivityUrlLink>
-          ) : null}
-          {activity.tags && activity.tags.length > 0 ? (
-            <Flex.Row gap="0.375rem" wrap="wrap" style={{ width: '100%' }}>
-              {activity.tags.map(tag => (
-                <S.TagChip key={`${activity.id}-${tag}`}>{tag}</S.TagChip>
-              ))}
-            </Flex.Row>
-          ) : null}
-        </Flex.Column>
-      </Flex.Row>
+        </S.SelectRowFirstLine>
+        {hasBody ? (
+          <S.SelectRowBody>
+            {activity.description?.trim() ? (
+              <Text
+                margin="0"
+                style={{
+                  ...theme.typography.body2,
+                  color: theme.palette.grey[600],
+                  lineHeight: 1.45,
+                }}
+              >
+                {activity.description}
+              </Text>
+            ) : null}
+            {activity.url?.trim() ? (
+              <S.ActivityUrlLink
+                href={activity.url.trim()}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                {activity.url.trim()}
+              </S.ActivityUrlLink>
+            ) : null}
+            {activity.tags && activity.tags.length > 0 ? (
+              <Flex.Row gap="0.375rem" wrap="wrap" style={{ width: '100%' }}>
+                {activity.tags.map(tag => (
+                  <S.TagChip key={`${activity.id}-${tag}`}>{tag}</S.TagChip>
+                ))}
+              </Flex.Row>
+            ) : null}
+          </S.SelectRowBody>
+        ) : null}
+      </S.SelectRowInner>
     </S.SelectRow>
   );
 }

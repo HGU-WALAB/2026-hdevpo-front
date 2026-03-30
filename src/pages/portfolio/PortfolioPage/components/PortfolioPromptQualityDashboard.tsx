@@ -3,7 +3,7 @@ import { palette } from '@/styles/palette';
 import CodeIcon from '@mui/icons-material/Code';
 import EmojiEventsIcon from '@mui/icons-material/EmojiEvents';
 import FolderIcon from '@mui/icons-material/Folder';
-import MilitaryTechOutlinedIcon from '@mui/icons-material/MilitaryTechOutlined';
+import MenuBookIcon from '@mui/icons-material/MenuBook';
 import PersonOutlineIcon from '@mui/icons-material/PersonOutline';
 import { styled } from '@mui/material';
 import type { ReactNode } from 'react';
@@ -77,9 +77,7 @@ const PortfolioPromptQualityDashboard = ({
         <MiniCard
           sectionKey="mileage"
           onSectionClick={onSectionClick}
-          icon={
-            <MilitaryTechOutlinedIcon sx={{ fontSize: 18, color: palette.blue600 }} />
-          }
+          icon={<MenuBookIcon sx={{ fontSize: 18, color: palette.blue600 }} />}
           title="마일리지"
           hint={PROMPT_QUALITY_SECTION_HINTS.mileage}
           percent={progress.mileage}
