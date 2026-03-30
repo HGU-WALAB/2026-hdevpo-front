@@ -204,7 +204,7 @@ const CvGenerateStep1 = ({
           type="button"
           variant="outlined"
           onClick={onPrev}
-          aria-label="JD 입력 단계로 돌아가기"
+          aria-label="공고 입력 단계로 돌아가기"
           startIcon={<ArrowBackIcon sx={{ fontSize: 20, color: 'inherit' }} />}
         >
           이전 단계

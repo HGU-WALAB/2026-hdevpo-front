@@ -1,4 +1,4 @@
-import { Button, Flex, Heading, Text } from '@/components';
+import { Button, Dropdown, Flex, Heading, Text } from '@/components';
 import { palette } from '@/styles/palette';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -6,24 +6,18 @@ import ArticleOutlinedIcon from '@mui/icons-material/ArticleOutlined';
 import AutoAwesomeIcon from '@mui/icons-material/AutoAwesome';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import FlagOutlinedIcon from '@mui/icons-material/FlagOutlined';
-import SubtitlesOutlinedIcon from '@mui/icons-material/SubtitlesOutlined';
-import { TextField, useTheme } from '@mui/material';
+import { Checkbox, TextField, useTheme } from '@mui/material';
 import { type FunctionComponent, type SVGProps } from 'react';
 
-import { INPUT_MAX_LENGTH } from '@/pages/portfolio/constants/inputLimits';
+import { CV_TARGET_POSITION_PRESETS } from '../../constants/cvTargetPositionOptions';
 
 import { CvGeneratePageS as S } from '../cvGeneratePageStyles';
-
-const TITLE_PLACEHOLDER = '예) 카카오 2026 상반기 백엔드 신입';
 
 const JOB_POSTING_PLACEHOLDER = `예) 회사: 카카오
 포지션: 백엔드 개발자 (인턴)
 자격요건: Java/Spring 경험, 알고리즘 실력
 우대사항: AWS 경험, 오픈소스 기여
 ...`;
-
-const TARGET_POSITION_PLACEHOLDER =
-  '예) 백엔드 개발자, AI 엔지니어, 프론트엔드 인턴 등';
 
 const ADDITIONAL_NOTES_PLACEHOLDER =
   '예) 프로젝트 경험 위주로 강조해줘, 간결하게 작성해줘 등';
@@ -34,8 +28,8 @@ const AutoAwesomeIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
 
 export interface CvGenerateStep2Props {
   isMobile: boolean;
-  draftTitle: string;
-  onDraftTitleChange: (v: string) => void;
+  preparingEmployment: boolean;
+  onPreparingEmploymentChange: (v: boolean) => void;
   jobPosting: string;
   onJobPostingChange: (v: string) => void;
   targetPosition: string;
@@ -54,8 +48,8 @@ export interface CvGenerateStep2Props {
 
 const CvGenerateStep2 = ({
   isMobile,
-  draftTitle,
-  onDraftTitleChange,
+  preparingEmployment,
+  onPreparingEmploymentChange,
   jobPosting,
   onJobPostingChange,
   targetPosition,
@@ -72,13 +66,84 @@ const CvGenerateStep2 = ({
   const showNext = typeof onNext === 'function';
   const showBuild = typeof onBuildPrompt === 'function';
 
+  const positionLabel = preparingEmployment ? '지원 직무' : '관심있는 직무';
+  const jobInfoLabel = preparingEmployment
+    ? '공고 정보 (선택)'
+    : '관심있는 기업 정보 (선택)';
+  const jobHelperText = preparingEmployment
+    ? '회사명, 공고 제목, 우대사항, 자격요건 등 — 비워도 진행할 수 있습니다.'
+    : '관심 있는 회사·산업, 채용 공고 요약 등 — 비워도 진행할 수 있습니다.';
+  const introText = preparingEmployment
+    ? '지원 직무는 필수입니다. 공고 정보·추가 요청사항은 선택입니다.'
+    : '관심 직무는 필수입니다. 기업 정보·추가 요청사항은 선택입니다.';
+
   return (
     <>
       <Flex.Column gap="1.25rem" width="100%" style={{ marginTop: '1.5rem' }}>
         <Flex.Column gap="0.35rem" width="100%">
-          <Heading as="h3" margin="0" color={theme.palette.text.primary}>
-            채용 공고를 입력하세요
-          </Heading>
+          <Flex.Row
+            align="center"
+            justify="space-between"
+            gap="0.75rem"
+            wrap="wrap"
+            width="100%"
+            style={{ minWidth: 0 }}
+          >
+            <Heading
+              as="h3"
+              margin="0"
+              color={theme.palette.text.primary}
+              style={{ flex: '1 1 12rem', minWidth: 0 }}
+            >
+              {preparingEmployment ? '채용 공고를 입력하세요' : '진로 관심 분야'}
+            </Heading>
+            <label
+              htmlFor="cv-preparing-employment"
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.5rem',
+                flexShrink: 0,
+                cursor: 'pointer',
+                margin: 0,
+                userSelect: 'none',
+              }}
+            >
+              <Checkbox
+                id="cv-preparing-employment"
+                checked={preparingEmployment}
+                onChange={e => onPreparingEmploymentChange(e.target.checked)}
+                size="small"
+                sx={{
+                  padding: '4px',
+                  flexShrink: 0,
+                  color: palette.grey500,
+                  '&.Mui-checked': {
+                    color: palette.blue500,
+                  },
+                  '&:hover': {
+                    backgroundColor: 'rgba(91, 140, 241, 0.06)',
+                  },
+                }}
+                inputProps={{
+                  'aria-labelledby': 'cv-preparing-employment-label',
+                }}
+              />
+              <Text
+                id="cv-preparing-employment-label"
+                as="span"
+                margin="0"
+                style={{
+                  ...theme.typography.body2,
+                  color: palette.grey600,
+                  fontWeight: 500,
+                  lineHeight: 1.43,
+                }}
+              >
+                취업을 준비중입니다.
+              </Text>
+            </label>
+          </Flex.Row>
           <Text
             margin="0"
             style={{
@@ -86,28 +151,38 @@ const CvGenerateStep2 = ({
               color: theme.palette.grey[600],
             }}
           >
-            제목·공고 정보·지원 직무는 필수입니다. 추가 요청사항은 선택입니다.
+            {introText}
           </Text>
         </Flex.Column>
 
         <S.JdFieldRow align="flex-start" gap="0.65rem" width="100%">
           <S.FieldLeadIcon aria-hidden>
-            <SubtitlesOutlinedIcon sx={{ fontSize: 22, color: palette.grey600 }} />
+            <FlagOutlinedIcon sx={{ fontSize: 22, color: palette.grey600 }} />
           </S.FieldLeadIcon>
           <Flex.Column gap="0.35rem" style={{ flex: '1 1 0', minWidth: 0, width: '100%' }}>
-            <TextField
-              required
-              fullWidth
-              label="제목"
-              helperText="포트폴리오 히스토리에서 구분할 이름을 짧게 입력하세요."
-              placeholder={TITLE_PLACEHOLDER}
-              value={draftTitle}
-              onChange={e => onDraftTitleChange(e.target.value)}
-              inputProps={{
-                maxLength: INPUT_MAX_LENGTH.REPO_TITLE,
-                'aria-label': '포트폴리오 제목',
+            <Dropdown
+              label={positionLabel}
+              items={CV_TARGET_POSITION_PRESETS}
+              selectedItem={targetPosition}
+              setSelectedItem={onTargetPositionChange}
+              width="100%"
+              size="medium"
+              freeSolo
+              freeSoloInputProps={{
+                maxLength: 200,
+                'aria-label': positionLabel,
               }}
             />
+            <Text
+              margin="0"
+              style={{
+                ...theme.typography.caption,
+                color: theme.palette.grey[600],
+                marginTop: '0.125rem',
+              }}
+            >
+              목록에서 고르거나 직접 입력할 수 있습니다.
+            </Text>
           </Flex.Column>
         </S.JdFieldRow>
 
@@ -117,33 +192,18 @@ const CvGenerateStep2 = ({
           </S.FieldLeadIcon>
           <Flex.Column gap="0.35rem" style={{ flex: '1 1 0', minWidth: 0, width: '100%' }}>
             <TextField
-              required
               fullWidth
-              label="공고 정보"
-              helperText="회사명, 공고 제목, 우대사항, 자격요건 등"
+              label={jobInfoLabel}
+              helperText={jobHelperText}
               placeholder={JOB_POSTING_PLACEHOLDER}
               value={jobPosting}
               onChange={e => onJobPostingChange(e.target.value)}
               multiline
               minRows={isMobile ? 6 : 8}
-              inputProps={{ maxLength: 12000, 'aria-label': '공고 정보' }}
-            />
-          </Flex.Column>
-        </S.JdFieldRow>
-
-        <S.JdFieldRow align="flex-start" gap="0.65rem" width="100%">
-          <S.FieldLeadIcon aria-hidden>
-            <FlagOutlinedIcon sx={{ fontSize: 22, color: palette.grey600 }} />
-          </S.FieldLeadIcon>
-          <Flex.Column gap="0.35rem" style={{ flex: '1 1 0', minWidth: 0, width: '100%' }}>
-            <TextField
-              required
-              fullWidth
-              label="지원 직무"
-              placeholder={TARGET_POSITION_PLACEHOLDER}
-              value={targetPosition}
-              onChange={e => onTargetPositionChange(e.target.value)}
-              inputProps={{ maxLength: 200, 'aria-label': '지원 직무' }}
+              inputProps={{
+                maxLength: 12000,
+                'aria-label': preparingEmployment ? '공고 정보' : '관심있는 기업 정보',
+              }}
             />
           </Flex.Column>
         </S.JdFieldRow>
@@ -184,7 +244,7 @@ const CvGenerateStep2 = ({
             type="button"
             variant="outlined"
             onClick={onPrev}
-            aria-label="JD 입력 단계로 돌아가기"
+            aria-label="공고 입력 단계로 돌아가기"
             startIcon={<ArrowBackIcon sx={{ fontSize: 20, color: 'inherit' }} />}
           >
             이전 단계

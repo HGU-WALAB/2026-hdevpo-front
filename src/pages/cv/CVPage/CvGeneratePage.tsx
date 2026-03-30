@@ -14,6 +14,8 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckIcon from '@mui/icons-material/Check';
 import { useMediaQuery, useTheme } from '@mui/material';
 import { Fragment, useCallback, useEffect, useMemo } from 'react';
+
+import { cumulativeSemesterFromGrade } from '../utils/cumulativeSemester';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
@@ -31,7 +33,7 @@ import CvGenerateStep3 from './components/CvGenerateStep3';
 import CvGenerateStep4 from './components/CvGenerateStep4';
 
 const STEPS = [
-  { n: 1, label: 'JD 입력' },
+  { n: 1, label: '공고 입력' },
   { n: 2, label: '항목 선택' },
   { n: 3, label: '프롬프트 생성' },
   { n: 4, label: '결과 저장' },
@@ -81,7 +83,6 @@ const CvGeneratePage = () => {
     selectedRepoIds,
     setSelectedRepoIds,
     draftTitle,
-    setDraftTitle,
     jobPosting,
     setJobPosting,
     targetPosition,
@@ -94,7 +95,24 @@ const CvGeneratePage = () => {
     setHtmlResultDraft,
     pendingCvId,
     setPendingCvId,
+    preparingEmployment,
+    setPreparingEmployment,
   } = useCvWizardStore();
+
+  const defaultPreparingEmployment = useMemo(() => {
+    const c = cumulativeSemesterFromGrade(userInfo?.grade, userInfo?.semester);
+    return c != null && c >= 7;
+  }, [userInfo?.grade, userInfo?.semester]);
+
+  useEffect(() => {
+    if (typeof preparingEmployment === 'boolean') return;
+    setPreparingEmployment(defaultPreparingEmployment);
+  }, [preparingEmployment, defaultPreparingEmployment, setPreparingEmployment]);
+
+  const employmentPrepChecked =
+    typeof preparingEmployment === 'boolean'
+      ? preparingEmployment
+      : defaultPreparingEmployment;
 
   // 마운트 시 불완전한 저장 상태 보정
   useEffect(() => {
@@ -170,8 +188,12 @@ const CvGeneratePage = () => {
   }, [navigate]);
 
   const handleNextFromStep1 = useCallback(() => {
+    if (!targetPosition.trim()) {
+      toast.warn('지원 직무를 입력하거나 선택해 주세요.');
+      return;
+    }
     setWizardStep(2);
-  }, [setWizardStep]);
+  }, [setWizardStep, targetPosition]);
 
   const handlePrevFromStep2 = useCallback(() => {
     setWizardStep(1);
@@ -224,17 +246,16 @@ const CvGeneratePage = () => {
   }, [htmlResultDraft, navigate, patchCvMutation, pendingCvId]);
 
   const handleBuildPrompt = useCallback(() => {
-    const tt = draftTitle.trim();
     const jp = jobPosting.trim();
     const tp = targetPosition.trim();
-    if (!tt || !jp || !tp) {
-      toast.warn('제목, 공고 정보, 지원 직무를 모두 입력해 주세요.');
+    if (!tp) {
+      toast.warn('지원 직무를 입력하거나 선택해 주세요.');
       return;
     }
     const ids = getCommittedSelection();
     buildPromptMutation.mutate(
       {
-        title: tt,
+        title: '',
         job_posting: jp,
         target_position: tp,
         additional_notes: additionalNotes.trim(),
@@ -257,7 +278,6 @@ const CvGeneratePage = () => {
   }, [
     additionalNotes,
     buildPromptMutation,
-    draftTitle,
     getCommittedSelection,
     jobPosting,
     setGeneratedPrompt,
@@ -384,8 +404,8 @@ const CvGeneratePage = () => {
             {wizardStep === 1 ? (
               <CvGenerateStep2
                 isMobile={isMobile}
-                draftTitle={draftTitle}
-                onDraftTitleChange={setDraftTitle}
+                preparingEmployment={employmentPrepChecked}
+                onPreparingEmploymentChange={setPreparingEmployment}
                 jobPosting={jobPosting}
                 onJobPostingChange={setJobPosting}
                 targetPosition={targetPosition}
