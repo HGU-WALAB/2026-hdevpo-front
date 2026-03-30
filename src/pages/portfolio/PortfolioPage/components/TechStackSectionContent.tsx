@@ -191,11 +191,11 @@ const TechStackSectionContent = forwardRef<
   );
 
   const tableGridColumns = useMemo(() => {
-    /* 도메인 열 너비 고정, 숙련도 열은 태그·헤더에 맞춰 max-content */
-    const domainCol = '10.5rem';
+    /* 도메인·액션 열은 최소 너비, 숙련도 열은 1fr로 행 전체 너비를 채움 */
+    const domainCol = 'minmax(10.5rem, 12rem)';
     const tierPart =
       visibleTierIndices.length > 0
-        ? visibleTierIndices.map(() => 'minmax(5.25rem, max-content)').join(' ')
+        ? visibleTierIndices.map(() => 'minmax(5.25rem, 1fr)').join(' ')
         : '';
     const actionPart = readOnly ? '' : ' minmax(6.75rem, 7.5rem)';
     return tierPart
@@ -429,7 +429,7 @@ const TechStackSectionContent = forwardRef<
                     $role="tier"
                     key={`${domain.id}-tier-${visibleTierIndices[colIdx]}`}
                   >
-                    <S.TagCloudColumn $fitContent>
+                    <S.TagCloudColumn>
                       {entries.map(({ skill, stackIndex }) => (
                         <NotionTag
                           key={`${domain.id}-${stackIndex}`}
