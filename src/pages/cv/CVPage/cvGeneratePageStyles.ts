@@ -49,22 +49,23 @@ export const CvGeneratePageS = {
         display: 'flex',
         alignItems: 'center',
         justifyContent: 'center',
-        width: '2rem',
-        height: '2rem',
+        width: $active ? '2.375rem' : '2rem',
+        height: $active ? '2.375rem' : '2rem',
         borderRadius: '50%',
         ...theme.typography.body2,
-        fontSize: '0.8125rem',
+        fontSize: $active ? '0.9375rem' : '0.8125rem',
         fontWeight: 700,
         flexShrink: 0,
         boxSizing: 'border-box',
-        border: `2px solid ${filled ? palette.blue500 : palette.grey300}`,
+        border: `${$active ? '2.5px' : '2px'} solid ${filled ? palette.blue500 : palette.grey300}`,
         backgroundColor: filled ? palette.blue500 : palette.white,
         color: filled ? palette.white : theme.palette.grey[600],
+        boxShadow: $active ? `0 2px 8px ${palette.blue300}` : 'none',
         ...($muted && !filled ? { opacity: 0.85 } : {}),
         '@media (max-width: 900px)': {
-          width: '1.625rem',
-          height: '1.625rem',
-          fontSize: '0.6875rem',
+          width: $active ? '1.875rem' : '1.625rem',
+          height: $active ? '1.875rem' : '1.625rem',
+          fontSize: $active ? '0.75rem' : '0.6875rem',
         },
       };
     },
@@ -73,7 +74,8 @@ export const CvGeneratePageS = {
     shouldForwardProp: p => p !== '$active' && p !== '$completed',
   })<{ $active?: boolean; $completed?: boolean }>(({ theme, $active, $completed }) => ({
     ...theme.typography.caption,
-    fontWeight: $active ? 700 : $completed ? 600 : 500,
+    fontWeight: $active ? 800 : $completed ? 600 : 500,
+    fontSize: $active ? '0.8125rem' : undefined,
     color: $active || $completed ? palette.blue600 : theme.palette.text.secondary,
     textAlign: 'center',
     lineHeight: 1.25,
@@ -81,17 +83,42 @@ export const CvGeneratePageS = {
     width: '100%',
     maxWidth: '100%',
     '@media (max-width: 900px)': {
-      fontSize: '0.625rem',
+      fontSize: $active ? '0.6875rem' : '0.625rem',
       lineHeight: 1.2,
     },
   })),
-  StepConnector: styled('div')`
+  EmploymentToggleBox: styled('div')`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.5rem 0.75rem;
+    border-radius: 0.75rem;
+    border: 1.5px solid ${palette.blue300};
+    background-color: rgba(91, 140, 241, 0.06);
+    box-sizing: border-box;
+    flex-shrink: 0;
+
+    &:hover {
+      border-color: ${palette.blue400};
+      background-color: rgba(91, 140, 241, 0.09);
+    }
+
+    /* 내부 FormControlLabel이 기본 margin을 만들어 레이아웃이 흔들리는 것 방지 */
+    & .MuiFormControlLabel-root {
+      margin: 0;
+    }
+  `,
+  StepConnector: styled('div', {
+    shouldForwardProp: p => p !== '$completed',
+  })<{ $completed?: boolean }>`
     flex: 1 1 0;
     min-width: 0;
     height: 2px;
     margin-top: 0.8125rem;
     align-self: flex-start;
-    background-color: ${palette.grey200};
+    background-color: ${({ $completed }) =>
+      $completed ? palette.blue500 : palette.grey200};
+    transition: background-color 0.2s ease;
     @media (min-width: 901px) {
       min-width: 0.5rem;
       margin-top: 1rem;
@@ -125,6 +152,26 @@ export const CvGeneratePageS = {
     object-fit: cover;
     display: block;
   `,
+  ProfileLinkList: styled('ul')`
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+  `,
+  ProfileLinkAnchor: styled('a')`
+    color: ${palette.blue500};
+    font-size: 0.875rem;
+    font-weight: 500;
+    text-decoration: none;
+    word-break: break-all;
+    &:hover {
+      text-decoration: underline;
+    }
+  `,
   SectionBlock: styled('div')`
     display: flex;
     flex-direction: column;
@@ -136,6 +183,37 @@ export const CvGeneratePageS = {
     background-color: ${palette.white};
     box-sizing: border-box;
   `,
+  SectionBulkBar: styled('div')`
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.35rem;
+    flex-shrink: 0;
+  `,
+  SectionBulkButton: styled('button')`
+    margin: 0;
+    padding: 0.25rem 0.55rem;
+    border-radius: 0.375rem;
+    border: 1px solid ${palette.blue400};
+    background-color: ${palette.white};
+    color: ${palette.blue500};
+    font-size: 0.75rem;
+    font-weight: 600;
+    cursor: pointer;
+    line-height: 1.25;
+    text-transform: none;
+    font-family: inherit;
+    box-sizing: border-box;
+    &:hover:not(:disabled) {
+      background-color: ${palette.blue300};
+      border-color: ${palette.blue500};
+      color: ${palette.blue600};
+    }
+    &:disabled {
+      opacity: 0.4;
+      cursor: not-allowed;
+    }
+  `,
   ScrollList: styled('div')`
     display: flex;
     flex-direction: column;
@@ -146,15 +224,52 @@ export const CvGeneratePageS = {
     min-width: 0;
     padding-right: 0.25rem;
   `,
-  SelectRow: styled('div')<{ $disabled?: boolean }>`
+  /** 체크박스는 1행만 차지하고, 첫 텍스트 줄 높이 기준 세로 가운데 */
+  SelectRowInner: styled('div')`
+    display: grid;
+    grid-template-columns: auto 1fr;
+    column-gap: 0.75rem;
+    row-gap: 0.25rem;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  `,
+  SelectRowCheckCell: styled('div')`
+    grid-column: 1;
+    grid-row: 1;
+    align-self: center;
+    display: flex;
+    align-items: center;
+  `,
+  SelectRowFirstLine: styled('div')`
+    grid-column: 2;
+    grid-row: 1;
+    min-width: 0;
+  `,
+  SelectRowBody: styled('div')`
+    grid-column: 2;
+    grid-row: 2;
+    display: flex;
+    flex-direction: column;
+    gap: 0.25rem;
+    min-width: 0;
+  `,
+  SelectRow: styled('div', {
+    shouldForwardProp: p => p !== '$disabled' && p !== '$selected',
+  })<{ $disabled?: boolean; $selected?: boolean }>`
     display: flex;
     flex-direction: column;
     padding: 0.65rem 0.75rem;
     border-radius: 0.5rem;
-    border: 1px solid ${palette.grey200};
-    background-color: ${palette.grey100};
+    border: 1px solid
+      ${({ $selected }) => ($selected ? palette.blue400 : palette.grey200)};
+    background-color: ${({ $selected }) =>
+      $selected ? palette.blue300 : palette.grey100};
     opacity: ${({ $disabled }) => ($disabled ? 0.75 : 1)};
     box-sizing: border-box;
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease;
   `,
   CategoryTag: styled('span')(({ theme }) => ({
     display: 'inline-flex',
@@ -167,6 +282,28 @@ export const CvGeneratePageS = {
     backgroundColor: palette.blue300,
     flexShrink: 0,
   })),
+  ActivityUrlLink: styled('a')`
+    display: inline-block;
+    max-width: 100%;
+    font-size: 0.8125rem;
+    color: ${palette.blue500};
+    text-decoration: underline;
+    word-break: break-all;
+    &:hover {
+      color: ${palette.blue600};
+    }
+  `,
+  TagChip: styled('span')`
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    background-color: ${palette.grey100};
+    color: ${palette.grey600};
+    border: 1px solid ${palette.grey200};
+    font-size: 0.75rem;
+    font-weight: 500;
+  `,
   CountPill: styled('span')(({ theme }) => ({
     display: 'inline-flex',
     alignItems: 'center',

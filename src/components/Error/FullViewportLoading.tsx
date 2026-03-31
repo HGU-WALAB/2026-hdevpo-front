@@ -10,9 +10,8 @@ const FullViewportLoading = () => (
       display: 'flex',
       alignItems: 'center',
       justifyContent: 'center',
-      minHeight: '100vh',
-      width: '100%',
-      boxSizing: 'border-box',
+      position: 'absolute',
+      inset: 0,
       backgroundColor: palette.grey100,
     }}
   >

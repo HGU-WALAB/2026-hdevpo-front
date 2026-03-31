@@ -1,0 +1,820 @@
+import { Flex, Text, Title } from '@/components';
+import { palette } from '@/styles/palette';
+import CloseIcon from '@mui/icons-material/Close';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import EditIcon from '@mui/icons-material/Edit';
+import {
+  forwardRef,
+  useCallback,
+  useImperativeHandle,
+  useMemo,
+  useState,
+} from 'react';
+import { styled, useTheme } from '@mui/material';
+
+import { INPUT_MAX_LENGTH } from '../../constants/inputLimits';
+import { groupActivitiesByCategory } from '../../utils/activityGrouping';
+import { formatActivityPeriodRange } from '../../utils/date';
+import {
+  type ActivityItem,
+  usePortfolioContext,
+} from '../context/PortfolioContext';
+
+type ActivityEditDraft = Partial<ActivityItem> & { tagCompose?: string };
+
+function dedupeActivityTags(tags: string[] | undefined): string[] {
+  if (!tags?.length) return [];
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const t of tags) {
+    const s = t.trim();
+    if (s && !seen.has(s)) {
+      seen.add(s);
+      out.push(s);
+    }
+  }
+  return out;
+}
+
+/** 저장 직전: 칩 목록 + 입력 중인 텍스트까지 합쳐 태그 배열로 만듦 */
+function flushActivityTagsFromDraft(d: ActivityEditDraft): string[] {
+  const base = dedupeActivityTags(d.tags);
+  const piece = (d.tagCompose ?? '').trim();
+  if (!piece) return base;
+  const capped = piece.slice(0, INPUT_MAX_LENGTH.TECH_STACK_TAG);
+  if (base.includes(capped)) return base;
+  return [...base, capped];
+}
+
+interface ActivitiesSectionContentProps {
+  readOnly?: boolean;
+}
+
+export type ActivitiesSectionContentHandle = {
+  openAddActivity: () => void;
+};
+
+const ActivitiesSectionContent = forwardRef<
+  ActivitiesSectionContentHandle,
+  ActivitiesSectionContentProps
+>(function ActivitiesSectionContent({ readOnly = false }, ref) {
+  const theme = useTheme();
+  const {
+    activities,
+    setActivities,
+    deleteActivity,
+    postNewActivity,
+    saveExistingActivity,
+    activitiesNextId,
+    setActivitiesNextId,
+  } = usePortfolioContext();
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editDraft, setEditDraft] = useState<ActivityEditDraft>({});
+
+  const savedActivities = useMemo(
+    () => activities.filter(a => a.id >= 0),
+    [activities],
+  );
+  const draftActivities = useMemo(
+    () => activities.filter(a => a.id < 0),
+    [activities],
+  );
+  const grouped = useMemo(
+    () => groupActivitiesByCategory(savedActivities),
+    [savedActivities],
+  );
+
+  const handleAdd = useCallback(() => {
+    const existingDraft = activities.find(a => a.id < 0);
+    if (existingDraft) {
+      setEditingId(existingDraft.id);
+      setEditDraft({
+        ...existingDraft,
+        tags: dedupeActivityTags(existingDraft.tags),
+        tagCompose: '',
+      });
+      return;
+    }
+    const newItem: ActivityItem = {
+      id: activitiesNextId,
+      title: '새 활동',
+      description: '',
+      start_date: new Date().toISOString().slice(0, 10),
+      end_date: new Date().toISOString().slice(0, 10),
+      category: '기타',
+      url: '',
+      tags: [],
+    };
+    setActivities(prev => [newItem, ...prev]);
+    setActivitiesNextId(prev => prev - 1);
+    setEditingId(newItem.id);
+    setEditDraft({ ...newItem, tags: [], tagCompose: '' });
+  }, [activities, activitiesNextId, setActivities, setActivitiesNextId]);
+
+  const handleStartEdit = useCallback(
+    (item: ActivityItem) => {
+      setActivities(prev => prev.filter(a => a.id >= 0));
+      setEditingId(item.id);
+      setEditDraft({
+        ...item,
+        tags: dedupeActivityTags(item.tags),
+        tagCompose: '',
+      });
+    },
+    [setActivities],
+  );
+
+  const handleSaveEdit = useCallback(async () => {
+    if (editingId == null || !editDraft.title?.trim()) return;
+    const categoryNorm = (editDraft.category ?? '').trim() || '기타';
+    if (editingId < 0) {
+      const item = activities.find(a => a.id === editingId);
+      if (!item) return;
+      const tags = flushActivityTagsFromDraft(editDraft);
+      const toSave: ActivityItem = {
+        ...item,
+        title: editDraft.title ?? item.title,
+        description: editDraft.description ?? item.description,
+        start_date: editDraft.start_date ?? item.start_date,
+        end_date: editDraft.end_date ?? item.end_date,
+        category: categoryNorm,
+        url: (editDraft.url ?? item.url ?? '').trim(),
+        tags,
+      };
+      try {
+        await postNewActivity(toSave);
+        setEditingId(null);
+        setEditDraft({});
+      } catch {
+        /* 토스트는 context에서 처리, 폼 유지 */
+      }
+      return;
+    }
+    const item = activities.find(a => a.id === editingId);
+    if (!item) return;
+    const tags = flushActivityTagsFromDraft(editDraft);
+    const toSave: ActivityItem = {
+      ...item,
+      title: editDraft.title ?? item.title,
+      description: editDraft.description ?? item.description,
+      start_date: editDraft.start_date ?? item.start_date,
+      end_date: editDraft.end_date ?? item.end_date,
+      category: categoryNorm,
+      url: (editDraft.url ?? item.url ?? '').trim(),
+      tags,
+    };
+    try {
+      await saveExistingActivity(toSave);
+      setEditingId(null);
+      setEditDraft({});
+    } catch {
+      /* 토스트는 context에서 처리, 폼 유지 */
+    }
+  }, [editingId, editDraft, activities, postNewActivity, saveExistingActivity]);
+
+  const handleCancelEdit = useCallback(() => {
+    if (editingId != null && editingId < 0) {
+      setActivities(prev => prev.filter(a => a.id !== editingId));
+    }
+    setEditingId(null);
+    setEditDraft({});
+  }, [editingId, setActivities]);
+
+  const handleDelete = useCallback(
+    async (id: number) => {
+      await deleteActivity(id);
+      if (editingId === id) {
+        setEditingId(null);
+        setEditDraft({});
+      }
+    },
+    [editingId, deleteActivity],
+  );
+
+  useImperativeHandle(
+    ref,
+    () => ({
+      openAddActivity: () => {
+        if (!readOnly) handleAdd();
+      },
+    }),
+    [readOnly, handleAdd],
+  );
+
+  const renderActivityEditorForm = () => (
+    <Flex.Column gap="0.75rem" style={{ width: '100%', minWidth: 0 }}>
+        <Flex.Column
+          gap="0.75rem"
+          style={{
+            minWidth: 0,
+            width: '100%',
+          }}
+        >
+          <Flex.Row
+            align="flex-end"
+            gap="0.75rem"
+            wrap="wrap"
+            style={{ width: '100%' }}
+          >
+            <Flex.Column
+              gap="0.25rem"
+              style={{
+                flex: '0 1 7.5rem',
+                minWidth: 'min(100%, 6rem)',
+                maxWidth: '11rem',
+              }}
+            >
+              <S.FieldLabel>카테고리</S.FieldLabel>
+              <S.EditInput
+                value={editDraft.category ?? ''}
+                onChange={e =>
+                  setEditDraft(prev => ({
+                    ...prev,
+                    category: e.target.value,
+                  }))
+                }
+                placeholder="예: 수상"
+                maxLength={INPUT_MAX_LENGTH.ACTIVITY_CATEGORY}
+                aria-label="카테고리"
+                style={{ width: '100%' }}
+              />
+            </Flex.Column>
+            <Flex.Column
+              gap="0.25rem"
+              style={{
+                flex: '1 1 13rem',
+                minWidth: 'min(100%, 11rem)',
+              }}
+            >
+              <S.FieldLabel>기간</S.FieldLabel>
+              <Flex.Row
+                align="center"
+                gap="0.375rem"
+                wrap="wrap"
+                style={{ width: '100%' }}
+              >
+                <S.DateInput
+                  type="date"
+                  value={editDraft.start_date ?? ''}
+                  onChange={e => {
+                    const start = e.target.value;
+                    setEditDraft(prev => {
+                      const end = prev.end_date ?? '';
+                      return {
+                        ...prev,
+                        start_date: start,
+                        end_date: end && start > end ? start : end,
+                      };
+                    });
+                  }}
+                  style={{
+                    flex: '1 1 6.75rem',
+                    minWidth: '6.5rem',
+                    maxWidth: '100%',
+                  }}
+                />
+                <Text
+                  as="span"
+                  style={{
+                    margin: 0,
+                    flexShrink: 0,
+                    color: theme.palette.grey[500],
+                    fontSize: '0.875rem',
+                  }}
+                >
+                  ~
+                </Text>
+                <S.DateInput
+                  type="date"
+                  value={editDraft.end_date ?? ''}
+                  onChange={e => {
+                    const end = e.target.value;
+                    setEditDraft(prev => {
+                      const start = prev.start_date ?? '';
+                      return {
+                        ...prev,
+                        end_date: end,
+                        start_date: start && end < start ? end : start,
+                      };
+                    });
+                  }}
+                  style={{
+                    flex: '1 1 6.75rem',
+                    minWidth: '6.5rem',
+                    maxWidth: '100%',
+                  }}
+                />
+              </Flex.Row>
+            </Flex.Column>
+            <Flex.Column
+              gap="0.25rem"
+              style={{
+                flex: '2 1 14rem',
+                minWidth: 'min(100%, 10rem)',
+              }}
+            >
+              <S.FieldLabel>태그 (입력 후 Enter)</S.FieldLabel>
+              <Flex.Column gap="0.375rem" style={{ width: '100%', minWidth: 0 }}>
+                <Flex.Row
+                  wrap="wrap"
+                  align="center"
+                  gap="0.375rem"
+                  style={{ width: '100%', minWidth: 0 }}
+                >
+                  {dedupeActivityTags(editDraft.tags).map((tag, i) => (
+                    <S.TagRemoveChip
+                      key={`${tag}-${i}`}
+                      type="button"
+                      onClick={() =>
+                        setEditDraft(prev => ({
+                          ...prev,
+                          tags: dedupeActivityTags(prev.tags).filter(
+                            t => t !== tag,
+                          ),
+                        }))
+                      }
+                      aria-label={`${tag} 태그 제거`}
+                    >
+                      <span>{tag}</span>
+                      <CloseIcon sx={{ fontSize: 14, flexShrink: 0 }} />
+                    </S.TagRemoveChip>
+                  ))}
+                </Flex.Row>
+                <S.TagEditorShell>
+                  <S.TagComposeInput
+                    value={editDraft.tagCompose ?? ''}
+                    onChange={e =>
+                      setEditDraft(prev => ({
+                        ...prev,
+                        tagCompose: e.target.value.slice(
+                          0,
+                          INPUT_MAX_LENGTH.TECH_STACK_TAG,
+                        ),
+                      }))
+                    }
+                    placeholder="예: 해커톤 — 입력 후 Enter"
+                    aria-label="태그 입력"
+                    onKeyDown={e => {
+                      if (e.key === 'Enter') {
+                        if (e.nativeEvent.isComposing) return;
+                        e.preventDefault();
+                        const input = e.target as HTMLInputElement;
+                        /* IME 확정 직후 React state와 어긋남 방지: 다음 프레임에서 input 값 사용 */
+                        window.requestAnimationFrame(() => {
+                          const piece = input.value
+                            .trim()
+                            .slice(0, INPUT_MAX_LENGTH.TECH_STACK_TAG);
+                          setEditDraft(prev => {
+                            if (!piece) {
+                              return { ...prev, tagCompose: '' };
+                            }
+                            const cur = dedupeActivityTags(prev.tags);
+                            if (cur.includes(piece)) {
+                              return { ...prev, tagCompose: '' };
+                            }
+                            return {
+                              ...prev,
+                              tags: [...cur, piece],
+                              tagCompose: '',
+                            };
+                          });
+                        });
+                        return;
+                      }
+                      if (e.key === 'Backspace') {
+                        if (e.nativeEvent.isComposing) return;
+                        const val = (e.target as HTMLInputElement).value;
+                        if (val === '') {
+                          setEditDraft(prev => {
+                            const cur = dedupeActivityTags(prev.tags);
+                            if (!cur.length) return prev;
+                            return { ...prev, tags: cur.slice(0, -1) };
+                          });
+                          e.preventDefault();
+                        }
+                      }
+                    }}
+                  />
+                </S.TagEditorShell>
+              </Flex.Column>
+            </Flex.Column>
+          </Flex.Row>
+          <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
+            <S.FieldLabel>제목</S.FieldLabel>
+            <S.EditInput
+              value={editDraft.title ?? ''}
+              onChange={e =>
+                setEditDraft(prev => ({
+                  ...prev,
+                  title: e.target.value,
+                }))
+              }
+              placeholder="활동 제목"
+              maxLength={INPUT_MAX_LENGTH.ACTIVITY_TITLE}
+              aria-label="제목"
+              style={{ width: '100%' }}
+            />
+          </Flex.Column>
+          <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
+            <S.FieldLabel>상세 설명</S.FieldLabel>
+            <S.EditTextarea
+              value={editDraft.description ?? ''}
+              onChange={e =>
+                setEditDraft(prev => ({
+                  ...prev,
+                  description: e.target.value,
+                }))
+              }
+              placeholder="활동의 상세 내용을 입력해 주세요."
+              rows={3}
+              maxLength={INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION}
+            />
+            <S.CharCount
+              warn={
+                (editDraft.description?.length ?? 0) >=
+                INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION - 20
+              }
+            >
+              {editDraft.description?.length ?? 0} /{' '}
+              {INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION}
+            </S.CharCount>
+          </Flex.Column>
+          <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
+            <S.FieldLabel>관련 URL</S.FieldLabel>
+            <S.EditInput
+              value={editDraft.url ?? ''}
+              onChange={e =>
+                setEditDraft(prev => ({
+                  ...prev,
+                  url: e.target.value,
+                }))
+              }
+              placeholder="https://…"
+              maxLength={INPUT_MAX_LENGTH.ACTIVITY_URL}
+              aria-label="활동 관련 URL"
+              style={{ width: '100%' }}
+            />
+          </Flex.Column>
+        </Flex.Column>
+        <Flex.Row
+          justify="flex-end"
+          align="center"
+          gap="0.5rem"
+          wrap="wrap"
+          style={{ width: '100%' }}
+        >
+          <S.SmallButton
+            type="button"
+            variant="outline"
+            onClick={handleCancelEdit}
+          >
+            취소
+          </S.SmallButton>
+          <S.SmallButton
+            type="button"
+            onClick={handleSaveEdit}
+            disabled={!editDraft.title?.trim()}
+          >
+            저장
+          </S.SmallButton>
+        </Flex.Row>
+      </Flex.Column>
+  );
+
+  return (
+    <Flex.Column gap="0.5rem" style={{ width: '100%' }}>
+      {!readOnly && draftActivities.length > 0 ? (
+        <S.List>
+          {draftActivities.map(draft => (
+            <S.Row key={draft.id}>
+              {editingId === draft.id ? renderActivityEditorForm() : null}
+            </S.Row>
+          ))}
+        </S.List>
+      ) : null}
+      <Flex.Column gap="0" style={{ width: '100%' }}>
+        {grouped.map(([categoryLabel, items]) => (
+          <Flex.Column
+            key={categoryLabel}
+            padding="1rem 0"
+            gap="0"
+            style={{ width: '100%' }}
+          >
+            <Title label={categoryLabel} />
+            <S.List>
+              {items.map(item => (
+                <S.Row key={item.id}>
+                  {!readOnly && editingId === item.id ? (
+                    renderActivityEditorForm()
+                  ) : (
+                    <>
+                      <Flex.Row
+                        align="flex-start"
+                        justify="space-between"
+                        gap="0.5rem"
+                        wrap="nowrap"
+                        style={{ width: '100%', minWidth: 0 }}
+                      >
+                        <Flex.Row
+                          align="center"
+                          gap="0.5rem"
+                          wrap="wrap"
+                          style={{ flex: 1, minWidth: 0 }}
+                        >
+                          {(item.tags?.length ?? 0) > 0
+                            ? item.tags.map(tag => (
+                                <S.CategoryTag key={`${item.id}-${tag}`}>
+                                  {tag}
+                                </S.CategoryTag>
+                              ))
+                            : null}
+                          <Text
+                            as="span"
+                            style={{
+                              ...theme.typography.body2,
+                              color: theme.palette.grey[600],
+                              flexShrink: 0,
+                              margin: 0,
+                            }}
+                          >
+                            {formatActivityPeriodRange(
+                              item.start_date,
+                              item.end_date,
+                            )}
+                          </Text>
+                          <Text
+                            as="span"
+                            style={{
+                              ...theme.typography.body2,
+                              fontWeight: 600,
+                              margin: 0,
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            {item.title}
+                          </Text>
+                        </Flex.Row>
+                        {!readOnly && (
+                          <Flex.Row
+                            gap="0.25rem"
+                            align="center"
+                            style={{ flexShrink: 0, alignSelf: 'flex-start' }}
+                          >
+                            <S.EditButton
+                              type="button"
+                              onClick={() => handleStartEdit(item)}
+                              aria-label="수정"
+                            >
+                              <EditIcon sx={{ fontSize: 16 }} />
+                            </S.EditButton>
+                            <S.DeleteButton
+                              type="button"
+                              onClick={() => handleDelete(item.id)}
+                              aria-label="삭제"
+                            >
+                              <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+                            </S.DeleteButton>
+                          </Flex.Row>
+                        )}
+                      </Flex.Row>
+                      <Flex.Column
+                        gap="0.375rem"
+                        style={{
+                          width: '100%',
+                          minWidth: 0,
+                        }}
+                      >
+                        <Text
+                          as="span"
+                          style={{
+                            ...theme.typography.body2,
+                            color: theme.palette.grey[600],
+                            margin: 0,
+                            wordBreak: 'break-word',
+                          }}
+                        >
+                          {item.description ? (
+                            <>{item.description}</>
+                          ) : (
+                            <span style={{ color: theme.palette.grey[400] }}>
+                              추가 설명을 통해 더 나은 프롬프트 결과를 얻을 수 있습니다.
+                            </span>
+                          )}
+                        </Text>
+                        {item.url?.trim() ? (
+                          <S.ActivityUrlLink
+                            href={item.url.trim()}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                          >
+                            {item.url.trim()}
+                          </S.ActivityUrlLink>
+                        ) : null}
+                      </Flex.Column>
+                    </>
+                  )}
+                </S.Row>
+              ))}
+            </S.List>
+          </Flex.Column>
+        ))}
+      </Flex.Column>
+    </Flex.Column>
+  );
+});
+
+export default ActivitiesSectionContent;
+
+const S = {
+  List: styled(Flex.Column)`
+    gap: 0.5rem;
+    width: 100%;
+  `,
+  Row: styled(Flex.Column)`
+    padding: 0.75rem 1rem;
+    gap: 0.375rem;
+    border-radius: 0.5rem;
+    background-color: ${({ theme }) => theme.palette.background.paper};
+    border: 1px solid ${({ theme }) => theme.palette.grey[200]};
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
+    transition: box-shadow 0.15s ease;
+    &:hover {
+      box-shadow: 0 2px 6px rgba(16, 24, 40, 0.08);
+    }
+  `,
+  FieldLabel: styled('span')`
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: ${({ theme }) => theme.palette.text.secondary};
+    line-height: 1.2;
+  `,
+  ActivityUrlLink: styled('a')`
+    display: inline-block;
+    max-width: 100%;
+    font-size: 0.8125rem;
+    color: ${palette.blue500};
+    text-decoration: underline;
+    word-break: break-all;
+    &:hover {
+      color: ${palette.blue600};
+    }
+  `,
+  CategoryTag: styled('span')`
+    display: inline-flex;
+    align-items: center;
+    padding: 0.3rem 0.625rem;
+    border-radius: 999px;
+    background-color: ${palette.white};
+    color: ${palette.blue500};
+    border: 1.5px solid ${palette.blue400};
+    font-size: 0.75rem;
+    font-weight: 500;
+    box-shadow: 0 1px 2px rgba(83, 127, 241, 0.08);
+  `,
+  EditInput: styled('input')`
+    padding: 0.4rem 0.625rem;
+    border-radius: 0.375rem;
+    border: 1.5px solid ${palette.blue400};
+    font-size: 0.875rem;
+    line-height: 1.5;
+    outline: none;
+    box-sizing: border-box;
+    &:focus {
+      border-color: ${palette.blue500};
+      box-shadow: 0 0 0 2px ${palette.blue300};
+    }
+  `,
+  TagEditorShell: styled('div')`
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    width: 100%;
+    min-height: 2.35rem;
+    padding: 0.1rem 0.35rem;
+    border-radius: 0.375rem;
+    border: 1.5px solid ${palette.blue400};
+    box-sizing: border-box;
+    &:focus-within {
+      border-color: ${palette.blue500};
+      box-shadow: 0 0 0 2px ${palette.blue300};
+    }
+  `,
+  TagComposeInput: styled('input')`
+    width: 100%;
+    min-width: 0;
+    border: none;
+    outline: none;
+    font-size: 0.875rem;
+    line-height: 1.5;
+    padding: 0.3rem 0.3rem;
+    background: transparent;
+    box-sizing: border-box;
+    font-family: inherit;
+  `,
+  TagRemoveChip: styled('button')`
+    display: inline-flex;
+    align-items: center;
+    gap: 0.125rem;
+    padding: 0.15rem 0.3rem 0.15rem 0.45rem;
+    border-radius: 999px;
+    border: 1.5px solid ${palette.blue400};
+    background-color: ${palette.white};
+    color: ${palette.blue500};
+    font-size: 0.75rem;
+    font-weight: 500;
+    line-height: 1.3;
+    cursor: pointer;
+    box-shadow: 0 1px 2px rgba(83, 127, 241, 0.08);
+    box-sizing: border-box;
+    &:hover {
+      border-color: ${palette.blue500};
+      background-color: ${palette.blue300};
+    }
+  `,
+  EditTextarea: styled('textarea')`
+    width: 100%;
+    min-height: 4rem;
+    padding: 0.4rem 0.625rem;
+    border-radius: 0.375rem;
+    border: 1.5px solid ${palette.blue400};
+    font-size: 0.875rem;
+    line-height: 1.5;
+    resize: vertical;
+    outline: none;
+    font-family: inherit;
+    box-sizing: border-box;
+    &:focus {
+      border-color: ${palette.blue500};
+      box-shadow: 0 0 0 2px ${palette.blue300};
+    }
+  `,
+  CharCount: styled('span')<{ warn?: boolean }>`
+    font-size: 0.75rem;
+    color: ${({ warn }) => (warn ? palette.pink500 : palette.grey400)};
+    text-align: right;
+  `,
+  DateInput: styled('input')`
+    padding: 0.4rem 0.5rem;
+    border-radius: 0.375rem;
+    border: 1.5px solid ${palette.blue400};
+    font-size: 0.875rem;
+    outline: none;
+    flex-shrink: 0;
+    box-sizing: border-box;
+    &:focus {
+      border-color: ${palette.blue500};
+      box-shadow: 0 0 0 2px ${palette.blue300};
+    }
+  `,
+  EditButton: styled('button')`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: ${palette.grey500};
+    border-radius: 0.25rem;
+    &:hover {
+      color: ${palette.blue500};
+      background-color: ${palette.blue300};
+    }
+  `,
+  DeleteButton: styled('button')`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0.25rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    color: ${palette.grey500};
+    border-radius: 0.25rem;
+    &:hover {
+      color: ${palette.pink500};
+      background-color: rgba(227, 135, 158, 0.15);
+    }
+  `,
+  SmallButton: styled('button')<{ variant?: 'outline' }>`
+    padding: 0.25rem 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    cursor: pointer;
+    border: 1px solid
+      ${({ variant }) =>
+        variant === 'outline' ? palette.grey300 : 'transparent'};
+    background-color: ${({ variant }) =>
+      variant === 'outline' ? 'transparent' : palette.blue500};
+    color: ${({ variant }) =>
+      variant === 'outline' ? palette.grey600 : palette.white};
+    &:hover:not(:disabled) {
+      opacity: 0.9;
+    }
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+  `,
+};

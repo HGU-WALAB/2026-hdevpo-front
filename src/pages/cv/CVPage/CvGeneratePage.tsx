@@ -4,8 +4,8 @@ import { LoadingIcon } from '@/assets';
 import { Flex, Heading, Text } from '@/components';
 import {
   ROUTE_PATH,
-  SUMMARY_CV_PANEL_QUERY_KEY,
-  SUMMARY_CV_PANEL_QUERY_VALUE,
+  PORTFOLIO_CV_PANEL_QUERY_KEY,
+  PORTFOLIO_CV_PANEL_QUERY_VALUE,
 } from '@/constants/routePath';
 import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { useTrackPageView } from '@/service/amplitude/useTrackPageView';
@@ -14,10 +14,12 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import CheckIcon from '@mui/icons-material/Check';
 import { useMediaQuery, useTheme } from '@mui/material';
 import { Fragment, useCallback, useEffect, useMemo } from 'react';
+
+import { cumulativeSemesterFromGrade } from '../utils/cumulativeSemester';
 import { useNavigate } from 'react-router-dom';
 import { toast } from 'react-toastify';
 
-import { useSummaryContext } from '@/pages/summary/SummaryPage/context/SummaryContext';
+import { usePortfolioContext } from '@/pages/portfolio/PortfolioPage/context/PortfolioContext';
 
 import usePatchPortfolioCvMutation from '../hooks/usePatchPortfolioCvMutation';
 import usePostPortfolioCvBuildPromptMutation from '../hooks/usePostPortfolioCvBuildPromptMutation';
@@ -30,14 +32,9 @@ import CvGenerateStep2 from './components/CvGenerateStep2';
 import CvGenerateStep3 from './components/CvGenerateStep3';
 import CvGenerateStep4 from './components/CvGenerateStep4';
 
-const STEPS = [
-  { n: 1, label: '항목 선택' },
-  { n: 2, label: 'JD 입력' },
-  { n: 3, label: '프롬프트 생성' },
-  { n: 4, label: '결과 저장' },
-] as const;
-
 type WizardStep = 1 | 2 | 3 | 4;
+
+type StepDef = { readonly n: 1 | 2 | 3 | 4; readonly label: string };
 
 type StepVisualState = 'completed' | 'active' | 'upcoming';
 
@@ -67,7 +64,7 @@ const CvGeneratePage = () => {
   const navigate = useNavigate();
   const theme = useTheme();
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
-  const { userInfo, repos, mileageItems, activities } = useSummaryContext();
+  const { userInfo, repos, mileageItems, activities } = usePortfolioContext();
   const buildPromptMutation = usePostPortfolioCvBuildPromptMutation();
   const patchCvMutation = usePatchPortfolioCvMutation();
 
@@ -81,7 +78,6 @@ const CvGeneratePage = () => {
     selectedRepoIds,
     setSelectedRepoIds,
     draftTitle,
-    setDraftTitle,
     jobPosting,
     setJobPosting,
     targetPosition,
@@ -94,7 +90,37 @@ const CvGeneratePage = () => {
     setHtmlResultDraft,
     pendingCvId,
     setPendingCvId,
+    preparingEmployment,
+    setPreparingEmployment,
   } = useCvWizardStore();
+
+  const defaultPreparingEmployment = useMemo(() => {
+    const c = cumulativeSemesterFromGrade(userInfo?.grade, userInfo?.semester);
+    return c != null && c >= 7;
+  }, [userInfo?.grade, userInfo?.semester]);
+
+  useEffect(() => {
+    if (typeof preparingEmployment === 'boolean') return;
+    setPreparingEmployment(defaultPreparingEmployment);
+  }, [preparingEmployment, defaultPreparingEmployment, setPreparingEmployment]);
+
+  const employmentPrepChecked =
+    typeof preparingEmployment === 'boolean'
+      ? preparingEmployment
+      : defaultPreparingEmployment;
+
+  const wizardSteps = useMemo<StepDef[]>(
+    () => [
+      {
+        n: 1,
+        label: employmentPrepChecked ? '공고 입력' : '진로 관심 분야',
+      },
+      { n: 2, label: '항목 선택' },
+      { n: 3, label: '프롬프트 생성' },
+      { n: 4, label: '결과 저장' },
+    ],
+    [employmentPrepChecked],
+  );
 
   // 마운트 시 불완전한 저장 상태 보정
   useEffect(() => {
@@ -166,12 +192,16 @@ const CvGeneratePage = () => {
   ]);
 
   const handleBack = useCallback(() => {
-    navigate(ROUTE_PATH.summary);
+    navigate(ROUTE_PATH.portfolio);
   }, [navigate]);
 
   const handleNextFromStep1 = useCallback(() => {
+    if (!targetPosition.trim()) {
+      toast.warn('지원 직무를 입력하거나 선택해 주세요.');
+      return;
+    }
     setWizardStep(2);
-  }, [setWizardStep]);
+  }, [setWizardStep, targetPosition]);
 
   const handlePrevFromStep2 = useCallback(() => {
     setWizardStep(1);
@@ -210,9 +240,9 @@ const CvGeneratePage = () => {
         onSuccess: () => {
           toast.success('히스토리에 저장되었습니다.');
           navigate({
-            pathname: ROUTE_PATH.summary,
+            pathname: ROUTE_PATH.portfolio,
             search: new URLSearchParams({
-              [SUMMARY_CV_PANEL_QUERY_KEY]: SUMMARY_CV_PANEL_QUERY_VALUE,
+              [PORTFOLIO_CV_PANEL_QUERY_KEY]: PORTFOLIO_CV_PANEL_QUERY_VALUE,
             }).toString(),
           });
         },
@@ -224,17 +254,16 @@ const CvGeneratePage = () => {
   }, [htmlResultDraft, navigate, patchCvMutation, pendingCvId]);
 
   const handleBuildPrompt = useCallback(() => {
-    const tt = draftTitle.trim();
     const jp = jobPosting.trim();
     const tp = targetPosition.trim();
-    if (!tt || !jp || !tp) {
-      toast.warn('제목, 공고 정보, 지원 직무를 모두 입력해 주세요.');
+    if (!tp) {
+      toast.warn('지원 직무를 입력하거나 선택해 주세요.');
       return;
     }
     const ids = getCommittedSelection();
     buildPromptMutation.mutate(
       {
-        title: tt,
+        title: '',
         job_posting: jp,
         target_position: tp,
         additional_notes: additionalNotes.trim(),
@@ -257,7 +286,6 @@ const CvGeneratePage = () => {
   }, [
     additionalNotes,
     buildPromptMutation,
-    draftTitle,
     getCommittedSelection,
     jobPosting,
     setGeneratedPrompt,
@@ -305,7 +333,7 @@ const CvGeneratePage = () => {
 
       <Flex.Column gap="0.35rem" width="100%">
         <Heading as="h1" margin="0" color={theme.palette.text.primary}>
-          이력서 생성하기
+          포트폴리오 생성하기
         </Heading>
         <Text
           margin="0"
@@ -314,7 +342,9 @@ const CvGeneratePage = () => {
             color: theme.palette.grey[600],
           }}
         >
-          마일리지 항목으로 맞춤 이력서 프롬프트를 만들고 히스토리로 관리하세요
+          {employmentPrepChecked
+            ? '채용 공고를 입력한 뒤 포함할 활동을 고르고, 맞춤 프롬프트를 만들어 히스토리로 관리하세요'
+            : '진로 관심 분야를 입력한 뒤 포함할 활동을 고르고, 맞춤 프롬프트를 만들어 히스토리로 관리하세요'}
         </Text>
       </Flex.Column>
 
@@ -327,7 +357,7 @@ const CvGeneratePage = () => {
         }
       >
         <S.StepperRow role="list" aria-label="진행 단계">
-          {STEPS.map((step, idx) => {
+          {wizardSteps.map((step, idx) => {
             const vs = stepVisual(step.n, wizardStep);
             return (
               <Fragment key={step.n}>
@@ -339,7 +369,7 @@ const CvGeneratePage = () => {
                     aria-current={vs === 'active' ? 'step' : undefined}
                   >
                     {vs === 'completed' ? (
-                      <CheckIcon sx={{ fontSize: 14 }} aria-hidden />
+                      <CheckIcon sx={{ fontSize: 15 }} aria-hidden />
                     ) : (
                       step.n
                     )}
@@ -348,7 +378,12 @@ const CvGeneratePage = () => {
                     {step.label}
                   </S.StepLabel>
                 </S.StepItemColumn>
-                {idx < STEPS.length - 1 ? <S.StepConnector aria-hidden /> : null}
+                {idx < wizardSteps.length - 1 ? (
+                  <S.StepConnector
+                    $completed={wizardStep >= idx + 2}
+                    aria-hidden
+                  />
+                ) : null}
               </Fragment>
             );
           })}
@@ -382,11 +417,28 @@ const CvGeneratePage = () => {
         ) : (
           <>
             {wizardStep === 1 ? (
+              <CvGenerateStep2
+                isMobile={isMobile}
+                preparingEmployment={employmentPrepChecked}
+                onPreparingEmploymentChange={setPreparingEmployment}
+                jobPosting={jobPosting}
+                onJobPostingChange={setJobPosting}
+                targetPosition={targetPosition}
+                onTargetPositionChange={setTargetPosition}
+                additionalNotes={additionalNotes}
+                onAdditionalNotesChange={setAdditionalNotes}
+                onNext={handleNextFromStep1}
+                nextButtonLabel="다음: 항목 선택"
+              />
+            ) : null}
+
+            {wizardStep === 2 ? (
               <CvGenerateStep1
                 name={name}
                 bio={bio}
                 departmentMajorLine={departmentMajorLine}
                 profileImageUrl={profileImageUrl}
+                profileLinks={userInfo?.profile_links ?? []}
                 mileageItems={mileageItems}
                 activities={activities}
                 visibleRepos={visibleRepos}
@@ -396,24 +448,10 @@ const CvGeneratePage = () => {
                 onSelectedMileageIdsChange={setSelectedMileageIds}
                 onSelectedActivityIdsChange={setSelectedActivityIds}
                 onSelectedRepoIdsChange={setSelectedRepoIds}
-                onNext={handleNextFromStep1}
-              />
-            ) : null}
-
-            {wizardStep === 2 ? (
-              <CvGenerateStep2
-                isMobile={isMobile}
-                draftTitle={draftTitle}
-                onDraftTitleChange={setDraftTitle}
-                jobPosting={jobPosting}
-                onJobPostingChange={setJobPosting}
-                targetPosition={targetPosition}
-                onTargetPositionChange={setTargetPosition}
-                additionalNotes={additionalNotes}
-                onAdditionalNotesChange={setAdditionalNotes}
                 onPrev={handlePrevFromStep2}
                 onBuildPrompt={handleBuildPrompt}
                 buildPromptPending={buildPromptMutation.isPending}
+                preparingEmployment={employmentPrepChecked}
               />
             ) : null}
 

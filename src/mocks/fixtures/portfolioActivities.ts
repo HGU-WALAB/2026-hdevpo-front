@@ -1,4 +1,4 @@
-import type { ActivityApiItem } from '@/pages/summary/apis/portfolio';
+import type { ActivityApiItem } from '@/pages/portfolio/apis/portfolio';
 
 /** display_order 0이 맨 위. category는 사용자 정의 문자열 */
 export const mockActivitiesResponse: ActivityApiItem[] = [
@@ -10,6 +10,8 @@ export const mockActivitiesResponse: ActivityApiItem[] = [
     end_date: '2024-06-30',
     category: '수상',
     display_order: 0,
+    url: 'https://example.com/hackathon',
+    tags: ['해커톤', '백엔드'],
   },
   {
     id: 2,
@@ -19,5 +21,7 @@ export const mockActivitiesResponse: ActivityApiItem[] = [
     end_date: '2024-12-31',
     category: '대외활동',
     display_order: 1,
+    url: '',
+    tags: ['오픈소스', '문서'],
   },
 ];

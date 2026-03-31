@@ -14,7 +14,7 @@ import { styled } from '@mui/material/styles';
 import { useCallback, useEffect, useState, type FunctionComponent, type SVGProps } from 'react';
 import { toast } from 'react-toastify';
 
-import { formatDateOnly } from '@/pages/summary/utils/date';
+import { formatDateOnly } from '@/pages/portfolio/utils/date';
 import { copyTextToClipboard } from '@/utils/copyTextToClipboard';
 import type { PortfolioCvDetail } from '../../apis/cv';
 import usePatchPortfolioCvMutation from '../../hooks/usePatchPortfolioCvMutation';
@@ -64,7 +64,7 @@ const CvPreviewModal = ({
   onRequestDelete,
   isDeletePending = false,
 }: CvPreviewModalProps) => {
-  const [showHtmlPreview, setShowHtmlPreview] = useState(false);
+  const [showHtmlPreview, setShowHtmlPreview] = useState(true);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editHtml, setEditHtml] = useState('');
@@ -78,7 +78,7 @@ const CvPreviewModal = ({
   }, [open]);
 
   useEffect(() => {
-    setShowHtmlPreview(false);
+    setShowHtmlPreview(true);
     setIsEditing(false);
   }, [data?.id]);
 
@@ -121,6 +121,7 @@ const CvPreviewModal = ({
     if (!data) return;
     setEditTitle(data.title);
     setEditHtml(data.html_content ?? '');
+    setShowHtmlPreview(true);
     setIsEditing(false);
   }, [data]);
 
@@ -137,6 +138,7 @@ const CvPreviewModal = ({
       {
         onSuccess: () => {
           toast.success('저장되었습니다.', { position: 'top-center' });
+          setShowHtmlPreview(true);
           setIsEditing(false);
         },
         onError: () => {
@@ -176,7 +178,7 @@ const CvPreviewModal = ({
           minHeight: 0,
         }}
       >
-        <S.HeaderBar direction="column" gap="0.5rem" padding="1rem 1.25rem">
+        <S.HeaderBar direction="column" gap="0.5rem" padding="1rem 2.75rem">
           <Flex.Row align="flex-start" justify="space-between" gap="0.75rem" wrap="wrap">
             {isEditing && data ? (
               <Flex.Column gap="0.35rem" style={{ flex: '1 1 12rem', minWidth: 0 }}>
@@ -186,7 +188,7 @@ const CvPreviewModal = ({
                     value={editTitle}
                     onChange={e => setEditTitle(e.target.value)}
                     maxLength={200}
-                    aria-label="이력서 제목"
+                    aria-label="포트폴리오 제목"
                   />
                 </Flex.Row>
                 <Text
@@ -207,7 +209,7 @@ const CvPreviewModal = ({
                   color={palette.nearBlack}
                   style={{ fontSize: '1.0625rem', lineHeight: 1.35, wordBreak: 'break-word' }}
                 >
-                  {data ? `${data.title} — ${data.target_position}` : '이력서 미리보기'}
+                  {data ? `${data.title} — ${data.target_position}` : '포트폴리오 미리보기'}
                 </Text>
               </Flex.Row>
             )}
@@ -298,7 +300,7 @@ const CvPreviewModal = ({
         <S.ScrollBody
           direction="column"
           gap="1.25rem"
-          padding={isPending ? '0' : '1.25rem 1.25rem 1.5rem'}
+          padding={isPending ? '0' : '1.25rem 2.75rem 1.5rem'}
           $loading={isPending}
         >
           {isPending ? (
@@ -312,7 +314,7 @@ const CvPreviewModal = ({
             >
               <LoadingIcon width={88} height={88} aria-hidden />
               <Text margin="0" color={palette.grey600} style={{ fontSize: '0.875rem' }}>
-                이력서 정보를 불러오는 중입니다…
+                포트폴리오 정보를 불러오는 중입니다…
               </Text>
             </S.LoadingArea>
           ) : null}

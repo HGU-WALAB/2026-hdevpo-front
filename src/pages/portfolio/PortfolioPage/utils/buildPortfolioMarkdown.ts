@@ -1,0 +1,170 @@
+import type { DraggableSectionKey } from '../../constants/constants';
+import {
+  INPUT_DATA_LABEL,
+  PORTFOLIO_PROMPT_TEMPLATE,
+} from '../../constants/promptTemplate';
+import type { TechStackDomain, UserInfoResponse } from '../../apis/portfolio';
+import type {
+  ActivityItem,
+  MileageItem,
+  RepoItem,
+} from '../context/PortfolioContext';
+import { SECTION_TITLES } from '../../constants/constants';
+import { groupActivitiesByCategory } from '../../utils/activityGrouping';
+import { formatActivityPeriodRange } from '../../utils/date';
+import {
+  levelToProficiencyTier,
+  PROFICIENCY_TIER_LABELS,
+} from '../../utils/techStackLevel';
+
+/** 미리보기에 보여지는 데이터만 사용해 마크다운 문자열 생성 */
+export interface BuildPortfolioMarkdownParams {
+  userInfo: UserInfoResponse | null;
+  sectionOrder: DraggableSectionKey[];
+  techStackDomains: TechStackDomain[];
+  repos: RepoItem[];
+  mileageItems: MileageItem[];
+  activities: ActivityItem[];
+}
+
+function escapeMarkdown(text: string): string {
+  return text.replace(/([\\`*_[#!|])/g, '\\$1');
+}
+
+function sectionUserInfo(userInfo: UserInfoResponse | null): string {
+  const name = userInfo?.name?.trim() ?? '-';
+  const bio = userInfo?.bio?.trim() ?? '';
+  const department = userInfo?.department?.trim() ?? '';
+  const major1 = userInfo?.major1?.trim() ?? '';
+  const major2 = userInfo?.major2?.trim() ?? '';
+  const majorLine = [major1, major2].filter(Boolean).join(' / ') || '-';
+  const departmentMajorLine =
+    department !== '' ? `${department} ${majorLine}` : majorLine;
+  const grade = userInfo?.grade;
+  const semester = userInfo?.semester;
+  const gradeSemester =
+    grade != null && semester != null
+      ? ` (${grade}학년 ${semester}학기)`
+      : '';
+
+  const lines: string[] = [
+    `# ${escapeMarkdown(name)}`,
+    '',
+    ...(bio ? [`**${escapeMarkdown(bio)}**`, ''] : []),
+    escapeMarkdown(departmentMajorLine) + (gradeSemester ? escapeMarkdown(gradeSemester) : ''),
+  ];
+
+  const profileLinks =
+    userInfo?.profile_links?.filter(
+      l => (l.label?.trim() ?? '') !== '' && (l.url?.trim() ?? '') !== '',
+    ) ?? [];
+  if (profileLinks.length > 0) {
+    lines.push('');
+    for (const l of profileLinks) {
+      const lab = escapeMarkdown(l.label.trim());
+      const u = l.url.trim();
+      lines.push(`- [${lab}](${u})`);
+    }
+  }
+
+  return lines.join('\n');
+}
+
+function sectionTechStack(domains: TechStackDomain[]): string {
+  const sorted = [...domains].sort((a, b) => a.order_index - b.order_index);
+  const lines: string[] = [];
+  for (const d of sorted) {
+    const domainName = d.name.trim() || '기타';
+    for (const t of d.tech_stacks ?? []) {
+      const name = (t.name ?? '').trim();
+      if (name === '') continue;
+      const tier = PROFICIENCY_TIER_LABELS[levelToProficiencyTier(t.level)];
+      lines.push(
+        `- **${escapeMarkdown(domainName)}** · ${escapeMarkdown(name)} (${tier})`,
+      );
+    }
+  }
+  if (lines.length === 0) return '';
+  const title = SECTION_TITLES.tech;
+  return `## ${escapeMarkdown(title)}\n\n${lines.join('\n')}`;
+}
+
+function sectionRepos(repos: RepoItem[]): string {
+  const visible = repos.filter(r => r.is_visible);
+  if (visible.length === 0) return '';
+  const title = SECTION_TITLES.repo;
+  const items = visible.map(r => {
+    const name = r.custom_title ?? r.name;
+    const desc = r.description ? ` - ${r.description}` : '';
+    const lang = r.languages.length > 0 ? ` (${r.languages.join(', ')})` : '';
+    return `- **${escapeMarkdown(name)}**${escapeMarkdown(desc)}${escapeMarkdown(lang)}`;
+  });
+  return `## ${escapeMarkdown(title)}\n\n${items.join('\n')}`;
+}
+
+function sectionMileage(items: MileageItem[]): string {
+  const visible = items.filter(m => m.is_visible);
+  if (visible.length === 0) return '';
+  const title = SECTION_TITLES.mileage;
+  const lines = visible.map(m => {
+    const extra = m.additional_info ? ` · ${m.additional_info}` : '';
+    return `- **${escapeMarkdown(m.semester)}** ${escapeMarkdown(m.category)} - ${escapeMarkdown(m.item)}${escapeMarkdown(extra)}`;
+  });
+  return `## ${escapeMarkdown(title)}\n\n${lines.join('\n')}`;
+}
+
+function sectionActivities(activities: ActivityItem[]): string {
+  if (activities.length === 0) return '';
+  const title = SECTION_TITLES.activities;
+  const groups = groupActivitiesByCategory(activities);
+  const blocks = groups.map(([cat, groupItems]) => {
+    const lines = groupItems.map(a => {
+      const desc = a.description ? ` · ${a.description}` : '';
+      const urlPart = a.url?.trim()
+        ? ` · ${escapeMarkdown(a.url.trim())}`
+        : '';
+      const tagsPart =
+        a.tags?.length ? ` · #${a.tags.map(escapeMarkdown).join(' #')}` : '';
+      const period = formatActivityPeriodRange(a.start_date, a.end_date);
+      return `- **${escapeMarkdown(a.title)}** (${escapeMarkdown(period)})${escapeMarkdown(desc)}${urlPart}${tagsPart}`;
+    });
+    return `### ${escapeMarkdown(cat)}\n\n${lines.join('\n')}`;
+  });
+  return `## ${escapeMarkdown(title)}\n\n${blocks.join('\n\n')}`;
+}
+
+const SECTION_BUILDERS: Record<
+  DraggableSectionKey,
+  (params: BuildPortfolioMarkdownParams) => string
+> = {
+  tech: p => sectionTechStack(p.techStackDomains),
+  repo: p => sectionRepos(p.repos),
+  mileage: p => sectionMileage(p.mileageItems),
+  activities: p => sectionActivities(p.activities),
+};
+
+/**
+ * 미리보기와 동일한 내용(유저 정보 + 선택된 섹션 순서·표시 항목)을 마크다운 문자열로 반환.
+ * 프롬프트 템플릿 + [입력 데이터] + 실제 데이터 순으로 붙여 반환.
+ */
+export function buildPortfolioMarkdown(params: BuildPortfolioMarkdownParams): string {
+  const parts: string[] = [sectionUserInfo(params.userInfo), ''];
+
+  for (const key of params.sectionOrder) {
+    const builder = SECTION_BUILDERS[key as DraggableSectionKey];
+    if (!builder) continue;
+    const block = builder(params);
+    if (block) {
+      parts.push(block, '');
+    }
+  }
+
+  const dataMarkdown = parts.join('\n').replace(/\n{3,}/g, '\n\n').trim();
+  return [
+    PORTFOLIO_PROMPT_TEMPLATE,
+    '',
+    INPUT_DATA_LABEL,
+    '',
+    dataMarkdown,
+  ].join('\n');
+}

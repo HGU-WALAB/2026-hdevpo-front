@@ -9,11 +9,11 @@ type IdListSetterArg = number[] | ((prev: number[]) => number[]);
 
 interface CvWizardState {
   wizardStep: CvWizardUiStep;
-  // step 1
+  // 스텝 2 UI: 마일리지·활동·레포 선택
   selectedMileageIds: number[];
   selectedActivityIds: number[];
   selectedRepoIds: number[];
-  // step 2
+  // 스텝 1 UI: 공고·직무 입력 등 (title은 API용으로만 빈 문자열 전송)
   draftTitle: string;
   jobPosting: string;
   targetPosition: string;
@@ -24,6 +24,8 @@ interface CvWizardState {
   htmlResultDraft: string;
   // build-prompt 응답에서 받은 CV id
   pendingCvId: number | null;
+  /** null/undefined: 아직 기본값 미반영(학기 기준으로 채움). boolean: 취업 준비 중 여부 */
+  preparingEmployment: boolean | null | undefined;
 
   setWizardStep: (step: CvWizardUiStep) => void;
   setSelectedMileageIds: (idsOrUpdater: IdListSetterArg) => void;
@@ -36,6 +38,7 @@ interface CvWizardState {
   setGeneratedPrompt: (prompt: string) => void;
   setHtmlResultDraft: (html: string) => void;
   setPendingCvId: (id: number | null) => void;
+  setPreparingEmployment: (v: boolean) => void;
   resetAll: () => void;
 }
 
@@ -51,6 +54,7 @@ const initialState = {
   generatedPrompt: '',
   htmlResultDraft: '',
   pendingCvId: null as number | null,
+  preparingEmployment: null as boolean | null,
 };
 
 const useCvWizardStore = create<CvWizardState>()(
@@ -86,6 +90,7 @@ const useCvWizardStore = create<CvWizardState>()(
       setGeneratedPrompt: prompt => set({ generatedPrompt: prompt }),
       setHtmlResultDraft: html => set({ htmlResultDraft: html }),
       setPendingCvId: id => set({ pendingCvId: id }),
+      setPreparingEmployment: v => set({ preparingEmployment: v }),
       resetAll: () => set(initialState),
     }),
     {

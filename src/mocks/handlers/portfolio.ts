@@ -8,11 +8,13 @@ import type {
   PortfolioRepositoryItem,
   PutPortfolioMileageItem,
   PutRepositoryItem,
+  UserInfoPatchRequest,
   UserInfoResponse,
-} from '@/pages/summary/apis/portfolio';
-import type { TechStackItem } from '@/pages/summary/apis/portfolio';
-import type { PatchRepositoryBody } from '@/pages/summary/apis/repositories';
-import { DRAGGABLE_SECTION_ORDER } from '@/pages/summary/constants/constants';
+} from '@/pages/portfolio/apis/portfolio';
+import type { TechStackPutRequest } from '@/pages/portfolio/apis/portfolio';
+import { clampTechLevel } from '@/pages/portfolio/utils/techStackLevel';
+import type { PatchRepositoryBody } from '@/pages/portfolio/apis/repositories';
+import { DRAGGABLE_SECTION_ORDER } from '@/pages/portfolio/constants/constants';
 import { mockActivitiesResponse } from '@/mocks/fixtures/portfolioActivities';
 import { mockMileageList } from '@/mocks/fixtures/mileageList';
 import { mockPortfolioMileage } from '@/mocks/fixtures/portfolioMileage';
@@ -26,7 +28,7 @@ import type {
 } from '@/pages/cv/apis/cv';
 
 const techStackStore = {
-  tech_stack: [...mockTechStackResponse.tech_stack],
+  domains: mockTechStackResponse.domains.map(d => ({ ...d, tech_stacks: [...d.tech_stacks] })),
 };
 
 const settingsStore: { section_order: string[] } = {
@@ -80,17 +82,45 @@ function buildPortfolioMileageItem(
 export const PortfolioHandlers = [
   http.get(BASE_URL + ENDPOINT.PORTFOLIO_TECH_STACK, () => {
     return HttpResponse.json(
-      { tech_stack: techStackStore.tech_stack },
+      {
+        domains: techStackStore.domains.map(d => ({
+          ...d,
+          tech_stacks: d.tech_stacks.map(t => ({ ...t })),
+        })),
+      },
       { status: 200 },
     );
   }),
 
   http.put(BASE_URL + ENDPOINT.PORTFOLIO_TECH_STACK, async ({ request }) => {
-    const body = (await request.json()) as { tech_stack: TechStackItem[] };
-    techStackStore.tech_stack = [...(body.tech_stack ?? [])];
+    const body = (await request.json()) as TechStackPutRequest;
+    const raw = body.domains ?? [];
+    const cleaned = raw
+      .map(d => ({
+        name: (d.name ?? '').trim(),
+        tech_stacks: (d.tech_stacks ?? [])
+          .map(t => ({
+            name: (t.name ?? '').trim(),
+            level: clampTechLevel(t.level ?? 0),
+          }))
+          .filter(t => t.name !== ''),
+      }))
+      .filter(d => d.name !== '');
+
+    techStackStore.domains = cleaned.map((d, i) => ({
+      id: i + 1,
+      name: d.name,
+      order_index: i,
+      tech_stacks: d.tech_stacks,
+    }));
 
     return HttpResponse.json(
-      { tech_stack: [...techStackStore.tech_stack] },
+      {
+        domains: techStackStore.domains.map(d => ({
+          ...d,
+          tech_stacks: d.tech_stacks.map(t => ({ ...t })),
+        })),
+      },
       { status: 200 },
     );
   }),
@@ -131,6 +161,8 @@ export const PortfolioHandlers = [
       start_date: string;
       end_date: string;
       category?: string;
+      url?: string;
+      tags?: string[];
     };
     const newItem: ActivityApiItem = {
       id: nextActivityId++,
@@ -140,6 +172,10 @@ export const PortfolioHandlers = [
       end_date: body.end_date ?? '',
       category: (body.category ?? '').trim() || '기타',
       display_order: activitiesStore.length,
+      url: (body.url ?? '').trim(),
+      tags: Array.isArray(body.tags)
+        ? body.tags.map(t => String(t).trim()).filter(Boolean)
+        : [],
     };
     activitiesStore.push(newItem);
     return HttpResponse.json(newItem, { status: 200 });
@@ -153,6 +189,8 @@ export const PortfolioHandlers = [
       start_date: string;
       end_date: string;
       category?: string;
+      url?: string;
+      tags?: string[];
     }>;
     if (!Array.isArray(body)) {
       return HttpResponse.json({ activities: activitiesStore }, { status: 200 });
@@ -170,6 +208,12 @@ export const PortfolioHandlers = [
             item.category != null && item.category !== ''
               ? item.category
               : activitiesStore[idx].category,
+          url:
+            item.url !== undefined ? item.url : activitiesStore[idx].url ?? '',
+          tags:
+            item.tags !== undefined
+              ? item.tags.map(t => String(t).trim()).filter(Boolean)
+              : activitiesStore[idx].tags ?? [],
         };
       }
     }
@@ -179,7 +223,7 @@ export const PortfolioHandlers = [
     return HttpResponse.json({ activities: sorted }, { status: 200 });
   }),
 
-  http.patch(
+  http.put(
     BASE_URL + `${ENDPOINT.PORTFOLIO_ACTIVITIES}/:id`,
     async ({ params, request }) => {
       const id = Number(params.id);
@@ -188,22 +232,67 @@ export const PortfolioHandlers = [
         description: string;
         start_date: string;
         end_date: string;
-        category?: string;
+        category: string;
+        url: string;
+        tags: string[];
       };
       const idx = activitiesStore.findIndex(a => a.id === id);
       if (idx === -1) {
         return HttpResponse.json({}, { status: 404 });
       }
+      const prev = activitiesStore[idx];
       activitiesStore[idx] = {
-        ...activitiesStore[idx],
-        title: body.title ?? activitiesStore[idx].title,
-        description: body.description ?? activitiesStore[idx].description,
-        start_date: body.start_date ?? activitiesStore[idx].start_date,
-        end_date: body.end_date ?? activitiesStore[idx].end_date,
+        ...prev,
+        title: body.title ?? '',
+        description: body.description ?? '',
+        start_date: body.start_date ?? '',
+        end_date: body.end_date ?? '',
+        category: (body.category ?? '').trim() || '기타',
+        url: (body.url ?? '').trim(),
+        tags: Array.isArray(body.tags)
+          ? body.tags.map(t => String(t).trim()).filter(Boolean)
+          : [],
+      };
+      return HttpResponse.json(activitiesStore[idx], { status: 200 });
+    },
+  ),
+
+  http.patch(
+    BASE_URL + `${ENDPOINT.PORTFOLIO_ACTIVITIES}/:id`,
+    async ({ params, request }) => {
+      const id = Number(params.id);
+      const body = (await request.json()) as {
+        title?: string;
+        description?: string;
+        start_date?: string;
+        end_date?: string;
+        category?: string;
+        url?: string | null;
+        tags?: string[] | null;
+      };
+      const idx = activitiesStore.findIndex(a => a.id === id);
+      if (idx === -1) {
+        return HttpResponse.json({}, { status: 404 });
+      }
+      const cur = activitiesStore[idx];
+      activitiesStore[idx] = {
+        ...cur,
+        title: body.title ?? cur.title,
+        description: body.description ?? cur.description,
+        start_date: body.start_date ?? cur.start_date,
+        end_date: body.end_date ?? cur.end_date,
         category:
           body.category != null && body.category !== ''
             ? body.category
-            : activitiesStore[idx].category,
+            : cur.category,
+        url:
+          body.url !== undefined && body.url !== null
+            ? body.url
+            : cur.url ?? '',
+        tags:
+          body.tags !== undefined && body.tags !== null
+            ? body.tags.map(t => String(t).trim()).filter(Boolean)
+            : cur.tags ?? [],
       };
       return HttpResponse.json(activitiesStore[idx], { status: 200 });
     },
@@ -226,6 +315,19 @@ export const PortfolioHandlers = [
     return HttpResponse.json({ ...userInfoStore }, { status: 200 });
   }),
 
+  http.put(BASE_URL + ENDPOINT.PORTFOLIO_USER_INFO_IMAGE, async ({ request }) => {
+    try {
+      const formData = await request.formData();
+      const profileImage = formData.get('profile_image');
+      if (profileImage instanceof File && profileImage.name) {
+        userInfoStore.profile_image_url = profileImage.name;
+      }
+    } catch {
+      // ignore
+    }
+    return HttpResponse.json({ ...userInfoStore }, { status: 200 });
+  }),
+
   http.get(
     BASE_URL + `${ENDPOINT.PORTFOLIO_USER_INFO_IMAGE}/:filename`,
     () => {
@@ -243,31 +345,24 @@ export const PortfolioHandlers = [
   ),
 
   http.patch(BASE_URL + ENDPOINT.PORTFOLIO_USER_INFO, async ({ request }) => {
-    const url = new URL(request.url);
-    const bioParam = url.searchParams.get('bio');
-    if (bioParam !== null) {
-      userInfoStore.bio = bioParam;
-    }
-    const contentType = request.headers.get('Content-Type') ?? '';
-    if (contentType.includes('multipart/form-data')) {
-      try {
-        const formData = await request.formData();
-        const profileImage = formData.get('profile_image');
-        if (profileImage instanceof File && profileImage.name) {
-          userInfoStore.profile_image_url = profileImage.name;
-        }
-      } catch {
-        // ignore formData parse
+    try {
+      const body = (await request.json()) as UserInfoPatchRequest;
+      if (body.bio !== undefined) {
+        userInfoStore.bio = body.bio;
       }
-    } else {
-      try {
-        const body = (await request.json()) as { bio?: string };
-        if (body.bio !== undefined) {
-          userInfoStore.bio = body.bio;
-        }
-      } catch {
-        // ignore json parse
+      if (body.profile_image_url !== undefined) {
+        userInfoStore.profile_image_url = body.profile_image_url;
       }
+      if (body.profile_links !== undefined) {
+        userInfoStore.profile_links = Array.isArray(body.profile_links)
+          ? body.profile_links.map(l => ({
+              label: String(l.label ?? ''),
+              url: String(l.url ?? ''),
+            }))
+          : [];
+      }
+    } catch {
+      // ignore json parse
     }
     return HttpResponse.json({ ...userInfoStore }, { status: 200 });
   }),

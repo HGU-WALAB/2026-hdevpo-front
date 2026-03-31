@@ -14,14 +14,11 @@ const ScholarshipApplyPage = React.lazy(
   () => import('@/pages/mileage/ScholarshipApplyPage'),
 );
 const MyPage = React.lazy(() => import('@/pages/profile/MyPage'));
-const SummaryLayout = React.lazy(
-  () => import('@/pages/summary/SummaryPage/SummaryLayout'),
+const PortfolioLayout = React.lazy(
+  () => import('@/pages/portfolio/PortfolioPage/PortfolioLayout'),
 );
-const SummaryEditPage = React.lazy(
-  () => import('@/pages/summary/SummaryPage/SummaryEditPage'),
-);
-const SummaryPreviewPage = React.lazy(
-  () => import('@/pages/summary/SummaryPage/SummaryPreviewPage'),
+const PortfolioEditPage = React.lazy(
+  () => import('@/pages/portfolio/PortfolioPage/PortfolioEditPage'),
 );
 const CvGeneratePage = React.lazy(() => import('@/pages/cv/CVPage/CvGeneratePage'));
 const GitHubCallbackPage = React.lazy(
@@ -61,15 +58,11 @@ const router = createBrowserRouter(
               element: <ScholarshipApplyPage />,
             },
             {
-              element: <SummaryLayout />,
+              element: <PortfolioLayout />,
               children: [
                 {
-                  path: ROUTE_PATH.summary,
-                  element: <SummaryEditPage />,
-                },
-                {
-                  path: ROUTE_PATH.summaryPreview,
-                  element: <SummaryPreviewPage />,
+                  path: ROUTE_PATH.portfolio,
+                  element: <PortfolioEditPage />,
                 },
                 {
                   path: ROUTE_PATH.cv,

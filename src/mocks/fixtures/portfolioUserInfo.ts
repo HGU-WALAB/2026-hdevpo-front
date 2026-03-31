@@ -1,4 +1,4 @@
-import type { UserInfoResponse } from '@/pages/summary/apis/portfolio';
+import type { UserInfoResponse } from '@/pages/portfolio/apis/portfolio';
 
 export const mockUserInfoResponse: UserInfoResponse = {
   name: '홍길동 (김길동)',
@@ -9,4 +9,7 @@ export const mockUserInfoResponse: UserInfoResponse = {
   semester: 2,
   bio: 'CS student',
   profile_image_url: null,
+  profile_links: [
+    { label: 'GitHub', url: 'https://github.com/example' },
+  ],
 };
