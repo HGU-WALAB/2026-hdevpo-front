@@ -12,7 +12,7 @@ import { palette } from '@/styles/palette';
 import { getErrorMessage } from '@/utils/getErrorMessage';
 
 const EMPTY_SHARE_MESSAGE =
-  '공개 포트폴리오 내용이 아직 없어요. 잠시 후 다시 확인해 주세요.';
+  '공개 포트폴리오가 아직 없어요. 잠시 후 다시 확인해 주세요.';
 const EMPTY_SHARE_DESCRIPTION =
   '작성자가 HTML을 아직 생성하지 않았거나, 내용이 비어 있을 수 있어요.';
 
@@ -42,7 +42,7 @@ type CvShareGuidanceProps = {
 };
 
 /**
- * PageErrorFallback / ErrorPage 계열과 맞춘 공개 이력서 전용 안내 (iframe guidance HTML 대신 앱 UI).
+ * PageErrorFallback / ErrorPage 계열과 맞춘 공개 포폴 전용 안내 (iframe guidance HTML 대신 앱 UI).
  */
 function CvShareGuidance({
   title,
@@ -235,8 +235,8 @@ const S = {
   `,
   GuidanceCard: styled('div')`
     box-sizing: border-box;
-    /* 404 기본 문구 한 줄 표시(일반 뷰포트) — 패딩 제외 본문 폭 확보 */
-    max-width: min(38rem, 100%);
+    /* 긴 안내 문구 한 줄에 가깝게 — 패딩 제외 본문 폭 확보 */
+    max-width: min(44rem, 100%);
     width: 100%;
     padding: 2rem 1.75rem;
     border-radius: 1rem;
