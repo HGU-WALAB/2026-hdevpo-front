@@ -27,7 +27,7 @@ const queryClient = new QueryClient({
       },
     },
     queries: {
-      staleTime: 10 * 60 * 1000,
+      staleTime: 20 * 60 * 1000,
     },
   },
 });
