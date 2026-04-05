@@ -7,9 +7,9 @@ const Footer = () => {
       <Flex.Column gap="1rem">
         <Flex.Row align="center" wrap="wrap" gap="1rem" justify="space-between">
           <Flex.Row align="center" gap="1rem">
-            <S.ServiceName>마일스톤 시스템</S.ServiceName>
+            <S.ServiceName>H-DevPo</S.ServiceName>
             <S.Description>
-              한동대학교 SW전공생을 위한 역량 모니터링 서비스
+              한동대학교 SW전공생을 위한 커리어 성장 지원 서비스
             </S.Description>
           </Flex.Row>
           <S.Link href="mailto:pyc50633@handong.edu">문의하기</S.Link>
