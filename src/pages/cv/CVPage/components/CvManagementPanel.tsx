@@ -134,7 +134,7 @@ const CvManagementPanel = () => {
           label="포트폴리오 생성"
           variant="contained"
           color="blue"
-          size="medium"
+          size="large"
           icon={AddIconWrap}
           iconPosition="start"
           onClick={() => navigate(ROUTE_PATH.cvGenerate)}
