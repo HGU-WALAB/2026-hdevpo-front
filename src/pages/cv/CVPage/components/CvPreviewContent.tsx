@@ -361,6 +361,38 @@ const CvPreviewContent = ({
         ) : null}
         {!isPending && data ? (
           <>
+            <S.Section direction="column" gap="0.65rem">
+              <S.SectionTitle>HTML 공개 설정</S.SectionTitle>
+              {!isEditing ? (
+                <>
+                  <CvHtmlPublicSwitchControl
+                    isPublic={Boolean(data.is_public)}
+                    onPublicChange={handleTogglePublic}
+                    disabled={publicToggleDisabled}
+                    size="small"
+                    appearance="filled"
+                    linkButton={{
+                      label: '링크 바로가기',
+                      onClick: handleOpenPublicShare,
+                      disabled: publicToggleDisabled,
+                    }}
+                  />
+                  <Text
+                    margin="0"
+                    color={palette.grey600}
+                    style={{ fontSize: '0.75rem', lineHeight: 1.55 }}
+                  >
+                    스위치로 HTML 공개 여부를 바꿀 수 있습니다. 공개 시 링크만으로 로그인 없이
+                    미리보기가 가능합니다.
+                  </Text>
+                </>
+              ) : (
+                <Text margin="0" color={palette.grey500} style={{ fontSize: '0.8125rem' }}>
+                  HTML 본문을 수정하는 동안에는 공개 설정을 바꿀 수 없습니다.
+                </Text>
+              )}
+            </S.Section>
+
             <S.Section direction="column" gap="0.5rem">
               <S.SectionTitle>공고 정보</S.SectionTitle>
               <S.BodyBox>{data.job_posting || '—'}</S.BodyBox>
@@ -419,27 +451,6 @@ const CvPreviewContent = ({
                   </Flex.Row>
                 ) : null}
               </Flex.Row>
-              {!isEditing ? (
-                <CvHtmlPublicSwitchControl
-                  isPublic={Boolean(data.is_public)}
-                  onPublicChange={handleTogglePublic}
-                  disabled={publicToggleDisabled}
-                  size="small"
-                  linkButton={{
-                    label: '링크 바로가기',
-                    onClick: handleOpenPublicShare,
-                    disabled: publicToggleDisabled,
-                  }}
-                />
-              ) : null}
-              <Text
-                margin="0"
-                color={palette.grey600}
-                style={{ fontSize: '0.75rem', lineHeight: 1.55 }}
-              >
-                스위치로 HTML 공개 여부를 바꿀 수 있습니다. 공개 시 링크만으로 로그인 없이 미리보기가
-                가능합니다.
-              </Text>
               <Flex.Column gap="0.5rem" width="100%" style={{ minWidth: 0 }}>
                 {isEditing ? (
                   <S.HtmlTextarea

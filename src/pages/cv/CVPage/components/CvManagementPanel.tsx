@@ -6,6 +6,7 @@ import { palette } from '@/styles/palette';
 import AddIcon from '@mui/icons-material/Add';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
 import { Dialog, DialogContent, LinearProgress, useMediaQuery } from '@mui/material';
@@ -24,9 +25,7 @@ import {
   type PortfolioCvListItem,
 } from '../../apis/cv';
 import useDeletePortfolioCvMutation from '../../hooks/useDeletePortfolioCvMutation';
-import usePatchPortfolioCvMutation from '../../hooks/usePatchPortfolioCvMutation';
 import CvPreviewContent from './CvPreviewContent';
-import { CvHtmlPublicSwitchControl } from './cvHtmlPublicUi';
 
 const CV_QUERY_CONFIG = { retry: 1, refetchOnWindowFocus: false } as const;
 
@@ -38,6 +37,9 @@ const VisibilityIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
 );
 const DeleteOutlineIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
   <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+);
+const OpenInNewIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
+  <OpenInNewIcon sx={{ fontSize: 18 }} />
 );
 
 function truncateText(s: string, max: number): string {
@@ -60,11 +62,6 @@ const CvManagementPanel = () => {
   const [previewId, setPreviewId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const deleteMutation = useDeletePortfolioCvMutation();
-  const patchMutation = usePatchPortfolioCvMutation();
-  const publishingId =
-    patchMutation.isPending && patchMutation.variables
-      ? patchMutation.variables.id
-      : null;
 
   const listQuery = useQuery({
     queryKey: [QUERY_KEYS.portfolioCv, 'list'] as const,
@@ -114,36 +111,6 @@ const CvManagementPanel = () => {
     setDeleteConfirmId(null);
     handleDeleteCv(id);
   }, [deleteConfirmId, handleDeleteCv]);
-
-  const handleListHtmlPublicChange = useCallback(
-    (item: PortfolioCvListItem, next: boolean) => {
-      if (!String(item.public_token ?? '').trim()) {
-        toast.error('공개 토큰이 없습니다. 포트폴리오를 다시 저장해 주세요.', {
-          position: 'top-center',
-        });
-        return;
-      }
-      patchMutation.mutate(
-        { id: item.id, body: { is_public: next } },
-        {
-          onSuccess: () => {
-            toast.success(
-              next
-                ? 'HTML이 공개되었습니다. 「링크 열기」로 미리보기 할 수 있습니다.'
-                : '비공개로 전환했습니다.',
-              { position: 'top-center' },
-            );
-          },
-          onError: () => {
-            toast.error('공개 설정을 저장하지 못했습니다. 잠시 후 다시 시도해 주세요.', {
-              position: 'top-center',
-            });
-          },
-        },
-      );
-    },
-    [patchMutation],
-  );
 
   const showPreviewPanel = previewId != null;
   const showListColumn = !isMobile || !showPreviewPanel;
@@ -237,10 +204,6 @@ const CvManagementPanel = () => {
                   onView={() => openPreview(item.id)}
                   onRequestDelete={() => setDeleteConfirmId(item.id)}
                   deletePending={deletePending}
-                  onHtmlPublicChange={next => handleListHtmlPublicChange(item, next)}
-                  publicToggleDisabled={
-                    publishingId === item.id || !String(item.public_token ?? '').trim()
-                  }
                   onOpenShareLink={() => {
                     const token = String(item.public_token ?? '').trim();
                     if (!token) return;
@@ -366,8 +329,6 @@ function CvHistoryCard({
   onView,
   onRequestDelete,
   deletePending,
-  onHtmlPublicChange,
-  publicToggleDisabled,
   onOpenShareLink,
 }: {
   item: PortfolioCvListItem;
@@ -375,8 +336,6 @@ function CvHistoryCard({
   onView: () => void;
   onRequestDelete: () => void;
   deletePending: boolean;
-  onHtmlPublicChange: (next: boolean) => void;
-  publicToggleDisabled: boolean;
   onOpenShareLink: () => void;
 }) {
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
@@ -394,6 +353,8 @@ function CvHistoryCard({
       .filter(Boolean)
       .join(' · ') || '미리보기 내용이 없습니다.';
   const snippet = truncateText(snippetSource, 140);
+  const isHtmlPublic = Boolean(item.is_public);
+  const hasShareToken = Boolean(String(item.public_token ?? '').trim());
 
   return (
     <S.HistoryCard $selected={isSelected}>
@@ -427,6 +388,9 @@ function CvHistoryCard({
               <CalendarTodayIcon sx={{ fontSize: 15, color: palette.grey500 }} aria-hidden />
               <span>{formatDateOnly(item.updated_at)}</span>
             </S.MetaChip>
+            <S.HtmlPublicStatusTag $public={isHtmlPublic}>
+              {isHtmlPublic ? 'HTML 공개 중' : 'HTML 비공개'}
+            </S.HtmlPublicStatusTag>
           </Flex.Row>
         </Flex.Column>
         <Flex.Row
@@ -448,6 +412,18 @@ function CvHistoryCard({
             iconPosition="start"
             onClick={onView}
           />
+          {isHtmlPublic ? (
+            <Button
+              label="링크 열기"
+              variant="outlined"
+              color="grey"
+              size={btnSize}
+              icon={OpenInNewIconWrap}
+              iconPosition="start"
+              onClick={onOpenShareLink}
+              disabled={!hasShareToken}
+            />
+          ) : null}
           <Button
             label="삭제"
             variant="outlined"
@@ -460,18 +436,6 @@ function CvHistoryCard({
           />
         </Flex.Row>
       </Flex.Row>
-
-      <CvHtmlPublicSwitchControl
-        isPublic={Boolean(item.is_public)}
-        onPublicChange={onHtmlPublicChange}
-        disabled={publicToggleDisabled}
-        size={btnSize}
-        appearance="plain"
-        linkButton={{
-          onClick: onOpenShareLink,
-          disabled: !String(item.public_token ?? '').trim(),
-        }}
-      />
 
       <Flex.Column gap="0.35rem" width="100%" style={{ minWidth: 0 }}>
         <Text margin="0" color={palette.grey500} style={{ fontSize: '0.75rem', fontWeight: 600 }}>
@@ -587,6 +551,40 @@ const S = {
     font-size: 0.75rem;
     font-weight: 600;
     color: ${palette.grey600};
+  `,
+  HtmlPublicStatusTag: styled('span', {
+    shouldForwardProp: p => p !== '$public',
+  })<{ $public: boolean }>`
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    box-sizing: border-box;
+    background-color: ${({ theme }) => theme.palette.background.paper};
+    border: 1px solid
+      ${({ $public }) => ($public ? palette.blue400 : palette.grey300)};
+    color: ${({ $public }) => ($public ? palette.blue600 : palette.grey600)};
+    box-shadow: ${({ $public }) =>
+      $public ? '0 1px 2px rgba(83, 127, 241, 0.1)' : '0 1px 2px rgba(16, 24, 40, 0.05)'};
+  `,
+  HtmlPublicLabelTag: styled('span')`
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.35;
+    white-space: nowrap;
+    box-sizing: border-box;
+    color: ${palette.nearBlack};
+    background-color: ${({ theme }) => theme.palette.background.paper};
+    border: 1px solid ${palette.grey200};
+    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
   `,
   Snippet: styled('div')`
     margin: 0;
