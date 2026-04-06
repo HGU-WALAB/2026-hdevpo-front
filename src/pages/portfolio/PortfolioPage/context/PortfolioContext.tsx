@@ -14,7 +14,6 @@ import {
   deleteActivity as deleteActivityApi,
   getActivities,
   getPortfolioMileage,
-  getPortfolioSettings,
   getTechStack,
   getUserInfo,
   postActivity,
@@ -29,10 +28,6 @@ import {
   normalizeTechStackDomainsForPersist,
   normalizeTechStackDomainsFromResponse,
 } from '../../utils/techStackDomains';
-import {
-  DRAGGABLE_SECTION_ORDER,
-  type DraggableSectionKey,
-} from '../../constants/constants';
 import type { ActivityItem, MileageItem, RepoItem, UserInfo } from '../../types/portfolioItems';
 import type { PortfolioState } from '../../types/portfolioState';
 
@@ -184,31 +179,6 @@ export const PortfolioProvider = ({ children }: PortfolioProviderProps) => {
       queryClient.setQueryData<UserInfo | null>(
         [QUERY_KEYS.portfolioUserInfo],
         prev => (typeof v === 'function' ? v(prev ?? null) : v),
-      );
-    },
-    [queryClient],
-  );
-
-  // ── 섹션 순서 ──────────────────────────────────────────────────────────────
-  const settingsQuery = useQuery<DraggableSectionKey[]>({
-    queryKey: [QUERY_KEYS.portfolioSettings],
-    queryFn: async () => {
-      const res = await getPortfolioSettings();
-      const order = res.section_order ?? [];
-      const validKeys = order.filter((k): k is DraggableSectionKey =>
-        DRAGGABLE_SECTION_ORDER.includes(k as DraggableSectionKey),
-      );
-      const missing = DRAGGABLE_SECTION_ORDER.filter(k => !validKeys.includes(k));
-      return validKeys.length > 0 ? [...validKeys, ...missing] : DRAGGABLE_SECTION_ORDER;
-    },
-    ...QUERY_CONFIG,
-  });
-
-  const setSectionOrder = useCallback(
-    (v: DraggableSectionKey[] | ((p: DraggableSectionKey[]) => DraggableSectionKey[])) => {
-      queryClient.setQueryData<DraggableSectionKey[]>(
-        [QUERY_KEYS.portfolioSettings],
-        prev => (typeof v === 'function' ? v(prev ?? DRAGGABLE_SECTION_ORDER) : v),
       );
     },
     [queryClient],
@@ -373,8 +343,6 @@ export const PortfolioProvider = ({ children }: PortfolioProviderProps) => {
       userInfo: userInfoQuery.data ?? null,
       setUserInfo,
       isUserInfoLoading: userInfoQuery.isLoading,
-      sectionOrder: settingsQuery.data ?? DRAGGABLE_SECTION_ORDER,
-      setSectionOrder,
       techStackDomains: techStackQuery.data ?? [],
       setTechStackDomains,
       isTechStackLoading: techStackQuery.isLoading,
@@ -397,8 +365,6 @@ export const PortfolioProvider = ({ children }: PortfolioProviderProps) => {
       userInfoQuery.data,
       userInfoQuery.isLoading,
       setUserInfo,
-      settingsQuery.data,
-      setSectionOrder,
       techStackQuery.data,
       techStackQuery.isLoading,
       setTechStackDomains,

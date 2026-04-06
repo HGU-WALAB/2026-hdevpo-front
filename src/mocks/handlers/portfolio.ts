@@ -15,7 +15,6 @@ import type {
 import type { TechStackPutRequest } from '@/pages/portfolio/apis/portfolio';
 import { clampTechLevel } from '@/pages/portfolio/utils/techStackLevel';
 import type { PatchRepositoryBody } from '@/pages/portfolio/apis/repositories';
-import { DRAGGABLE_SECTION_ORDER } from '@/pages/portfolio/constants/constants';
 import { mockActivitiesResponse } from '@/mocks/fixtures/portfolioActivities';
 import { mockMileageList } from '@/mocks/fixtures/mileageList';
 import { mockPortfolioMileage } from '@/mocks/fixtures/portfolioMileage';
@@ -30,10 +29,6 @@ import type {
 
 const techStackStore = {
   domains: mockTechStackResponse.domains.map(d => ({ ...d, tech_stacks: [...d.tech_stacks] })),
-};
-
-const settingsStore: { section_order: string[] } = {
-  section_order: [...DRAGGABLE_SECTION_ORDER],
 };
 
 const userInfoStore: UserInfoResponse = { ...mockUserInfoResponse };
@@ -129,24 +124,6 @@ export const PortfolioHandlers = [
           tech_stacks: d.tech_stacks.map(t => ({ ...t })),
         })),
       },
-      { status: 200 },
-    );
-  }),
-
-  http.get(BASE_URL + ENDPOINT.PORTFOLIO_SETTINGS, () => {
-    return HttpResponse.json(
-      { section_order: [...settingsStore.section_order] },
-      { status: 200 },
-    );
-  }),
-
-  http.put(BASE_URL + ENDPOINT.PORTFOLIO_SETTINGS, async ({ request }) => {
-    const body = (await request.json()) as { section_order: string[] };
-    settingsStore.section_order = Array.isArray(body.section_order)
-      ? [...body.section_order]
-      : [...DRAGGABLE_SECTION_ORDER];
-    return HttpResponse.json(
-      { section_order: [...settingsStore.section_order] },
       { status: 200 },
     );
   }),

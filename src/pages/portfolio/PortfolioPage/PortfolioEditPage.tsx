@@ -19,6 +19,7 @@ import { useEffect, useRef, useState, type FunctionComponent, type SVGProps } fr
 import { useNavigate, useSearchParams } from 'react-router-dom';
 
 import {
+  DRAGGABLE_SECTION_ORDER,
   SECTION_TITLES,
   type DraggableSectionKey,
 } from '../constants/constants';
@@ -37,10 +38,7 @@ import {
   type TechStackSectionContentHandle,
   UserInfoSectionContent,
 } from './components';
-import {
-  usePortfolioSectionOrderDragDrop,
-  useScrollPortfolioSection,
-} from './hooks';
+import { useScrollPortfolioSection } from './hooks';
 import {
   PROMPT_QUALITY_SECTION_HINTS,
   usePortfolioPromptProgress,
@@ -62,8 +60,6 @@ const PortfolioEditPage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const {
-    sectionOrder,
-    setSectionOrder,
     isTechStackLoading,
     isReposLoading,
     isMileageLoading,
@@ -78,14 +74,6 @@ const PortfolioEditPage = () => {
   const activitiesRef = useRef<ActivitiesSectionContentHandle>(null);
   const promptProgress = usePortfolioPromptProgress();
   const handlePromptQualitySectionClick = useScrollPortfolioSection();
-  const {
-    dragOverId,
-    handleDragStart,
-    handleDragOver,
-    handleDragLeave,
-    handleDrop,
-  } = usePortfolioSectionOrderDragDrop(sectionOrder, setSectionOrder);
-
   useEffect(() => {
     if (
       searchParams.get(PORTFOLIO_CV_PANEL_QUERY_KEY) !==
@@ -150,7 +138,7 @@ const PortfolioEditPage = () => {
         />
         <UserInfoSectionContent splitViewportLayout={false} />
         <Flex.Column gap="1rem" width="100%" style={{ minWidth: 0 }}>
-          {sectionOrder.map(key => (
+          {DRAGGABLE_SECTION_ORDER.map(key => (
             <DraggableSection
               key={key}
               sectionId={key}
@@ -208,11 +196,6 @@ const PortfolioEditPage = () => {
               compactHeaderRight={
                 (key === 'tech' && isMobile) || key === 'activities'
               }
-              onDragStart={handleDragStart}
-              onDragOver={handleDragOver}
-              onDragLeave={handleDragLeave}
-              onDrop={handleDrop}
-              isDragOver={dragOverId === key}
               promptFooter={{
                 percent: promptProgress[key],
                 hint: PROMPT_QUALITY_SECTION_HINTS[key],
