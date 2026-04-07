@@ -102,30 +102,38 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
     [displayRepos, page],
   );
 
+  const isConnected = githubStatus?.connected ?? false;
+
+  const connectCard = (
+    <S.ConnectCard>
+      <Flex.Column gap="0.75rem" style={{ width: '100%' }}>
+        <S.ConnectMessage>
+          {isConnected
+            ? '선택된 레포지토리가 없습니다.'
+            : '깃허브 계정을 연결해 레포지토리를 추가해 주세요.'}
+        </S.ConnectMessage>
+        {!readOnly && !isConnected && (
+          <Flex.Row justify="flex-start" style={{ width: '100%' }}>
+            <Button
+              label="마이페이지로 이동"
+              variant="contained"
+              color="blue"
+              size="medium"
+              onClick={() => navigate(ROUTE_PATH.myPage)}
+            />
+          </Flex.Row>
+        )}
+      </Flex.Column>
+    </S.ConnectCard>
+  );
+
+  // 깃허브가 연결 해제된 상태라면, 선택된 레포가 있더라도 표시하지 않습니다.
+  if (!isConnected) {
+    return connectCard;
+  }
+
   if (!readOnly && displayRepos.length === 0) {
-    const isConnected = githubStatus?.connected ?? false;
-    return (
-      <S.ConnectCard>
-        <Flex.Column gap="0.75rem" style={{ width: '100%' }}>
-          <S.ConnectMessage>
-            {isConnected
-              ? '선택된 레포지토리가 없습니다.'
-              : '깃허브 계정을 연결해 레포지토리를 추가해 주세요.'}
-          </S.ConnectMessage>
-          {!isConnected && (
-            <Flex.Row justify="flex-start" style={{ width: '100%' }}>
-              <Button
-                label="마이페이지로 이동"
-                variant="contained"
-                color="blue"
-                size="medium"
-                onClick={() => navigate(ROUTE_PATH.myPage)}
-              />
-            </Flex.Row>
-          )}
-        </Flex.Column>
-      </S.ConnectCard>
-    );
+    return connectCard;
   }
 
   const displayName = (repo: {
