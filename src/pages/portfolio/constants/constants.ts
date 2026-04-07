@@ -32,8 +32,8 @@ export const PORTFOLIO_SECTION_ELEMENT_ID: Record<
 export const DRAGGABLE_SECTION_ORDER: DraggableSectionKey[] = [
   'tech',
   'repo',
-  'activities',
   'mileage',
+  'activities',
 ];
 
 export const SECTION_TITLES: Record<SectionOrderKey, string> = {
