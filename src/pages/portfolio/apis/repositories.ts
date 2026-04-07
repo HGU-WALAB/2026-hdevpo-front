@@ -13,6 +13,8 @@ export interface PortfolioRepositoryItem {
   repo_id: number;
   custom_title: string | null;
   description: string;
+  /** GitHub 원본 설명 (커스텀 description 비우면 UI에서 fallback으로 사용) */
+  github_description?: string;
   is_visible: boolean;
   display_order: number;
   name: string;

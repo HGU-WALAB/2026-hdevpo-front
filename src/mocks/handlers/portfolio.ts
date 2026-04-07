@@ -579,6 +579,7 @@ export const PortfolioHandlers = [
         repo_id: item.repo_id,
         custom_title: item.custom_title ?? null,
         description: item.description ?? '',
+        github_description: existing?.github_description ?? '',
         is_visible: item.is_visible ?? true,
         display_order: index,
         name: existing?.name ?? '',
@@ -618,6 +619,7 @@ export const PortfolioHandlers = [
         ...prev,
         custom_title: body.custom_title ?? prev.custom_title,
         description: body.description ?? prev.description,
+        github_description: prev.github_description ?? '',
         is_visible: body.is_visible ?? prev.is_visible,
         display_order: body.display_order ?? prev.display_order,
       };

@@ -85,6 +85,7 @@ export function portfolioRepoToRepoItem(p: PortfolioRepositoryItem): RepoItem {
     display_order: p.display_order,
     name: nonEmpty(p.name) ?? nonEmpty(p.custom_title) ?? String(p.repo_id),
     description: p.description ?? '',
+    github_description: p.github_description ?? '',
     created_at: p.created_at ?? '',
     updated_at: p.updated_at ?? '',
     languages: languageNames,

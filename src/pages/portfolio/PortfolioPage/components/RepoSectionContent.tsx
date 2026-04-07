@@ -116,11 +116,20 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
         ? repo.name.trim()
         : String(repo.repo_id);
 
+  const displayDescription = (repo: RepoItem) => {
+    const custom = (repo.description ?? '').trim();
+    if (custom !== '') return custom;
+    const gh = (repo.github_description ?? '').trim();
+    return gh;
+  };
+
   return (
     <Flex.Column gap="1rem">
       <S.Grid $isMobile={isMobile}>
         {paginatedRepos.map(repo => {
           const isEditing = editingRepo?.repo_id === repo.repo_id;
+          const githubDescriptionPlaceholder =
+            (repo.github_description ?? '').trim() || '설명을 입력하세요';
           return (
             <S.Card key={repo.repo_id} $isMobile={isMobile}>
               {isEditing ? (
@@ -144,7 +153,7 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
                   <textarea
                     value={editDescription}
                     onChange={e => setEditDescription(e.target.value)}
-                    placeholder="설명을 입력하세요"
+                    placeholder={githubDescriptionPlaceholder}
                     maxLength={INPUT_MAX_LENGTH.REPO_DESCRIPTION}
                     rows={2}
                     style={{
@@ -153,7 +162,7 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
                       borderRadius: '0.5rem',
                       border: `1px solid ${theme.palette.grey[300]}`,
                       fontSize: '0.875rem',
-                      resize: 'none',
+                      resize: 'vertical',
                       boxSizing: 'border-box',
                       minHeight: '2.5rem',
                     }}
@@ -206,14 +215,14 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
                       </S.EditButton>
                     )}
                   </Flex.Row>
-                  {(repo.description?.trim() ?? '') !== '' && (
+                  {displayDescription(repo) !== '' && (
                     <Text
                       style={{
                         ...theme.typography.body2,
                         color: theme.palette.grey[600],
                       }}
                     >
-                      {repo.description}
+                      {displayDescription(repo)}
                     </Text>
                   )}
                   <Flex.Row

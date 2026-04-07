@@ -11,6 +11,8 @@ export interface RepoItem {
   name: string;
   owner?: string;
   description: string;
+  /** GitHub 원본 설명 (커스텀 description 비우면 UI에서 fallback으로 사용) */
+  github_description?: string;
   created_at: string;
   updated_at: string;
   /** 마크다운 등에 쓰는 언어 이름 목록 */

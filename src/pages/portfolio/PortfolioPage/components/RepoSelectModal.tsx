@@ -213,7 +213,8 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
       r =>
         (r.name ?? '').toLowerCase().includes(q) ||
         (r.custom_title?.toLowerCase().includes(q) ?? false) ||
-        (r.description?.toLowerCase().includes(q) ?? false),
+        (r.description?.toLowerCase().includes(q) ?? false) ||
+        (r.github_description?.toLowerCase().includes(q) ?? false),
     );
   }, [pageRepos, searchQuery]);
 
@@ -229,6 +230,7 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
             custom_title: pr.custom_title,
             name: pr.name,
             description: pr.description,
+            github_description: pr.github_description,
             is_visible: pr.is_visible,
             display_order: pr.display_order ?? 0,
             html_url: pr.html_url ?? '',
@@ -246,6 +248,7 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
           custom_title: null,
           name: String(id),
           description: '',
+          github_description: '',
           is_visible: false,
           display_order: 0,
           html_url: '',
