@@ -1,4 +1,4 @@
-import { Button, Flex, Text } from '@/components';
+import { Button, Flex, Input, Text } from '@/components';
 import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { palette } from '@/styles/palette';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
@@ -134,39 +134,42 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
             <S.Card key={repo.repo_id} $isMobile={isMobile}>
               {isEditing ? (
                 <Flex.Column gap="0.5rem">
-                  <input
-                    type="text"
+                  <Input
                     value={editTitle}
                     onChange={e => setEditTitle(e.target.value)}
                     placeholder={displayName(repo)}
-                    maxLength={INPUT_MAX_LENGTH.REPO_TITLE}
-                    style={{
-                      width: '100%',
-                      padding: '0.35rem 0.5rem',
-                      borderRadius: '0.5rem',
-                      border: `1px solid ${theme.palette.grey[300]}`,
-                      fontSize: '0.875rem',
-                      boxSizing: 'border-box',
+                    size="small"
+                    fullWidth
+                    inputProps={{
+                      maxLength: INPUT_MAX_LENGTH.REPO_TITLE,
+                      'aria-label': '레포지토리 제목',
                     }}
-                    aria-label="레포지토리 제목"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: theme.palette.variant.default,
+                      },
+                    }}
                   />
-                  <textarea
+                  <Input
+                    multiline
                     value={editDescription}
                     onChange={e => setEditDescription(e.target.value)}
                     placeholder={githubDescriptionPlaceholder}
-                    maxLength={INPUT_MAX_LENGTH.REPO_DESCRIPTION}
                     rows={2}
-                    style={{
-                      width: '100%',
-                      padding: '0.35rem 0.5rem',
-                      borderRadius: '0.5rem',
-                      border: `1px solid ${theme.palette.grey[300]}`,
-                      fontSize: '0.875rem',
-                      resize: 'vertical',
-                      boxSizing: 'border-box',
-                      minHeight: '2.5rem',
+                    size="small"
+                    fullWidth
+                    inputProps={{
+                      maxLength: INPUT_MAX_LENGTH.REPO_DESCRIPTION,
+                      'aria-label': '레포지토리 설명',
                     }}
-                    aria-label="레포지토리 설명"
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: theme.palette.variant.default,
+                      },
+                      '& textarea': {
+                        resize: 'vertical',
+                      },
+                    }}
                   />
                   <Flex.Row gap="0.5rem" justify="flex-end">
                     <Button

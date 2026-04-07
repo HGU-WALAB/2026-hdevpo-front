@@ -330,7 +330,7 @@ const ActivitiesSectionContent = forwardRef<
           </Flex.Row>
           <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
             <S.FieldLabel>제목</S.FieldLabel>
-            <S.EditInput
+            <Input
               value={editDraft.title ?? ''}
               onChange={e =>
                 setEditDraft(prev => ({
@@ -339,9 +339,17 @@ const ActivitiesSectionContent = forwardRef<
                 }))
               }
               placeholder="활동 제목"
-              maxLength={INPUT_MAX_LENGTH.ACTIVITY_TITLE}
-              aria-label="제목"
+              inputProps={{
+                maxLength: INPUT_MAX_LENGTH.ACTIVITY_TITLE,
+                'aria-label': '제목',
+              }}
+              size="small"
               style={{ width: '100%' }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: theme.palette.variant.default,
+                },
+              }}
             />
           </Flex.Column>
           <Flex.Column
@@ -436,7 +444,8 @@ const ActivitiesSectionContent = forwardRef<
           </Flex.Column>
           <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
             <S.FieldLabel>상세 설명</S.FieldLabel>
-            <S.EditTextarea
+            <Input
+              multiline
               value={editDraft.description ?? ''}
               onChange={e =>
                 setEditDraft(prev => ({
@@ -446,7 +455,20 @@ const ActivitiesSectionContent = forwardRef<
               }
               placeholder="활동의 상세 내용을 입력해 주세요."
               rows={3}
-              maxLength={INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION}
+              inputProps={{
+                maxLength: INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION,
+                'aria-label': '상세 설명',
+              }}
+              size="small"
+              fullWidth
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: theme.palette.variant.default,
+                },
+                '& textarea': {
+                  resize: 'vertical',
+                },
+              }}
             />
             <S.CharCount
               warn={
@@ -460,7 +482,7 @@ const ActivitiesSectionContent = forwardRef<
           </Flex.Column>
           <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
             <S.FieldLabel>관련 URL</S.FieldLabel>
-            <S.EditInput
+            <Input
               value={editDraft.url ?? ''}
               onChange={e =>
                 setEditDraft(prev => ({
@@ -469,9 +491,17 @@ const ActivitiesSectionContent = forwardRef<
                 }))
               }
               placeholder="https://…"
-              maxLength={INPUT_MAX_LENGTH.ACTIVITY_URL}
-              aria-label="활동 관련 URL"
+              inputProps={{
+                maxLength: INPUT_MAX_LENGTH.ACTIVITY_URL,
+                'aria-label': '활동 관련 URL',
+              }}
+              size="small"
               style={{ width: '100%' }}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  backgroundColor: theme.palette.variant.default,
+                },
+              }}
             />
           </Flex.Column>
         </Flex.Column>
@@ -690,19 +720,6 @@ const S = {
     font-weight: 500;
     box-shadow: 0 1px 2px rgba(83, 127, 241, 0.08);
   `,
-  EditInput: styled('input')`
-    padding: 0.4rem 0.625rem;
-    border-radius: 0.375rem;
-    border: 1.5px solid ${palette.blue400};
-    font-size: 0.875rem;
-    line-height: 1.5;
-    outline: none;
-    box-sizing: border-box;
-    &:focus {
-      border-color: ${palette.blue500};
-      box-shadow: 0 0 0 2px ${palette.blue300};
-    }
-  `,
   TagEditorShell: styled('div')`
     display: flex;
     flex-direction: row;
@@ -748,23 +765,6 @@ const S = {
     &:hover {
       border-color: ${palette.blue500};
       background-color: ${palette.blue300};
-    }
-  `,
-  EditTextarea: styled('textarea')`
-    width: 100%;
-    min-height: 4rem;
-    padding: 0.4rem 0.625rem;
-    border-radius: 0.375rem;
-    border: 1.5px solid ${palette.blue400};
-    font-size: 0.875rem;
-    line-height: 1.5;
-    resize: vertical;
-    outline: none;
-    font-family: inherit;
-    box-sizing: border-box;
-    &:focus {
-      border-color: ${palette.blue500};
-      box-shadow: 0 0 0 2px ${palette.blue300};
     }
   `,
   CharCount: styled('span')<{ warn?: boolean }>`
