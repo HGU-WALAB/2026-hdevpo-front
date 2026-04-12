@@ -9,6 +9,7 @@ import CodeIcon from '@mui/icons-material/Code';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditIcon from '@mui/icons-material/Edit';
 import HtmlIcon from '@mui/icons-material/Html';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import { IconButton } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useCallback, useEffect, useMemo, useState, type FunctionComponent, type SVGProps } from 'react';
@@ -16,9 +17,10 @@ import { toast } from 'react-toastify';
 import { openCvShareInNewTab } from '@/constants/routePath';
 import { formatDateOnly } from '@/pages/portfolio/utils/date';
 import { copyTextToClipboard } from '@/utils/copyTextToClipboard';
-import type { PortfolioCvDetail } from '../../apis/cv';
+import { getPortfolioCvById, type PortfolioCvDetail } from '../../apis/cv';
 import usePatchPortfolioCvMutation from '../../hooks/usePatchPortfolioCvMutation';
 import { buildCvPreviewSrcDoc } from '../../utils/buildCvPreviewSrcDoc';
+import { downloadCvHtmlAsA4Pdf } from '../../utils/downloadCvHtmlAsA4Pdf';
 import { sanitizeCvHtml } from '../../utils/sanitizeCvHtml';
 import { CvHtmlPublicSwitchControl } from './cvHtmlPublicUi';
 
@@ -45,6 +47,9 @@ const CodeIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
 );
 const HtmlIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
   <HtmlIcon sx={{ fontSize: 16 }} />
+);
+const PictureAsPdfIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
+  <PictureAsPdfIcon sx={{ fontSize: 16 }} />
 );
 const DeleteOutlineIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
   <DeleteOutlineIcon sx={{ fontSize: 18 }} />
@@ -73,6 +78,7 @@ const CvPreviewContent = ({
   isDeletePending = false,
 }: CvPreviewContentProps) => {
   const [showHtmlPreview, setShowHtmlPreview] = useState(true);
+  const [pdfDownloading, setPdfDownloading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
   const [editHtml, setEditHtml] = useState('');
@@ -81,12 +87,14 @@ const CvPreviewContent = ({
   useEffect(() => {
     if (!active) {
       setShowHtmlPreview(false);
+      setPdfDownloading(false);
       setIsEditing(false);
     }
   }, [active]);
 
   useEffect(() => {
     setShowHtmlPreview(true);
+    setPdfDownloading(false);
     setIsEditing(false);
   }, [data?.id]);
 
@@ -119,7 +127,7 @@ const CvPreviewContent = ({
     return buildCvPreviewSrcDoc(sanitized);
   }, [htmlRaw]);
   const patchPending = patchMutation.isPending;
-  const actionDisabled = patchPending || isDeletePending;
+  const actionDisabled = patchPending || isDeletePending || pdfDownloading;
   const publicToggleDisabled = patchPending || isDeletePending || isEditing;
 
   const handleOpenPublicShare = useCallback(() => {
@@ -182,6 +190,30 @@ const CvPreviewContent = ({
     setEditHtml(data.html_content ?? '');
     setShowHtmlPreview(true);
     setIsEditing(false);
+  }, [data]);
+
+  const handleDownloadPdf = useCallback(async () => {
+    if (!data) return;
+    setPdfDownloading(true);
+    try {
+      const detail = await getPortfolioCvById(data.id);
+      const html = detail.html_content?.trim() ?? '';
+      if (!html) {
+        toast.info('다운로드할 HTML 내용이 없습니다.', { position: 'top-center' });
+        return;
+      }
+      await downloadCvHtmlAsA4Pdf({
+        htmlContent: html,
+        fileNameBase: detail.title || `portfolio-${detail.id}`,
+      });
+      toast.success('PDF를 저장했습니다.', { position: 'top-center' });
+    } catch {
+      toast.error('PDF를 만들지 못했습니다. 잠시 후 다시 시도해 주세요.', {
+        position: 'top-center',
+      });
+    } finally {
+      setPdfDownloading(false);
+    }
   }, [data]);
 
   const handleConfirmEdit = useCallback(() => {
@@ -462,6 +494,16 @@ const CvPreviewContent = ({
                 {!isEditing ? (
                   <Flex.Row align="center" gap="0.5rem" wrap="wrap" style={{ flexShrink: 0 }}>
                     <Button
+                      label="PDF 다운로드"
+                      variant="outlined"
+                      color="blue"
+                      size="small"
+                      icon={PictureAsPdfIconWrap}
+                      iconPosition="start"
+                      onClick={handleDownloadPdf}
+                      disabled={pdfDownloading || !data}
+                    />
+                    <Button
                       label={showHtmlPreview ? '소스 보기' : 'HTML 미리보기'}
                       variant="outlined"
                       color="blue"
@@ -469,7 +511,7 @@ const CvPreviewContent = ({
                       icon={showHtmlPreview ? CodeIconWrap : HtmlIconWrap}
                       iconPosition="start"
                       onClick={() => setShowHtmlPreview(v => !v)}
-                      disabled={!htmlRaw.trim()}
+                      disabled={!htmlRaw.trim() || pdfDownloading}
                     />
                   </Flex.Row>
                 ) : null}
