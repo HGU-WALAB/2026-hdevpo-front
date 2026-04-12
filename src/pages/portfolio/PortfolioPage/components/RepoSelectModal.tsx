@@ -71,6 +71,10 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
   );
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
+  /** 확인 클릭 후: 전체 목록 fetch → PUT 저장 단계 구분(오버레이 문구) */
+  const [submitPhase, setSubmitPhase] = useState<'fetchAll' | 'save'>(
+    'fetchAll',
+  );
   const [refreshing, setRefreshing] = useState(false);
   const [listVersion, setListVersion] = useState(0);
 
@@ -175,13 +179,17 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
   }, []);
 
   const handleConfirm = useCallback(async () => {
+    setSubmitPhase('fetchAll');
     setSubmitting(true);
+    // 상태 반영·로딩 오버레이가 한 프레임 그려진 뒤 네트워크 대기 (미표시 방지)
+    await Promise.resolve();
     try {
       // 이미 백그라운드에서 시작된 프리페치 Promise를 재사용
       const fullList = await (allReposPromiseRef.current ?? getAllRepositories({
         ...queryParams,
         perPage: REPOS_PER_PAGE,
       }));
+      setSubmitPhase('save');
       const putBody: PutRepositoryItem[] = fullList.map(p => ({
         repo_id: p.repo_id,
         custom_title: p.custom_title != null ? p.custom_title : '',
@@ -198,13 +206,14 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
       toast.error('레포지토리 저장에 실패했습니다.');
     } finally {
       setSubmitting(false);
+      setSubmitPhase('fetchAll');
     }
   }, [selectedIds, queryParams, setRepos, onClose]);
 
   const handleModalClose = useCallback(() => {
-    if (submitting) return;
+    if (submitting || refreshing) return;
     onClose();
-  }, [submitting, onClose]);
+  }, [submitting, refreshing, onClose]);
 
   const filteredRepos = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -284,7 +293,7 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
       hasCloseButton
       style={{ backgroundColor: theme.palette.background.default }}
     >
-      <S.ModalSurface aria-busy={submitting}>
+      <S.ModalSurface aria-busy={submitting || refreshing}>
       <Modal.Header position="start">레포지토리 선택</Modal.Header>
       <Modal.Body position="start" style={{ gap: '1rem', marginTop: '0.5rem' }}>
         <Flex.Row
@@ -549,7 +558,7 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
             label="취소"
             variant="outlined"
             size="large"
-            disabled={submitting}
+            disabled={submitting || refreshing}
             onClick={handleModalClose}
           />
           <Button
@@ -562,14 +571,20 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
           />
         </Flex.Row>
       </Modal.Footer>
-      {submitting ? (
+      {submitting || refreshing ? (
         <S.SubmitOverlay
           align="center"
           justify="center"
           gap="0.75rem"
           role="status"
           aria-live="polite"
-          aria-label="레포지토리 정보를 추가하는 중"
+          aria-label={
+            refreshing
+              ? '레포지토리 목록을 최신화하는 중'
+              : submitPhase === 'fetchAll'
+                ? '전체 레포지토리 목록을 불러오는 중'
+                : '레포지토리 정보를 추가하는 중'
+          }
         >
           <LoadingIcon width={88} height={88} aria-hidden />
           <Text
@@ -580,7 +595,11 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
               textAlign: 'center',
             }}
           >
-            레포지토리 정보를 추가중입니다.
+            {refreshing
+              ? '레포지토리 목록을 최신화하는 중입니다.'
+              : submitPhase === 'fetchAll'
+                ? '전체 레포지토리 목록을 불러오는 중입니다.'
+                : '레포지토리 정보를 추가중입니다.'}
           </Text>
         </S.SubmitOverlay>
       ) : null}
