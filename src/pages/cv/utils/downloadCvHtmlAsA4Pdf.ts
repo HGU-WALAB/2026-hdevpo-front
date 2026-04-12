@@ -46,7 +46,10 @@ export async function downloadCvHtmlAsA4Pdf(options: {
 
   const iframe = document.createElement('iframe');
   iframe.setAttribute('title', 'PDF 생성');
-  iframe.setAttribute('sandbox', '');
+  // allow-same-origin 없이 sandbox=""이면 contentDocument 접근 불가(cross-origin 취급)
+  // html2canvas가 body 요소를 읽어야 하므로 allow-same-origin 필수.
+  // 콘텐츠는 sanitizeCvHtml로 script·이벤트 핸들러가 이미 제거된 상태.
+  iframe.setAttribute('sandbox', 'allow-same-origin');
   iframe.setAttribute('referrerPolicy', 'no-referrer');
   iframe.setAttribute('aria-hidden', 'true');
   iframe.style.cssText = [
