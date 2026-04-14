@@ -3,13 +3,14 @@ import { http, HttpResponse } from 'msw';
 import { BASE_URL } from '@/apis/config';
 import { ENDPOINT } from '@/apis/endPoint';
 import {
-  mockGitHubStatusConnected,
   mockGitHubStatusDisconnected,
+  mockGitHubStatusWithUsername,
 } from '@/mocks/fixtures/github';
+import { mockGitHubOrgs } from '@/mocks/fixtures/githubOrgs';
 import { Error401, Error500, randomMswError } from '@/utils/mswError';
 
 const githubStatusStore = {
-  status: { ...mockGitHubStatusConnected },
+  status: { ...mockGitHubStatusWithUsername },
 };
 
 function getMockPortfolioState() {
@@ -29,6 +30,14 @@ export const GitHubHandlers = [
 
     // 현재 상태로 반환 (연결/해제 후에도 상태 유지)
     return HttpResponse.json({ ...githubStatusStore.status }, { status: 200 });
+  }),
+
+  http.get(BASE_URL + ENDPOINT.GITHUB_ORGS, () => {
+    const { is401Error, is500Error } = randomMswError();
+    if (is401Error) return Error401();
+    if (is500Error) return Error500();
+
+    return HttpResponse.json(mockGitHubOrgs.map(o => ({ ...o })), { status: 200 });
   }),
 
   http.get(BASE_URL + ENDPOINT.GITHUB_CONNECT, () => {

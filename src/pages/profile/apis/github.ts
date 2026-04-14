@@ -1,7 +1,7 @@
 import { BASE_URL } from '@/apis/config';
 import { ENDPOINT } from '@/apis/endPoint';
 import { http } from '@/apis/http';
-import { GitHubStatusResponse } from '../types/github';
+import { GitHubOrgItem, GitHubStatusResponse } from '../types/github';
 
 const GITHUB_STORAGE_KEY = 'github-storage';
 
@@ -14,6 +14,18 @@ export function readGitHubConnectedFromStorage(): boolean {
     return j?.state?.connected === true;
   } catch {
     return false;
+  }
+}
+
+export function readGitHubNameFromStorage(): string {
+  try {
+    const raw = localStorage.getItem(GITHUB_STORAGE_KEY);
+    if (!raw) return '';
+    const j = JSON.parse(raw) as { state?: { githubName?: string | null } };
+    const name = j?.state?.githubName;
+    return typeof name === 'string' ? name : '';
+  } catch {
+    return '';
   }
 }
 
@@ -37,6 +49,11 @@ export function syncGitHubStorage(status: GitHubStatusResponse) {
 export const getGitHubStatus = async () => {
   const response = await http.get<GitHubStatusResponse>(ENDPOINT.GITHUB_STATUS);
   syncGitHubStorage(response);
+  return response;
+};
+
+export const getGitHubOrgs = async () => {
+  const response = await http.get<GitHubOrgItem[]>(ENDPOINT.GITHUB_ORGS);
   return response;
 };
 

@@ -1,6 +1,8 @@
 import { LoadingIcon, SearchIcon } from '@/assets';
 import { Button, Flex, Input, Modal, Text } from '@/components';
 import { palette } from '@/styles/palette';
+import type { GitHubOrgItem } from '@/pages/profile/types/github';
+import { getGitHubOrgs, readGitHubNameFromStorage } from '@/pages/profile/apis/github';
 import type { PortfolioRepositoryItem, PutRepositoryItem } from '../../apis/portfolio';
 import {
   getAllRepositories,
@@ -28,7 +30,16 @@ import LinearProgress from '@mui/material/LinearProgress';
 import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import RefreshIcon from '@mui/icons-material/Refresh';
-import { styled, useMediaQuery, useTheme } from '@mui/material';
+import {
+  Avatar,
+  FormControl,
+  InputLabel,
+  MenuItem,
+  Select,
+  styled,
+  useMediaQuery,
+  useTheme,
+} from '@mui/material';
 import { toast } from 'react-toastify';
 
 interface RepoSelectModalProps {
@@ -40,6 +51,7 @@ interface RepoSelectModalProps {
 const REPOS_PER_PAGE = 10;
 /** 입력 디바운스 후 GET `search` 반영 (ms) */
 const SEARCH_DEBOUNCE_MS = 200;
+const SELF_OWNER_TOKEN = '__self__';
 
 function portfolioRepoListTitle(repo: PortfolioRepositoryItem): string {
   if (repo.custom_title != null && repo.custom_title.trim() !== '') {
@@ -64,6 +76,10 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
   const [searchQuery, setSearchQuery] = useState('');
   /** 디바운스(또는 검색 버튼·Enter 즉시) 확정값 → queryParams.search */
   const [appliedSearch, setAppliedSearch] = useState('');
+  const [orgs, setOrgs] = useState<GitHubOrgItem[]>([]);
+  const [orgsLoading, setOrgsLoading] = useState(false);
+  const [githubUsername, setGithubUsername] = useState('');
+  const [selectedOwner, setSelectedOwner] = useState('');
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   /** 확인 클릭 후: 전체 목록 fetch → PUT 저장 단계 구분(오버레이 문구) */
@@ -88,8 +104,11 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
   const queryParams = useMemo(() => {
     const search =
       appliedSearch.trim() === '' ? undefined : appliedSearch.trim();
-    return { search };
-  }, [appliedSearch]);
+    const ownerRaw = selectedOwner.trim();
+    const owner =
+      ownerRaw === '' || ownerRaw === SELF_OWNER_TOKEN ? undefined : ownerRaw;
+    return { search, owner };
+  }, [appliedSearch, selectedOwner]);
 
   useEffect(() => {
     if (!open) return;
@@ -101,7 +120,7 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
 
   useEffect(() => {
     setPage(1);
-  }, [appliedSearch]);
+  }, [appliedSearch, selectedOwner]);
 
   /** 디바운스 기다리지 않고 즉시 검색(Enter·버튼) */
   const runSearch = useCallback(() => {
@@ -118,11 +137,36 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
     setLoadedRepoById(new Map());
     setSearchQuery('');
     setAppliedSearch('');
+    setSelectedOwner(SELF_OWNER_TOKEN);
+    setOrgs([]);
+    setGithubUsername('');
     setSelectedIds(
       new Set(
         portfolioReposRef.current.filter(r => r.is_visible).map(r => r.repo_id),
       ),
     );
+  }, [open]);
+
+  useEffect(() => {
+    if (!open) return;
+    setGithubUsername(readGitHubNameFromStorage());
+    setOrgsLoading(true);
+    Promise.allSettled([getGitHubOrgs()])
+      .then(results => {
+        const [orgsRes] = results;
+        const nextOrgs =
+          orgsRes.status === 'fulfilled' && Array.isArray(orgsRes.value)
+            ? orgsRes.value
+            : [];
+
+        setOrgs(nextOrgs);
+        // 디폴트는 owner 쿼리 없이(전체) — UI는 "내 계정" 토큰을 선택 상태로 유지
+        setSelectedOwner(SELF_OWNER_TOKEN);
+      })
+      .catch(() => {
+        // ignore (allSettled라 일반적으로 여기로 오지 않음)
+      })
+      .finally(() => setOrgsLoading(false));
   }, [open]);
 
   useEffect(() => {
@@ -147,12 +191,13 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
   useEffect(() => {
     if (!open) return;
     setLoading(true);
-    const { search } = queryParams;
+    const { search, owner } = queryParams;
 
     getRepositories({
       page,
       per_page: REPOS_PER_PAGE,
       search,
+      owner,
     })
       .then(res => {
         const list = res.repositories ?? [];
@@ -374,6 +419,89 @@ const RepoSelectModal = ({ open, onClose }: RepoSelectModalProps) => {
               <SearchIcon />
             </S.SearchButton>
           </Flex.Row>
+          <S.FilterRight>
+            <FormControl
+              size="small"
+              sx={{
+                width: 200,
+                minWidth: 160,
+                flex: '0 0 auto',
+              }}
+              disabled={orgsLoading}
+            >
+              <InputLabel>Organization</InputLabel>
+              <Select
+                value={selectedOwner}
+                label="Organization"
+                displayEmpty
+                onChange={e => {
+                  setSelectedOwner(String(e.target.value ?? ''));
+                  setPage(1);
+                }}
+                renderValue={value => {
+                  const v = String(value ?? '');
+                  if (v.trim() === '' || v === SELF_OWNER_TOKEN) {
+                    return githubUsername.trim() !== ''
+                      ? githubUsername.trim()
+                      : '내 계정';
+                  }
+                  const item = orgs.find(o => o.owner === v);
+                  if (!item) return v || 'Organization';
+                  return (
+                    <S.OrgSelectedValue align="center" gap="0.5rem">
+                      <Avatar
+                        src={item.avatarUrl}
+                        alt={item.owner}
+                        sx={{ width: 22, height: 22, flexShrink: 0 }}
+                      />
+                      <span>{item.owner}</span>
+                    </S.OrgSelectedValue>
+                  );
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: { maxHeight: 340 },
+                  },
+                }}
+                sx={{
+                  backgroundColor:
+                    theme.palette.variant?.default ?? theme.palette.grey[50],
+                }}
+              >
+                <MenuItem value={SELF_OWNER_TOKEN}>
+                  <Text
+                    style={{
+                      ...theme.typography.body2,
+                      margin: 0,
+                      color: theme.palette.text.primary,
+                    }}
+                  >
+                    {githubUsername.trim() !== '' ? githubUsername.trim() : '내 계정'}
+                  </Text>
+                </MenuItem>
+                {orgs.map(org => (
+                  <MenuItem key={org.id} value={org.owner}>
+                    <Flex.Row align="center" gap="0.5rem">
+                      <Avatar
+                        src={org.avatarUrl}
+                        alt={org.owner}
+                        sx={{ width: 22, height: 22, flexShrink: 0 }}
+                      />
+                      <Text
+                        style={{
+                          ...theme.typography.body2,
+                          margin: 0,
+                          color: theme.palette.text.primary,
+                        }}
+                      >
+                        {org.owner}
+                      </Text>
+                    </Flex.Row>
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </S.FilterRight>
         </S.FilterBar>
         {selectedRepos.length > 0 && (
           <S.SelectedTags wrap="wrap" gap="0.5rem">
@@ -677,6 +805,24 @@ const S = {
     gap: 0.75rem;
     width: 100%;
   `,
+  FilterRight: styled('div')`
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.5rem;
+    flex: 1 1 12rem;
+    min-width: min(100%, 12rem);
+  `,
+  OrgSelectedValue: styled(Flex.Row)`
+    min-width: 0;
+    & span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+  `,
   SearchButton: styled('button')`
     display: flex;
     align-items: center;
@@ -688,6 +834,10 @@ const S = {
     padding: 0.8rem 1.25rem;
     cursor: pointer;
     color: ${palette.white};
+    & svg {
+      width: 22px;
+      height: 22px;
+    }
     &:hover:not(:disabled),
     &:active:not(:disabled) {
       background-color: ${palette.blue600};

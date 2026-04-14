@@ -10,5 +10,10 @@ export const mockGitHubStatusDisconnected: GitHubStatusResponse = {
   githubUsername: '',
 };
 
+export const mockGitHubStatusWithUsername: GitHubStatusResponse = {
+  connected: true,
+  githubUsername: 'naim-kim',
+};
+
 
 

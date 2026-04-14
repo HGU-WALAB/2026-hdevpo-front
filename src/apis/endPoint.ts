@@ -19,6 +19,7 @@ export const ENDPOINT = {
   // github
   GITHUB_STATUS: `/api/mileage/github/status`,
   GITHUB_CONNECT: `/api/mileage/github/connect`,
+  GITHUB_ORGS: `/api/mileage/github/orgs`,
   // announcement
   ANNOUNCEMENT: `/api/mileage/announcement`,
   // portfolio (활동 요약)
