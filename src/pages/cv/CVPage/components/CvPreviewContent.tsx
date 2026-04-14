@@ -22,6 +22,7 @@ import usePatchPortfolioCvMutation from '../../hooks/usePatchPortfolioCvMutation
 import { buildCvPreviewSrcDoc } from '../../utils/buildCvPreviewSrcDoc';
 import { downloadCvHtmlAsA4Pdf } from '../../utils/downloadCvHtmlAsA4Pdf';
 import { sanitizeCvHtml } from '../../utils/sanitizeCvHtml';
+import { CV_PREVIEW_IFRAME_SANDBOX } from '../../constants/cvPreviewIframeSandbox';
 import { CvHtmlPublicSwitchControl } from './cvHtmlPublicUi';
 
 export type CvPreviewContentLayout = 'modal' | 'panel';
@@ -558,7 +559,7 @@ const CvPreviewContent = ({
                     <iframe
                       title="HTML 미리보기"
                       srcDoc={htmlPreviewSrcDoc}
-                      sandbox=""
+                      sandbox={CV_PREVIEW_IFRAME_SANDBOX}
                       referrerPolicy="no-referrer"
                     />
                   </S.HtmlPreviewShell>
