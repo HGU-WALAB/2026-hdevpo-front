@@ -13,7 +13,6 @@ export const ROUTE_PATH = {
   /** 공개 포폴 미리보기 (로그인 불필요) */
   cvShare: '/cv/share/:publicToken',
   myPage: '/my',
-  githubCallback: '/auth/github/callback',
 };
 
 /** 예전 링크 호환: 이 쿼리가 있으면 `/cv`로 리다이렉트 */

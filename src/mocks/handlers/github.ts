@@ -37,31 +37,6 @@ export const GitHubHandlers = [
     return HttpResponse.json({}, { status: 200 });
   }),
 
-  http.get(BASE_URL + ENDPOINT.GITHUB_CALLBACK, ({ request }) => {
-    const { is401Error, is500Error } = randomMswError();
-
-    if (is401Error) return Error401();
-    if (is500Error) return Error500();
-
-    const url = new URL(request.url);
-    const code = url.searchParams.get('code');
-    const error = url.searchParams.get('error');
-
-    if (error) {
-      githubStatusStore.status = { ...mockGitHubStatusDisconnected };
-      return HttpResponse.json({ ...githubStatusStore.status }, { status: 200 });
-    }
-
-    if (code) {
-      // code가 있으면 연결 성공 → 클라이언트에서 github-storage 동기화
-      githubStatusStore.status = { ...mockGitHubStatusConnected };
-      return HttpResponse.json({ ...githubStatusStore.status }, { status: 200 });
-    }
-
-    githubStatusStore.status = { ...mockGitHubStatusDisconnected };
-    return HttpResponse.json({ ...githubStatusStore.status }, { status: 200 });
-  }),
-
   http.delete(BASE_URL + ENDPOINT.GITHUB_CONNECT, () => {
     const { is401Error, is500Error } = randomMswError();
 

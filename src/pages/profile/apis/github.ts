@@ -45,21 +45,6 @@ export const getGitHubConnect = () => {
   window.location.href = `${BASE_URL}${ENDPOINT.GITHUB_CONNECT}`;
 };
 
-export const getGitHubCallback = async (code?: string, error?: string) => {
-  const params = new URLSearchParams();
-  if (code) params.append('code', code);
-  if (error) params.append('error', error);
-
-  const queryString = params.toString();
-  const url = queryString
-    ? `${ENDPOINT.GITHUB_CALLBACK}?${queryString}`
-    : ENDPOINT.GITHUB_CALLBACK;
-
-  const response = await http.get<GitHubStatusResponse>(url);
-  syncGitHubStorage(response);
-  return response;
-};
-
 export const deleteGitHubConnect = async () => {
   const response = await http.delete<GitHubStatusResponse>(
     ENDPOINT.GITHUB_CONNECT,
