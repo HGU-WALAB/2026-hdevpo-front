@@ -44,6 +44,12 @@ export interface RepositoriesResponse {
   repositories: PortfolioRepositoryItem[];
 }
 
+/** PUT /api/portfolio/repositories — 표시 설정 일괄 동기화 응답 */
+export interface PutRepositoriesSyncResponse {
+  warnings?: string[];
+  skipped?: string[];
+}
+
 /** POST /api/portfolio/repositories/github-cache/refresh 응답 */
 export interface GithubRepositoriesCacheRefreshResponse {
   reposSynced: number;
@@ -60,10 +66,9 @@ export interface PutRepositoryItem {
 export interface GetRepositoriesParams {
   page?: number;
   per_page?: number;
-  selected_only?: boolean;
   visible_only?: boolean;
-  sort?: string;
-  visibility?: string;
+  /** owner_login(조직/유저) 정확 일치 */
+  owner?: string;
   /** 레포 이름·owner·URL·설명·언어·repo_id·커스텀 제목/설명 (공백 AND) */
   search?: string;
 }
@@ -82,14 +87,12 @@ export const getRepositories = async (params?: GetRepositoriesParams) => {
   const searchParams = new URLSearchParams();
   if (params?.page != null) searchParams.set('page', String(params.page));
   if (params?.per_page != null) searchParams.set('per_page', String(params.per_page));
-  if (params?.selected_only != null) {
-    searchParams.set('selected_only', String(params.selected_only));
-  }
   if (params?.visible_only != null) {
     searchParams.set('visible_only', String(params.visible_only));
   }
-  if (params?.sort != null) searchParams.set('sort', params.sort);
-  if (params?.visibility != null) searchParams.set('visibility', params.visibility);
+  if (params?.owner != null && params.owner.trim() !== '') {
+    searchParams.set('owner', params.owner.trim());
+  }
   if (params?.search != null && params.search.trim() !== '') {
     searchParams.set('search', params.search.trim());
   }
@@ -139,10 +142,10 @@ export const getAllRepositories = async (
 
 /** 활동 요약 - 포트폴리오 레포지토리 전체 교체 (PUT) */
 export const putRepositories = async (body: PutRepositoryItem[]) => {
-  const response = await http.put<PutRepositoryItem[], RepositoriesResponse>(
-    ENDPOINT.PORTFOLIO_REPOSITORIES,
-    body,
-  );
+  const response = await http.put<
+    PutRepositoryItem[],
+    PutRepositoriesSyncResponse
+  >(ENDPOINT.PORTFOLIO_REPOSITORIES, body);
   return response;
 };
 

@@ -18,9 +18,7 @@ const MaintenanceGate = () => {
     return <FullViewportLoading />;
   }
 
-  const isAuthRoute =
-    location.pathname === ROUTE_PATH.login ||
-    location.pathname === ROUTE_PATH.githubCallback;
+  const isAuthRoute = location.pathname === ROUTE_PATH.login;
 
   const isPublicCvShareRoute = location.pathname.startsWith(`${ROUTE_PATH.cv}/share/`);
 

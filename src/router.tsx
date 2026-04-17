@@ -24,9 +24,6 @@ const CvRoutesLayout = React.lazy(() => import('@/pages/cv/CVPage/CvRoutesLayout
 const CvManagePage = React.lazy(() => import('@/pages/cv/CVPage/CvManagePage'));
 const CvGeneratePage = React.lazy(() => import('@/pages/cv/CVPage/CvGeneratePage'));
 const CvSharePage = React.lazy(() => import('@/pages/cv/CVPage/CvSharePage'));
-const GitHubCallbackPage = React.lazy(
-  () => import('@/pages/profile/GitHubCallbackPage'),
-);
 const LoginPage = React.lazy(() => import('@/pages/auth/LoginPage'));
 const ErrorPage = React.lazy(() => import('@/pages/etc/ErrorPage'));
 const NotFoundPage = React.lazy(() => import('@/pages/etc/NotFoundPage'));
@@ -93,10 +90,6 @@ const router = createBrowserRouter(
             {
               path: ROUTE_PATH.login,
               element: <LoginPage />,
-            },
-            {
-              path: ROUTE_PATH.githubCallback,
-              element: <GitHubCallbackPage />,
             },
             {
               path: ROUTE_PATH.cvShare,

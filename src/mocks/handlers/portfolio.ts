@@ -566,9 +566,7 @@ export const PortfolioHandlers = [
     );
     const visibleOnly =
       url.searchParams.get('visible_only') === 'true' ? true : undefined;
-    const selectedOnly = url.searchParams.get('selected_only') === 'true';
-    const sortParam = url.searchParams.get('sort') ?? 'updated';
-    const visibilityParam = url.searchParams.get('visibility') ?? 'all';
+    const ownerParam = url.searchParams.get('owner');
     const searchParam = url.searchParams.get('search');
 
     const resetSelection = Boolean(getMockPortfolioState().repoSelectionReset);
@@ -579,34 +577,19 @@ export const PortfolioHandlers = [
     if (visibleOnly) {
       list = list.filter(r => r.is_visible);
     }
-
-    if (selectedOnly) {
-      list = list.filter(r => r.is_visible);
-    }
-
-    if (visibilityParam !== 'all') {
-      list = list.filter(r => r.visibility === visibilityParam);
+    if (ownerParam != null && ownerParam.trim() !== '') {
+      list = list.filter(r => r.owner === ownerParam.trim());
     }
 
     list = list.filter(r => mockRepositoryMatchesSearch(r, searchParam));
 
-    const sorted = [...list].sort((a, b) => {
-      switch (sortParam) {
-        case 'created':
-          return b.created_at.localeCompare(a.created_at);
-        case 'pushed':
-          // mock 데이터에는 pushed_at 이 없으므로 updated_at 기준으로 정렬
-          return b.updated_at.localeCompare(a.updated_at);
-        case 'full_name':
-          return a.github_title.localeCompare(b.github_title);
-        case 'updated':
-        default:
-          return b.updated_at.localeCompare(a.updated_at);
-      }
-    });
+    // 백엔드 스펙: visible_only=true면 페이지네이션 무시하고 전부 반환
+    if (visibleOnly) {
+      return HttpResponse.json({ repositories: list }, { status: 200 });
+    }
 
     const start = (page - 1) * perPage;
-    const slice = sorted.slice(start, start + perPage);
+    const slice = list.slice(start, start + perPage);
     return HttpResponse.json({ repositories: slice }, { status: 200 });
   }),
 
@@ -614,9 +597,14 @@ export const PortfolioHandlers = [
     const body = (await request.json()) as PutRepositoryItem[];
     getMockPortfolioState().repoSelectionReset = false;
     const byRepoId = new Map(repositoriesStore.map(r => [r.repo_id, r]));
+    const warnings: string[] = [];
+    const skipped: string[] = [];
     repositoriesStore.length = 0;
     body.forEach((item, index) => {
       const existing = byRepoId.get(item.repo_id);
+      if (!existing) {
+        skipped.push(`repo_id=${item.repo_id} (캐시에 없음)`);
+      }
       repositoriesStore.push({
         id: existing?.id ?? nextRepoId++,
         repo_id: item.repo_id,
@@ -642,10 +630,10 @@ export const PortfolioHandlers = [
       nextRepoId =
         Math.max(...repositoriesStore.map(r => r.id), nextRepoId) + 1;
     }
-    const sorted = [...repositoriesStore].sort(
-      (a, b) => a.display_order - b.display_order,
-    );
-    return HttpResponse.json({ repositories: sorted }, { status: 200 });
+    if (skipped.length > 0) {
+      warnings.push('일부 레포는 동기화에서 제외되었습니다.');
+    }
+    return HttpResponse.json({ warnings, skipped }, { status: 200 });
   }),
 
   http.patch(

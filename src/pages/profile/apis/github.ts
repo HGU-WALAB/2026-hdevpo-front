@@ -1,7 +1,7 @@
 import { BASE_URL } from '@/apis/config';
 import { ENDPOINT } from '@/apis/endPoint';
 import { http } from '@/apis/http';
-import { GitHubStatusResponse } from '../types/github';
+import { GitHubOrgItem, GitHubStatusResponse } from '../types/github';
 
 const GITHUB_STORAGE_KEY = 'github-storage';
 
@@ -14,6 +14,18 @@ export function readGitHubConnectedFromStorage(): boolean {
     return j?.state?.connected === true;
   } catch {
     return false;
+  }
+}
+
+export function readGitHubNameFromStorage(): string {
+  try {
+    const raw = localStorage.getItem(GITHUB_STORAGE_KEY);
+    if (!raw) return '';
+    const j = JSON.parse(raw) as { state?: { githubName?: string | null } };
+    const name = j?.state?.githubName;
+    return typeof name === 'string' ? name : '';
+  } catch {
+    return '';
   }
 }
 
@@ -40,24 +52,14 @@ export const getGitHubStatus = async () => {
   return response;
 };
 
+export const getGitHubOrgs = async () => {
+  const response = await http.get<GitHubOrgItem[]>(ENDPOINT.GITHUB_ORGS);
+  return response;
+};
+
 export const getGitHubConnect = () => {
   // OAuth 리다이렉트를 위해 직접 URL로 이동
   window.location.href = `${BASE_URL}${ENDPOINT.GITHUB_CONNECT}`;
-};
-
-export const getGitHubCallback = async (code?: string, error?: string) => {
-  const params = new URLSearchParams();
-  if (code) params.append('code', code);
-  if (error) params.append('error', error);
-
-  const queryString = params.toString();
-  const url = queryString
-    ? `${ENDPOINT.GITHUB_CALLBACK}?${queryString}`
-    : ENDPOINT.GITHUB_CALLBACK;
-
-  const response = await http.get<GitHubStatusResponse>(url);
-  syncGitHubStorage(response);
-  return response;
 };
 
 export const deleteGitHubConnect = async () => {
