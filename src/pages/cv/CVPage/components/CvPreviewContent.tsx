@@ -5,12 +5,13 @@ import BusinessIcon from '@mui/icons-material/Business';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import CodeIcon from '@mui/icons-material/Code';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditIcon from '@mui/icons-material/Edit';
 import HtmlIcon from '@mui/icons-material/Html';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import { IconButton } from '@mui/material';
+import { Dialog, DialogContent, IconButton } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useCallback, useEffect, useMemo, useState, type FunctionComponent, type SVGProps } from 'react';
 import { toast } from 'react-toastify';
@@ -42,6 +43,9 @@ export interface CvPreviewContentProps {
 
 const CopyIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
   <ContentCopyIcon sx={{ fontSize: 18 }} />
+);
+const OpenInFullIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
+  <OpenInFullIcon sx={{ fontSize: 18 }} />
 );
 const CodeIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
   <CodeIcon sx={{ fontSize: 16 }} />
@@ -79,6 +83,8 @@ const CvPreviewContent = ({
   isDeletePending = false,
 }: CvPreviewContentProps) => {
   const [showHtmlPreview, setShowHtmlPreview] = useState(true);
+  const [expandPromptOpen, setExpandPromptOpen] = useState(false);
+  const [expandHtmlOpen, setExpandHtmlOpen] = useState(false);
   const [pdfDownloading, setPdfDownloading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -90,6 +96,8 @@ const CvPreviewContent = ({
       setShowHtmlPreview(false);
       setPdfDownloading(false);
       setIsEditing(false);
+      setExpandPromptOpen(false);
+      setExpandHtmlOpen(false);
     }
   }, [active]);
 
@@ -97,6 +105,8 @@ const CvPreviewContent = ({
     setShowHtmlPreview(true);
     setPdfDownloading(false);
     setIsEditing(false);
+    setExpandPromptOpen(false);
+    setExpandHtmlOpen(false);
   }, [data?.id]);
 
   useEffect(() => {
@@ -245,6 +255,7 @@ const CvPreviewContent = ({
   const subtitlePad = layout === 'panel' ? '1.25rem' : '1.75rem';
 
   return (
+    <>
     <Flex.Column width="100%" style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
       <S.HeaderBar direction="column" gap="0.5rem" $layout={layout}>
         <Flex.Row align="flex-start" justify="space-between" gap="0.75rem" wrap="wrap">
@@ -475,16 +486,33 @@ const CvPreviewContent = ({
             <S.Section direction="column" gap="0.5rem">
               <Flex.Row align="center" justify="space-between" gap="0.75rem" wrap="wrap">
                 <S.SectionTitle>프롬프트</S.SectionTitle>
-                <Button
-                  label="복사하기"
-                  variant="outlined"
-                  color="blue"
-                  size="small"
-                  icon={CopyIconWrap}
-                  iconPosition="start"
-                  onClick={handleCopyPrompt}
-                  disabled={!data.prompt?.trim()}
-                />
+                <Flex.Row
+                  align="center"
+                  gap="0.5rem"
+                  wrap="wrap"
+                  style={{ flexShrink: 0 }}
+                >
+                  <Button
+                    label="크게 보기"
+                    variant="outlined"
+                    color="blue"
+                    size="small"
+                    icon={OpenInFullIconWrap}
+                    iconPosition="start"
+                    onClick={() => setExpandPromptOpen(true)}
+                    disabled={!data.prompt?.trim()}
+                  />
+                  <Button
+                    label="복사하기"
+                    variant="outlined"
+                    color="blue"
+                    size="small"
+                    icon={CopyIconWrap}
+                    iconPosition="start"
+                    onClick={handleCopyPrompt}
+                    disabled={!data.prompt?.trim()}
+                  />
+                </Flex.Row>
               </Flex.Row>
               <S.PreWrapScrollable $layout={layout}>{data.prompt || '—'}</S.PreWrapScrollable>
             </S.Section>
@@ -494,6 +522,16 @@ const CvPreviewContent = ({
                 <S.SectionTitle>AI 생성 결과 (HTML)</S.SectionTitle>
                 {!isEditing ? (
                   <Flex.Row align="center" gap="0.5rem" wrap="wrap" style={{ flexShrink: 0 }}>
+                    <Button
+                      label="크게 보기"
+                      variant="outlined"
+                      color="blue"
+                      size="small"
+                      icon={OpenInFullIconWrap}
+                      iconPosition="start"
+                      onClick={() => setExpandHtmlOpen(true)}
+                      disabled={!htmlRaw.trim() || pdfDownloading}
+                    />
                     <Button
                       label="PDF 다운로드"
                       variant="outlined"
@@ -574,6 +612,138 @@ const CvPreviewContent = ({
         ) : null}
       </S.ScrollBody>
     </Flex.Column>
+
+    <Dialog
+      open={expandPromptOpen}
+      onClose={() => setExpandPromptOpen(false)}
+      maxWidth="md"
+      fullWidth
+      aria-labelledby="cv-expand-prompt-title"
+      PaperProps={{
+        sx: {
+          borderRadius: '0.75rem',
+          border: `1px solid ${palette.grey200}`,
+          boxShadow: '0 4px 24px rgba(83, 127, 241, 0.12)',
+          maxHeight: 'min(90vh, 52rem)',
+          display: 'flex',
+          flexDirection: 'column',
+        },
+      }}
+    >
+      <DialogContent
+        sx={{
+          p: '1rem 1.25rem 1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+          overflow: 'hidden',
+          flex: '1 1 auto',
+          minHeight: 0,
+        }}
+      >
+        <Flex.Row align="center" justify="space-between" gap="0.75rem" wrap="wrap" width="100%">
+          <Text
+            id="cv-expand-prompt-title"
+            as="h3"
+            margin="0"
+            bold
+            color={palette.nearBlack}
+            style={{ fontSize: '1rem', lineHeight: 1.4 }}
+          >
+            프롬프트
+          </Text>
+          <IconButton
+            type="button"
+            onClick={() => setExpandPromptOpen(false)}
+            aria-label="닫기"
+            size="small"
+            sx={{
+              color: palette.grey600,
+              flexShrink: 0,
+              backgroundColor: palette.white,
+              border: `1px solid ${palette.grey200}`,
+              '&:hover': { backgroundColor: palette.grey100 },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Flex.Row>
+        <S.ModalPreScroll>{data?.prompt?.trim() ? data.prompt : '—'}</S.ModalPreScroll>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog
+      open={expandHtmlOpen}
+      onClose={() => setExpandHtmlOpen(false)}
+      maxWidth="lg"
+      fullWidth
+      aria-labelledby="cv-expand-html-title"
+      PaperProps={{
+        sx: {
+          borderRadius: '0.75rem',
+          border: `1px solid ${palette.grey200}`,
+          boxShadow: '0 4px 24px rgba(83, 127, 241, 0.12)',
+          maxHeight: 'min(92vh, 56rem)',
+          display: 'flex',
+          flexDirection: 'column',
+        },
+      }}
+    >
+      <DialogContent
+        sx={{
+          p: '1rem 1.25rem 1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+          overflow: 'hidden',
+          flex: '1 1 auto',
+          minHeight: 0,
+        }}
+      >
+        <Flex.Row align="center" justify="space-between" gap="0.75rem" wrap="wrap" width="100%">
+          <Text
+            id="cv-expand-html-title"
+            as="h3"
+            margin="0"
+            bold
+            color={palette.nearBlack}
+            style={{ fontSize: '1rem', lineHeight: 1.4 }}
+          >
+            {showHtmlPreview ? 'AI 생성 결과 (HTML 미리보기)' : 'AI 생성 결과 (소스)'}
+          </Text>
+          <IconButton
+            type="button"
+            onClick={() => setExpandHtmlOpen(false)}
+            aria-label="닫기"
+            size="small"
+            sx={{
+              color: palette.grey600,
+              flexShrink: 0,
+              backgroundColor: palette.white,
+              border: `1px solid ${palette.grey200}`,
+              '&:hover': { backgroundColor: palette.grey100 },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Flex.Row>
+        {showHtmlPreview ? (
+          <S.ModalIframeShell>
+            <iframe
+              title="HTML 크게 보기"
+              srcDoc={htmlPreviewSrcDoc}
+              sandbox={CV_PREVIEW_IFRAME_SANDBOX}
+              referrerPolicy="no-referrer"
+            />
+          </S.ModalIframeShell>
+        ) : (
+          <S.ModalPreScroll>
+            {htmlRaw.trim() ? htmlRaw : '—'}
+          </S.ModalPreScroll>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
 
@@ -659,6 +829,43 @@ const S = {
     border-radius: 0.5rem;
     border: 1px solid ${palette.grey200};
     font-family: ui-monospace, monospace;
+  `,
+  ModalPreScroll: styled('pre')`
+    margin: 0;
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: min(72vh, 42rem);
+    overflow: auto;
+    padding: 0.85rem 1rem;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: ${palette.nearBlack};
+    background-color: ${palette.grey100};
+    border-radius: 0.5rem;
+    border: 1px solid ${palette.grey200};
+    font-family: ui-monospace, monospace;
+    box-sizing: border-box;
+  `,
+  ModalIframeShell: styled('div')`
+    flex: 1 1 auto;
+    min-height: 0;
+    max-height: min(72vh, 42rem);
+    border-radius: 0.5rem;
+    border: 1px solid ${palette.grey200};
+    overflow: hidden;
+    background-color: ${palette.white};
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    & > iframe {
+      display: block;
+      flex: 1 1 auto;
+      width: 100%;
+      min-height: min(58vh, 28rem);
+      border: none;
+    }
   `,
   HtmlPreviewShell: styled('div', {
     shouldForwardProp: p => p !== '$layout',
