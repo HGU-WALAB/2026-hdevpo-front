@@ -7,7 +7,13 @@ import ChevronLeftIcon from '@mui/icons-material/ChevronLeft';
 import ChevronRightIcon from '@mui/icons-material/ChevronRight';
 import CloseIcon from '@mui/icons-material/Close';
 import EditIcon from '@mui/icons-material/Edit';
-import { useCallback, useMemo, useState } from 'react';
+import {
+  useCallback,
+  useMemo,
+  useState,
+  type FunctionComponent,
+  type SVGProps,
+} from 'react';
 import { styled, useTheme, useMediaQuery } from '@mui/material';
 import { toast } from 'react-toastify';
 import { useNavigate } from 'react-router-dom';
@@ -29,6 +35,10 @@ import {
 } from './repoCardMeta';
 
 const ITEMS_PER_PAGE = 4;
+
+const AddIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
+  <AddIcon sx={{ fontSize: 18 }} />
+);
 
 /* 표시 기간(선택) UI 복구 시 사용
 function isoToDatetimeLocal(iso: string | undefined | null): string {
@@ -416,7 +426,7 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
                         variant="outlined"
                         color="blue"
                         size="small"
-                        icon={AddIcon}
+                        icon={AddIconWrap}
                         iconPosition="start"
                         onClick={addTeamRow}
                       />
