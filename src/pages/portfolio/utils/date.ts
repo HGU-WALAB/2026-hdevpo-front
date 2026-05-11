@@ -21,6 +21,27 @@ export function formatDateRange(createdAt: string, updatedAt: string): string {
   return '-';
 }
 
+/**
+ * 레포 카드: 사용자 표시 기간 override가 있으면 우선,
+ * 없으면 GitHub 저장소 created_at / updated_at 기준.
+ */
+export function formatRepositoryDisplayDateRange(repo: {
+  created_at: string;
+  updated_at: string;
+  duration?: { started_at?: string; updated_at?: string } | null;
+}): string {
+  const d = repo.duration;
+  const start =
+    d?.started_at != null && String(d.started_at).trim() !== ''
+      ? String(d.started_at)
+      : repo.created_at;
+  const end =
+    d?.updated_at != null && String(d.updated_at).trim() !== ''
+      ? String(d.updated_at)
+      : repo.updated_at;
+  return formatDateRange(start, end);
+}
+
 /** 포트폴리오 활동 기간: 종료일이 없으면 "YYYY-MM-DD ~ 현재" */
 export function formatActivityPeriodRange(start: string, end: string): string {
   const from = formatDateOnly(start);

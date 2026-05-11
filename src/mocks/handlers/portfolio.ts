@@ -624,6 +624,17 @@ export const PortfolioHandlers = [
         commit_count: existing?.commit_count ?? 0,
         stargazers_count: existing?.stargazers_count ?? 0,
         forks_count: existing?.forks_count ?? 0,
+        team_composition: existing?.team_composition ?? [],
+        my_role: existing?.my_role ?? null,
+        key_contributions: existing?.key_contributions ?? null,
+        duration:
+          existing?.duration ??
+          ({
+            started_at_github: existing?.created_at ?? '',
+            updated_at_github: existing?.updated_at ?? '',
+            started_at: '',
+            updated_at: '',
+          } as PortfolioRepositoryItem['duration']),
       });
     });
     if (repositoriesStore.length > 0) {
@@ -646,13 +657,75 @@ export const PortfolioHandlers = [
         return HttpResponse.json({}, { status: 404 });
       }
       const prev = repositoriesStore[idx];
+
+      const baseDuration =
+        prev.duration ??
+        ({
+          started_at_github: prev.created_at,
+          updated_at_github: prev.updated_at,
+        } as NonNullable<PortfolioRepositoryItem['duration']>);
+
+      let nextDuration: NonNullable<PortfolioRepositoryItem['duration']> = {
+        ...baseDuration,
+      };
+
+      if (body.duration !== undefined && body.duration !== null) {
+        const d = body.duration;
+        nextDuration = { ...nextDuration };
+        if (d.started_at !== undefined) {
+          if (d.started_at === '' || d.started_at === null) {
+            delete nextDuration.started_at;
+          } else {
+            nextDuration.started_at = d.started_at;
+          }
+        }
+        if (d.updated_at !== undefined) {
+          if (d.updated_at === '' || d.updated_at === null) {
+            delete nextDuration.updated_at;
+          } else {
+            nextDuration.updated_at = d.updated_at;
+          }
+        }
+        const sa = nextDuration.started_at;
+        const ua = nextDuration.updated_at;
+        if (
+          sa &&
+          ua &&
+          !Number.isNaN(Date.parse(sa)) &&
+          !Number.isNaN(Date.parse(ua)) &&
+          new Date(sa).getTime() > new Date(ua).getTime()
+        ) {
+          return HttpResponse.json(
+            { message: 'started_at must be <= updated_at' },
+            { status: 400 },
+          );
+        }
+      }
+
       repositoriesStore[idx] = {
         ...prev,
-        custom_title: body.custom_title ?? prev.custom_title,
-        description: body.description ?? prev.description,
+        custom_title:
+          body.custom_title !== undefined ? body.custom_title : prev.custom_title,
+        description:
+          body.description !== undefined ? body.description ?? '' : prev.description,
         github_description: prev.github_description ?? '',
-        is_visible: body.is_visible ?? prev.is_visible,
-        display_order: body.display_order ?? prev.display_order,
+        is_visible:
+          body.is_visible !== undefined ? body.is_visible : prev.is_visible,
+        display_order:
+          body.display_order !== undefined
+            ? body.display_order
+            : prev.display_order,
+        team_composition:
+          body.team_composition !== undefined
+            ? body.team_composition ?? []
+            : prev.team_composition,
+        my_role: body.my_role !== undefined ? body.my_role : prev.my_role,
+        key_contributions:
+          body.key_contributions !== undefined
+            ? body.key_contributions
+            : prev.key_contributions,
+        duration:
+          body.duration !== undefined ? nextDuration : prev.duration,
       };
       return HttpResponse.json(repositoriesStore[idx], { status: 200 });
     },

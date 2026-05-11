@@ -97,6 +97,23 @@ export function portfolioRepoToRepoItem(p: PortfolioRepositoryItem): RepoItem {
     breakdown?.map(l => l.name) ??
     (p.language ? [p.language] : []);
 
+  const team =
+    p.team_composition?.map(t => ({
+      role: (t.role ?? '').trim(),
+      count: Math.max(0, Math.min(99_999, Number(t.count) || 0)),
+    })) ?? [];
+
+  const myRole =
+    p.my_role != null
+      ? {
+          role: (p.my_role.role ?? '').trim(),
+          contribution_percent: Math.min(
+            100,
+            Math.max(0, Math.round(Number(p.my_role.contribution_percent) || 0)),
+          ),
+        }
+      : null;
+
   return {
     id: p.id ?? undefined,
     repo_id: p.repo_id,
@@ -119,6 +136,10 @@ export function portfolioRepoToRepoItem(p: PortfolioRepositoryItem): RepoItem {
     forks_count: p.forks_count,
     html_url: p.html_url ?? '',
     owner: p.owner ?? '',
+    team_composition: team,
+    my_role: myRole,
+    key_contributions: p.key_contributions ?? '',
+    duration: p.duration ?? null,
   };
 }
 
@@ -148,6 +169,12 @@ export function mergePortfolioRepoPatch(
     owner: next.owner !== '' ? next.owner : prev.owner,
     created_at: next.created_at !== '' ? next.created_at : prev.created_at,
     updated_at: next.updated_at !== '' ? next.updated_at : prev.updated_at,
+    team_composition:
+      'team_composition' in patch ? next.team_composition : prev.team_composition,
+    my_role: 'my_role' in patch ? next.my_role : prev.my_role,
+    key_contributions:
+      'key_contributions' in patch ? next.key_contributions : prev.key_contributions,
+    duration: 'duration' in patch ? next.duration : prev.duration,
   };
 }
 

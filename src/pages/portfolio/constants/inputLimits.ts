@@ -25,6 +25,10 @@ export const INPUT_MAX_LENGTH = {
   REPO_TITLE: 100,
   /** 레포지토리 설명 */
   REPO_DESCRIPTION: 350,
+  /** 레포 팀 역할·내 역할 라벨 */
+  REPO_ROLE_LABEL: 80,
+  /** 주요 기여(레포) 상세 */
+  REPO_KEY_CONTRIBUTIONS: 2000,
   /** 프로필 링크 라벨 */
   PROFILE_LINK_LABEL: 120,
   /** 프로필 링크 URL */
