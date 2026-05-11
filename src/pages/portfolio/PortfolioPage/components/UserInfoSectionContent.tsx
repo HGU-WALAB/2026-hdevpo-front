@@ -384,10 +384,11 @@ const UserInfoSectionContent = ({
               <Text
                 style={{
                   color: palette.grey600,
-                  fontSize: '1.125rem',
+                  fontSize: '1.0625rem',
                   margin: 0,
-                  lineHeight: 1.65,
+                  lineHeight: 1.5,
                   wordBreak: 'break-word',
+                  whiteSpace: 'pre-wrap',
                 }}
               >
                 {bio || '-'}
@@ -411,6 +412,10 @@ const UserInfoSectionContent = ({
                   '& .MuiOutlinedInput-root': {
                     borderRadius: '0.5rem',
                     backgroundColor: palette.white,
+                  },
+                  '& .MuiInputBase-input': {
+                    fontSize: '1.0625rem',
+                    lineHeight: 1.5,
                   },
                   '& textarea': {
                     resize: 'vertical',
