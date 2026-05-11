@@ -59,6 +59,13 @@ function keywordCount(notes: string): number {
     .filter(Boolean).length;
 }
 
+/** 목록 카드용 — API `mode` → 라벨·스타일 변형 */
+function getCvModeChip(mode: string): { label: string; variant: 'cv' | 'archive' } | null {
+  if (mode === 'cv') return { label: '취업준비용', variant: 'cv' };
+  if (mode === 'archive') return { label: '역량평가용', variant: 'archive' };
+  return null;
+}
+
 const CvManagementPanel = () => {
   const navigate = useNavigate();
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
@@ -382,6 +389,7 @@ function CvHistoryCard({
   const isHtmlPublic = Boolean(item.is_public);
   const hasShareToken = Boolean(String(item.public_token ?? '').trim());
   const cardTitle = item.title?.trim() ? item.title.trim() : '제목 없음';
+  const modeChip = getCvModeChip(item.mode);
 
   const handleCardKeyDown = (e: KeyboardEvent<HTMLElement>) => {
     if (e.key === 'Enter' || e.key === ' ') {
@@ -433,6 +441,9 @@ function CvHistoryCard({
             <S.HtmlPublicStatusTag $public={isHtmlPublic}>
               {isHtmlPublic ? 'HTML 공개 중' : 'HTML 비공개'}
             </S.HtmlPublicStatusTag>
+            {modeChip ? (
+              <S.CvModeTag $variant={modeChip.variant}>{modeChip.label}</S.CvModeTag>
+            ) : null}
           </Flex.Row>
         </Flex.Column>
         <Flex.Row
@@ -620,6 +631,30 @@ const S = {
     color: ${({ $public }) => ($public ? palette.blue600 : palette.grey600)};
     box-shadow: ${({ $public }) =>
       $public ? '0 1px 2px rgba(83, 127, 241, 0.1)' : '0 1px 2px rgba(16, 24, 40, 0.05)'};
+  `,
+  CvModeTag: styled('span', {
+    shouldForwardProp: p => p !== '$variant',
+  })<{ $variant: 'cv' | 'archive' }>`
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    white-space: nowrap;
+    box-sizing: border-box;
+    border: 1px solid
+      ${({ $variant }) =>
+        $variant === 'cv' ? palette.chipForest700 : '#E6B422'};
+    color: ${({ $variant }) =>
+      $variant === 'cv' ? palette.chipForest700 : '#C49308'};
+    background-color: ${({ $variant }) =>
+      $variant === 'cv' ? 'white' : 'white'};
+    box-shadow: ${({ $variant }) =>
+      $variant === 'cv'
+        ? '0 1px 2px rgba(46, 125, 50, 0.12)'
+        : '0 1px 2px rgba(212, 160, 18, 0.12)'};
   `,
   HtmlPublicLabelTag: styled('span')`
     display: inline-flex;

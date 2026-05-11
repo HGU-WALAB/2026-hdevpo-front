@@ -80,6 +80,49 @@ function mergeDetailFromPatchResponse(
   const html = str(o.html_content, o.htmlContent);
   if (html !== undefined) patch.html_content = html;
 
+  if (o.mode !== undefined) {
+    patch.mode = String(o.mode);
+  }
+
+  if (o.design_preferences != null && typeof o.design_preferences === 'object') {
+    const d = o.design_preferences as Record<string, unknown>;
+    patch.design_preferences = {
+      layout:
+        d.layout !== undefined ? String(d.layout) : prev.design_preferences.layout,
+      color_theme:
+        d.color_theme !== undefined
+          ? String(d.color_theme)
+          : prev.design_preferences.color_theme,
+      density:
+        d.density !== undefined ? String(d.density) : prev.design_preferences.density,
+      additional_notes:
+        d.additional_notes !== undefined
+          ? String(d.additional_notes)
+          : prev.design_preferences.additional_notes,
+    };
+  }
+
+  const readIdArray = (raw: unknown): number[] => {
+    if (!Array.isArray(raw)) return [];
+    const out: number[] = [];
+    for (const x of raw) {
+      if (typeof x === 'number' && Number.isFinite(x)) out.push(x);
+      else if (typeof x === 'string' && x.trim() !== '' && !Number.isNaN(Number(x))) {
+        out.push(Number(x));
+      }
+    }
+    return out;
+  };
+  if (o.selected_repo_ids !== undefined) {
+    patch.selected_repo_ids = readIdArray(o.selected_repo_ids);
+  }
+  if (o.selected_mileage_ids !== undefined) {
+    patch.selected_mileage_ids = readIdArray(o.selected_mileage_ids);
+  }
+  if (o.selected_activity_ids !== undefined) {
+    patch.selected_activity_ids = readIdArray(o.selected_activity_ids);
+  }
+
   return patch;
 }
 
@@ -96,12 +139,22 @@ const usePatchPortfolioCvMutation = () => {
           job_posting: '',
           target_position: '',
           additional_notes: '',
+          design_preferences: {
+            layout: '',
+            color_theme: '',
+            density: '',
+            additional_notes: '',
+          },
+          mode: 'cv',
           public_token: '',
           created_at: '',
           updated_at: '',
           is_public: false,
           prompt: '',
           html_content: '',
+          selected_repo_ids: [],
+          selected_mileage_ids: [],
+          selected_activity_ids: [],
         },
         rawUpdated,
       );

@@ -8,6 +8,14 @@ const cvSharePublicClient = axios.create({
   baseURL: BASE_URL,
 });
 
+/** GET 응답 — 디자인 선호 (추후 UI에서 사용 예정) */
+export interface PortfolioCvDesignPreferences {
+  layout: string;
+  color_theme: string;
+  density: string;
+  additional_notes: string;
+}
+
 /** GET /api/portfolio/cv 목록 한 건 */
 export interface PortfolioCvListItem {
   id: number;
@@ -15,6 +23,9 @@ export interface PortfolioCvListItem {
   job_posting: string;
   target_position: string;
   additional_notes: string;
+  design_preferences: PortfolioCvDesignPreferences;
+  /** `cv` · 취업 준비 / `archive` · 역량 평가 등 */
+  mode: string;
   public_token: string;
   created_at: string;
   updated_at: string;
@@ -29,6 +40,9 @@ export interface PortfolioCvListResponse {
 export interface PortfolioCvDetail extends PortfolioCvListItem {
   prompt: string;
   html_content: string;
+  selected_repo_ids: number[];
+  selected_mileage_ids: number[];
+  selected_activity_ids: number[];
 }
 
 function readCvId(o: Record<string, unknown>): number {
@@ -46,6 +60,47 @@ function readCvIsPublic(o: Record<string, unknown>): boolean {
   return Boolean(v);
 }
 
+function readDesignPreferences(raw: unknown): PortfolioCvDesignPreferences {
+  if (raw == null || typeof raw !== 'object') {
+    return {
+      layout: '',
+      color_theme: '',
+      density: '',
+      additional_notes: '',
+    };
+  }
+  const d = raw as Record<string, unknown>;
+  return {
+    layout: String(d.layout ?? ''),
+    color_theme: String(d.color_theme ?? ''),
+    density: String(d.density ?? ''),
+    additional_notes: String(d.additional_notes ?? ''),
+  };
+}
+
+function readCvMode(o: Record<string, unknown>): string {
+  const m = o.mode;
+  if (m === 'archive') return 'archive';
+  if (m === 'cv') return 'cv';
+  if (typeof m === 'string' && m.trim() !== '') return m.trim();
+  return 'cv';
+}
+
+function readIdArray(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return [];
+  const out: number[] = [];
+  for (const x of raw) {
+    if (typeof x === 'number' && Number.isFinite(x)) {
+      out.push(x);
+      continue;
+    }
+    if (typeof x === 'string' && x.trim() !== '' && !Number.isNaN(Number(x))) {
+      out.push(Number(x));
+    }
+  }
+  return out;
+}
+
 function normalizePortfolioCvListItem(raw: unknown): PortfolioCvListItem {
   if (raw == null || typeof raw !== 'object') {
     return {
@@ -54,6 +109,8 @@ function normalizePortfolioCvListItem(raw: unknown): PortfolioCvListItem {
       job_posting: '',
       target_position: '',
       additional_notes: '',
+      design_preferences: readDesignPreferences(undefined),
+      mode: 'cv',
       public_token: '',
       created_at: '',
       updated_at: '',
@@ -67,6 +124,8 @@ function normalizePortfolioCvListItem(raw: unknown): PortfolioCvListItem {
     job_posting: String(o.job_posting ?? ''),
     target_position: String(o.target_position ?? ''),
     additional_notes: String(o.additional_notes ?? ''),
+    design_preferences: readDesignPreferences(o.design_preferences),
+    mode: readCvMode(o),
     public_token: String(o.public_token ?? ''),
     created_at: String(o.created_at ?? ''),
     updated_at: String(o.updated_at ?? ''),
@@ -84,6 +143,9 @@ export function normalizePortfolioCvDetail(raw: unknown): PortfolioCvDetail {
     ...base,
     prompt: String(o.prompt ?? ''),
     html_content: String(o.html_content ?? ''),
+    selected_repo_ids: readIdArray(o.selected_repo_ids),
+    selected_mileage_ids: readIdArray(o.selected_mileage_ids),
+    selected_activity_ids: readIdArray(o.selected_activity_ids),
   };
 }
 

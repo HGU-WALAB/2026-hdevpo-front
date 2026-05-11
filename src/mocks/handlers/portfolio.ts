@@ -392,6 +392,8 @@ export const PortfolioHandlers = [
           job_posting: c.job_posting,
           target_position: c.target_position,
           additional_notes: c.additional_notes,
+          design_preferences: c.design_preferences,
+          mode: c.mode,
           public_token: c.public_token,
           created_at: c.created_at,
           updated_at: c.updated_at,
@@ -534,12 +536,22 @@ export const PortfolioHandlers = [
         job_posting: job,
         target_position: pos,
         additional_notes: notes,
+        design_preferences: {
+          layout: '',
+          color_theme: '',
+          density: '',
+          additional_notes: '',
+        },
+        mode,
         prompt,
         html_content: '',
         public_token,
         is_public: false,
         created_at: now,
         updated_at: now,
+        selected_repo_ids: [...r],
+        selected_mileage_ids: [...m],
+        selected_activity_ids: [...a],
       });
       return HttpResponse.json({ prompt, cv_id: cvId, public_token }, { status: 200 });
     } catch {
