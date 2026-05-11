@@ -1,4 +1,4 @@
-import { Dropdown, Flex, Input, Text, Title } from '@/components';
+import { Button, Dropdown, Flex, Input, Text, Title } from '@/components';
 import { palette } from '@/styles/palette';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
@@ -10,7 +10,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { styled, useTheme } from '@mui/material';
+import { Dialog, DialogContent, styled, useTheme } from '@mui/material';
 
 import { INPUT_MAX_LENGTH } from '../../constants/inputLimits';
 import { groupActivitiesByCategory } from '../../utils/activityGrouping';
@@ -72,6 +72,10 @@ const ActivitiesSectionContent = forwardRef<
   } = usePortfolioContext();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<ActivityEditDraft>({});
+  const [activityDeleteConfirmId, setActivityDeleteConfirmId] = useState<
+    number | null
+  >(null);
+  const [activityDeletePending, setActivityDeletePending] = useState(false);
 
   const savedActivities = useMemo(
     () => activities.filter(a => a.id >= 0),
@@ -192,6 +196,25 @@ const ActivitiesSectionContent = forwardRef<
     },
     [editingId, deleteActivity],
   );
+
+  const pendingDeleteActivity = useMemo(
+    () =>
+      activityDeleteConfirmId == null
+        ? null
+        : activities.find(a => a.id === activityDeleteConfirmId) ?? null,
+    [activities, activityDeleteConfirmId],
+  );
+
+  const confirmActivityDelete = useCallback(async () => {
+    if (activityDeleteConfirmId == null) return;
+    setActivityDeletePending(true);
+    try {
+      await handleDelete(activityDeleteConfirmId);
+      setActivityDeleteConfirmId(null);
+    } finally {
+      setActivityDeletePending(false);
+    }
+  }, [activityDeleteConfirmId, handleDelete]);
 
   useImperativeHandle(
     ref,
@@ -618,7 +641,7 @@ const ActivitiesSectionContent = forwardRef<
                             </S.EditButton>
                             <S.DeleteButton
                               type="button"
-                              onClick={() => handleDelete(item.id)}
+                              onClick={() => setActivityDeleteConfirmId(item.id)}
                               aria-label="삭제"
                             >
                               <DeleteOutlineIcon sx={{ fontSize: 18 }} />
@@ -668,6 +691,103 @@ const ActivitiesSectionContent = forwardRef<
           </Flex.Column>
         ))}
       </Flex.Column>
+
+      {!readOnly && (
+        <Dialog
+          open={activityDeleteConfirmId != null}
+          aria-labelledby="activity-delete-confirm-title"
+          onClose={() => {
+            if (activityDeletePending) return;
+            setActivityDeleteConfirmId(null);
+          }}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: '0.75rem',
+              border: `1px solid ${palette.grey200}`,
+              boxShadow: '0 4px 24px rgba(83, 127, 241, 0.15)',
+              width: '100%',
+              maxWidth: '26rem',
+              overflow: 'hidden',
+            },
+          }}
+          sx={{ zIndex: theme => theme.zIndex.modal + 2 }}
+        >
+          <DialogContent
+            sx={{
+              p: '1.25rem 1.5rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+            }}
+          >
+            <Flex.Row
+              align="flex-start"
+              gap="0.5rem"
+              width="100%"
+              style={{ minWidth: 0 }}
+            >
+              <DeleteOutlineIcon
+                sx={{
+                  fontSize: 22,
+                  color: palette.red500,
+                  flexShrink: 0,
+                  marginTop: '0.125rem',
+                }}
+                aria-hidden
+              />
+              <Flex.Column gap="0.5rem" style={{ flex: '1 1 auto', minWidth: 0 }}>
+                <Text
+                  id="activity-delete-confirm-title"
+                  as="span"
+                  style={{
+                    display: 'block',
+                    fontSize: '1.125rem',
+                    fontWeight: 700,
+                    lineHeight: 1.5,
+                    color: palette.nearBlack,
+                    margin: 0,
+                  }}
+                >
+                  활동을 삭제할까요?
+                </Text>
+                <Text
+                  as="span"
+                  margin="0"
+                  color={palette.grey600}
+                  style={{
+                    fontSize: '0.875rem',
+                    lineHeight: 1.65,
+                    wordBreak: 'keep-all',
+                  }}
+                >
+                  「{pendingDeleteActivity?.title?.trim() || '이 활동'}」 항목을
+                  삭제합니다. 저장된 활동은 복구할 수 없습니다.
+                </Text>
+              </Flex.Column>
+            </Flex.Row>
+            <Flex.Row align="center" justify="flex-end" gap="0.5rem" wrap="wrap" width="100%">
+              <Button
+                label="취소"
+                variant="outlined"
+                color="grey"
+                size="medium"
+                onClick={() => setActivityDeleteConfirmId(null)}
+                disabled={activityDeletePending}
+              />
+              <Button
+                label="삭제하기"
+                variant="outlined"
+                color="red"
+                size="medium"
+                onClick={() => void confirmActivityDelete()}
+                disabled={activityDeletePending}
+              />
+            </Flex.Row>
+          </DialogContent>
+        </Dialog>
+      )}
     </Flex.Column>
   );
 });
