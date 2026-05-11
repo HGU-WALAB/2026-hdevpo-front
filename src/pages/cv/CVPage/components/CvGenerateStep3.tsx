@@ -1,5 +1,6 @@
 import { Button, Flex, Heading, Text } from '@/components';
 import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
+import { hideScrollbar } from '@/styles/hideScrollbar';
 import { palette } from '@/styles/palette';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
@@ -324,6 +325,7 @@ const S = {
       borderColor: palette.grey200,
     },
     '& .MuiOutlinedInput-input': {
+      ...hideScrollbar,
       overflowY: 'auto !important',
       resize: 'none',
       minHeight: '0 !important',
@@ -337,6 +339,7 @@ const S = {
     flexDirection: 'column',
     height: PROMPT_PANE_HEIGHT,
     overflow: 'auto',
+    ...hideScrollbar,
     padding: '0.85rem 1rem',
     borderRadius: '0.5rem',
     border: `1px solid ${palette.grey200}`,
@@ -395,6 +398,7 @@ const S = {
       padding: '0.65rem 0.75rem',
       borderRadius: '0.5rem',
       overflow: 'auto',
+      ...hideScrollbar,
       backgroundColor: palette.white,
       border: `1px solid ${palette.grey200}`,
       '& code': {

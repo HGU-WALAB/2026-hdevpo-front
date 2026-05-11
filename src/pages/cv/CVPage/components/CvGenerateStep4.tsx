@@ -1,4 +1,5 @@
 import { Button, Flex, Heading, Text } from '@/components';
+import { hideScrollbar } from '@/styles/hideScrollbar';
 import { palette } from '@/styles/palette';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import SaveOutlinedIcon from '@mui/icons-material/SaveOutlined';
@@ -306,6 +307,7 @@ const S = {
       borderColor: palette.blue500,
     },
     '& .MuiOutlinedInput-input': {
+      ...hideScrollbar,
       overflowY: 'auto !important',
       resize: 'none',
       minHeight: '0 !important',

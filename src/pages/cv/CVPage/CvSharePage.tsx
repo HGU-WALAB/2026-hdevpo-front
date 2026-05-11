@@ -7,6 +7,7 @@ import { EmptyBoxImg } from '@/assets';
 import { Button, Flex, Heading, Text } from '@/components';
 import { ROUTE_PATH } from '@/constants/routePath';
 import { getPortfolioCvShareHtml } from '@/pages/cv/apis/cv';
+import { appendHideScrollbarStyleToSrcDocHtml } from '@/pages/cv/utils/appendHideScrollbarStyleToSrcDocHtml';
 import { isCvPublicTokenFormat } from '@/pages/cv/utils/cvPublicToken';
 import { palette } from '@/styles/palette';
 import { getErrorMessage } from '@/utils/getErrorMessage';
@@ -167,7 +168,11 @@ export default function CvSharePage() {
   if (data.status === 200) {
     return (
       <S.Root>
-        <iframe title="공개 포트폴리오" srcDoc={data.html} sandbox="allow-same-origin" />
+        <iframe
+          title="공개 포트폴리오"
+          srcDoc={appendHideScrollbarStyleToSrcDocHtml(data.html)}
+          sandbox="allow-same-origin"
+        />
       </S.Root>
     );
   }

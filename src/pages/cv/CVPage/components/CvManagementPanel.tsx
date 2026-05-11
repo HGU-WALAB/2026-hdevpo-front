@@ -549,6 +549,11 @@ const S = {
   ListStack: styled(Flex.Column)`
     width: 100%;
     min-width: 0;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
   `,
   EmptyState: styled('div')`
     display: flex;
@@ -650,7 +655,7 @@ const S = {
     color: ${({ $variant }) =>
       $variant === 'cv' ? palette.chipForest700 : '#C49308'};
     background-color: ${({ $variant }) =>
-      $variant === 'cv' ? 'white' : 'white'};
+      $variant === 'cv' ? '#FFFDF5' : '#FFFDF5'};
     box-shadow: ${({ $variant }) =>
       $variant === 'cv'
         ? '0 1px 2px rgba(46, 125, 50, 0.12)'

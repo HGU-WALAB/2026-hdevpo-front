@@ -1,5 +1,6 @@
 import { LoadingIcon } from '@/assets';
 import { Button, Flex, Input, Text } from '@/components';
+import { hideScrollbar } from '@/styles/hideScrollbar';
 import { palette } from '@/styles/palette';
 import BusinessIcon from '@mui/icons-material/Business';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
@@ -601,6 +602,7 @@ const CvPreviewContent = ({
                         borderColor: palette.blue500,
                       },
                       '& textarea': {
+                        ...hideScrollbar,
                         fontFamily: 'ui-monospace, monospace',
                         fontSize: '0.8125rem',
                         lineHeight: 1.5,
@@ -774,6 +776,11 @@ const S = {
       if ($loading) return '0';
       return $layout === 'panel' ? '1rem 1.25rem 1.25rem' : '1.25rem 2.75rem 1.5rem';
     }};
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
   `,
   LoadingArea: styled(Flex.Column, {
     shouldForwardProp: p => p !== '$layout',
@@ -831,6 +838,11 @@ const S = {
     border-radius: 0.5rem;
     border: 1px solid ${palette.grey200};
     font-family: ui-monospace, monospace;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
   `,
   ModalPreScroll: styled('pre')`
     margin: 0;
@@ -848,6 +860,11 @@ const S = {
     border: 1px solid ${palette.grey200};
     font-family: ui-monospace, monospace;
     box-sizing: border-box;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
   `,
   ModalIframeShell: styled('div')`
     flex: 1 1 auto;
