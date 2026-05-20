@@ -7,6 +7,33 @@ export interface PortfolioRepositoryLanguage {
   percentage: number;
 }
 
+/** 팀 구성 한 줄 (역할 + 인원 수) */
+export interface TeamCompositionEntry {
+  role: string;
+  count: number;
+}
+
+/** 내 역할·기여도 */
+export interface PortfolioRepositoryMyRole {
+  role: string;
+  contribution_percent: number;
+}
+
+/** 기간: GitHub 메타 + 사용자 표시용 override */
+export interface PortfolioRepositoryDuration {
+  started_at_github?: string;
+  updated_at_github?: string;
+  /** 사용자 override; 빈 문자열로 PATCH 시 해당 override 삭제 */
+  started_at?: string;
+  updated_at?: string;
+}
+
+/** PATCH duration — 필드 생략은 유지, 빈 문자열은 해당 override 삭제 */
+export interface PatchRepositoryDuration {
+  started_at?: string | null;
+  updated_at?: string | null;
+}
+
 /** 활동 요약 - 포트폴리오 레포지토리 한 건 (GET/PATCH 응답) */
 export interface PortfolioRepositoryItem {
   id: number;
@@ -30,18 +57,32 @@ export interface PortfolioRepositoryItem {
   commit_count?: number;
   stargazers_count?: number;
   forks_count?: number;
+  /** 전체 팀 구성(역할별 인원) */
+  team_composition?: TeamCompositionEntry[];
+  /** 내 역할 및 기여도(0–100) */
+  my_role?: PortfolioRepositoryMyRole | null;
+  /** 주요 기여 상세(마크다운·불릿 등 자유 입력) */
+  key_contributions?: string | null;
+  /** 표시 기간·GitHub 기준 시각 */
+  duration?: PortfolioRepositoryDuration | null;
 }
 
-/** PATCH /api/portfolio/repositories/:id 요청 body */
+/** PATCH /api/portfolio/repositories/:id 요청 body — 부분 업데이트(null = 해당 필드 변경 없음) */
 export interface PatchRepositoryBody {
-  custom_title: string;
-  description: string;
-  is_visible: boolean;
-  display_order: number;
+  custom_title?: string | null;
+  description?: string | null;
+  is_visible?: boolean;
+  display_order?: number;
+  team_composition?: TeamCompositionEntry[] | null;
+  my_role?: PortfolioRepositoryMyRole | null;
+  key_contributions?: string | null;
+  duration?: PatchRepositoryDuration | null;
 }
 
 export interface RepositoriesResponse {
   repositories: PortfolioRepositoryItem[];
+  /** 필터 적용 후 전체 건수 (페이지네이션 계산용) */
+  total: number;
 }
 
 /** PUT /api/portfolio/repositories — 표시 설정 일괄 동기화 응답 */

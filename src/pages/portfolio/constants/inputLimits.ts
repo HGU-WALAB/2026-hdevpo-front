@@ -11,6 +11,14 @@ export const INPUT_MAX_LENGTH = {
   ACTIVITY_CATEGORY: 40,
   /** 활동 설명 */
   ACTIVITY_DESCRIPTION: 300,
+  /** 활동 주최 */
+  ACTIVITY_HOST: 255,
+  /** 활동 역할 */
+  ACTIVITY_ROLE: 500,
+  /** 활동 성과 및 결과 */
+  ACTIVITY_ACHIEVEMENTS: 2000,
+  /** 활동 성과 설명 */
+  ACTIVITY_ACHIEVEMENTS_DETAIL: 5000,
   /** 활동 관련 URL */
   ACTIVITY_URL: 2048,
   /** 활동 태그(쉼표로 구분해 입력하는 문자열 전체) */
@@ -25,6 +33,10 @@ export const INPUT_MAX_LENGTH = {
   REPO_TITLE: 100,
   /** 레포지토리 설명 */
   REPO_DESCRIPTION: 350,
+  /** 레포 팀 역할·내 역할 라벨 */
+  REPO_ROLE_LABEL: 80,
+  /** 주요 기여(레포) 상세 */
+  REPO_KEY_CONTRIBUTIONS: 2000,
   /** 프로필 링크 라벨 */
   PROFILE_LINK_LABEL: 120,
   /** 프로필 링크 URL */

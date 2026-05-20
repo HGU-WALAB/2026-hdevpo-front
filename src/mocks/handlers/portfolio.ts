@@ -24,6 +24,7 @@ import { mockPortfolioCvDetails } from '@/mocks/fixtures/portfolioCv';
 import { mockUserInfoResponse } from '@/mocks/fixtures/portfolioUserInfo';
 import type {
   PortfolioCvBuildPromptRequest,
+  PortfolioCvDesignPreferences,
   PortfolioCvDetail,
 } from '@/pages/cv/apis/cv';
 
@@ -39,7 +40,13 @@ const activitiesStore: ActivityApiItem[] = mockActivitiesResponse.map(a => ({
 let nextActivityId = Math.max(0, ...activitiesStore.map(a => a.id)) + 1;
 
 const repositoriesStore: PortfolioRepositoryItem[] = mockPortfolioRepositories.map(
-  r => ({ ...r }),
+  r => ({
+    ...r,
+    duration: r.duration ?? {
+      started_at_github: r.created_at,
+      updated_at_github: r.updated_at,
+    },
+  }),
 );
 let nextRepoId = Math.max(0, ...repositoriesStore.map(r => r.id)) + 1;
 
@@ -174,21 +181,33 @@ export const PortfolioHandlers = [
     const body = (await request.json()) as {
       title: string;
       description: string;
+      host?: string;
+      role?: string;
+      achievements?: string;
+      achievements_detail?: string;
       start_date: string;
       end_date: string;
       category?: string;
       url?: string;
       tags?: string[];
     };
+    const opt = (v: string | undefined) => {
+      const t = (v ?? '').trim();
+      return t === '' ? '' : t;
+    };
     const newItem: ActivityApiItem = {
       id: nextActivityId++,
       title: body.title ?? '',
       description: body.description ?? '',
+      host: opt(body.host),
+      role: opt(body.role),
+      achievements: opt(body.achievements),
+      achievements_detail: opt(body.achievements_detail),
       start_date: body.start_date ?? '',
       end_date: body.end_date ?? '',
       category: (body.category ?? '').trim() || '기타',
       display_order: activitiesStore.length,
-      url: (body.url ?? '').trim(),
+      url: opt(body.url),
       tags: Array.isArray(body.tags)
         ? body.tags.map(t => String(t).trim()).filter(Boolean)
         : [],
@@ -200,13 +219,17 @@ export const PortfolioHandlers = [
   http.patch(BASE_URL + ENDPOINT.PORTFOLIO_ACTIVITIES, async ({ request }) => {
     const body = (await request.json()) as Array<{
       id: number;
-      title: string;
-      description: string;
-      start_date: string;
-      end_date: string;
+      title?: string;
+      description?: string;
+      host?: string | null;
+      role?: string | null;
+      achievements?: string | null;
+      achievements_detail?: string | null;
+      start_date?: string;
+      end_date?: string;
       category?: string;
-      url?: string;
-      tags?: string[];
+      url?: string | null;
+      tags?: string[] | null;
     }>;
     if (!Array.isArray(body)) {
       return HttpResponse.json({ activities: activitiesStore }, { status: 200 });
@@ -214,22 +237,33 @@ export const PortfolioHandlers = [
     for (const item of body) {
       const idx = activitiesStore.findIndex(a => a.id === item.id);
       if (idx !== -1) {
+        const cur = activitiesStore[idx];
+        const clearable = (
+          v: string | null | undefined,
+          prev: string | null | undefined,
+        ) => {
+          if (v === undefined || v === null) return (prev ?? '').trim();
+          return String(v).trim();
+        };
         activitiesStore[idx] = {
-          ...activitiesStore[idx],
-          title: item.title ?? activitiesStore[idx].title,
-          description: item.description ?? activitiesStore[idx].description,
-          start_date: item.start_date ?? activitiesStore[idx].start_date,
-          end_date: item.end_date ?? activitiesStore[idx].end_date,
+          ...cur,
+          title: item.title ?? cur.title,
+          description: item.description ?? cur.description,
+          host: clearable(item.host, cur.host),
+          role: clearable(item.role, cur.role),
+          achievements: clearable(item.achievements, cur.achievements),
+          achievements_detail: clearable(item.achievements_detail, cur.achievements_detail),
+          start_date: item.start_date ?? cur.start_date,
+          end_date: item.end_date ?? cur.end_date,
           category:
             item.category != null && item.category !== ''
               ? item.category
-              : activitiesStore[idx].category,
-          url:
-            item.url !== undefined ? item.url : activitiesStore[idx].url ?? '',
+              : cur.category,
+          url: clearable(item.url, cur.url),
           tags:
-            item.tags !== undefined
+            item.tags !== undefined && item.tags !== null
               ? item.tags.map(t => String(t).trim()).filter(Boolean)
-              : activitiesStore[idx].tags ?? [],
+              : cur.tags ?? [],
         };
       }
     }
@@ -246,6 +280,10 @@ export const PortfolioHandlers = [
       const body = (await request.json()) as {
         title: string;
         description: string;
+        host?: string;
+        role?: string;
+        achievements?: string;
+        achievements_detail?: string;
         start_date: string;
         end_date: string;
         category: string;
@@ -257,14 +295,19 @@ export const PortfolioHandlers = [
         return HttpResponse.json({}, { status: 404 });
       }
       const prev = activitiesStore[idx];
+      const opt = (v: string | undefined) => (v ?? '').trim();
       activitiesStore[idx] = {
         ...prev,
         title: body.title ?? '',
         description: body.description ?? '',
+        host: opt(body.host),
+        role: opt(body.role),
+        achievements: opt(body.achievements),
+        achievements_detail: opt(body.achievements_detail),
         start_date: body.start_date ?? '',
         end_date: body.end_date ?? '',
         category: (body.category ?? '').trim() || '기타',
-        url: (body.url ?? '').trim(),
+        url: opt(body.url),
         tags: Array.isArray(body.tags)
           ? body.tags.map(t => String(t).trim()).filter(Boolean)
           : [],
@@ -280,6 +323,10 @@ export const PortfolioHandlers = [
       const body = (await request.json()) as {
         title?: string;
         description?: string;
+        host?: string | null;
+        role?: string | null;
+        achievements?: string | null;
+        achievements_detail?: string | null;
         start_date?: string;
         end_date?: string;
         category?: string;
@@ -291,20 +338,28 @@ export const PortfolioHandlers = [
         return HttpResponse.json({}, { status: 404 });
       }
       const cur = activitiesStore[idx];
+      const clearable = (
+        v: string | null | undefined,
+        prev: string | null | undefined,
+      ) => {
+        if (v === undefined || v === null) return (prev ?? '').trim();
+        return String(v).trim();
+      };
       activitiesStore[idx] = {
         ...cur,
         title: body.title ?? cur.title,
         description: body.description ?? cur.description,
+        host: clearable(body.host, cur.host),
+        role: clearable(body.role, cur.role),
+        achievements: clearable(body.achievements, cur.achievements),
+        achievements_detail: clearable(body.achievements_detail, cur.achievements_detail),
         start_date: body.start_date ?? cur.start_date,
         end_date: body.end_date ?? cur.end_date,
         category:
           body.category != null && body.category !== ''
             ? body.category
             : cur.category,
-        url:
-          body.url !== undefined && body.url !== null
-            ? body.url
-            : cur.url ?? '',
+        url: clearable(body.url, cur.url),
         tags:
           body.tags !== undefined && body.tags !== null
             ? body.tags.map(t => String(t).trim()).filter(Boolean)
@@ -383,20 +438,42 @@ export const PortfolioHandlers = [
     return HttpResponse.json({ ...userInfoStore }, { status: 200 });
   }),
 
-  http.get(BASE_URL + ENDPOINT.PORTFOLIO_CV, () => {
+  http.get(BASE_URL + ENDPOINT.PORTFOLIO_CV, ({ request }) => {
+    const url = new URL(request.url);
+    const sort = url.searchParams.get('sort') === 'favorites' ? 'favorites' : 'newest';
+
+    const toListItem = (c: PortfolioCvDetail) => ({
+      id: c.id,
+      title: c.title,
+      job_posting: c.job_posting,
+      target_position: c.target_position,
+      additional_notes: c.additional_notes,
+      design_preferences: c.design_preferences,
+      mode: c.mode,
+      public_token: c.public_token,
+      created_at: c.created_at,
+      updated_at: c.updated_at,
+      is_public: c.is_public,
+      is_favorite: Boolean(c.is_favorite),
+    });
+
+    let ordered = [...cvStore];
+    if (sort === 'favorites') {
+      ordered.sort((a, b) => {
+        const favDiff = Number(Boolean(b.is_favorite)) - Number(Boolean(a.is_favorite));
+        if (favDiff !== 0) return favDiff;
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+      });
+    } else {
+      ordered.sort(
+        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+      );
+    }
+
     return HttpResponse.json(
       {
-        cvs: cvStore.map(c => ({
-          id: c.id,
-          title: c.title,
-          job_posting: c.job_posting,
-          target_position: c.target_position,
-          additional_notes: c.additional_notes,
-          public_token: c.public_token,
-          created_at: c.created_at,
-          updated_at: c.updated_at,
-          is_public: c.is_public,
-        })),
+        cvs: ordered.map(toListItem),
+        total: cvStore.length,
       },
       { status: 200 },
     );
@@ -455,6 +532,7 @@ export const PortfolioHandlers = [
         title?: string;
         html_content?: string;
         is_public?: boolean;
+        is_favorite?: boolean;
       };
       const now = new Date().toISOString();
       const prev = cvStore[idx];
@@ -467,6 +545,8 @@ export const PortfolioHandlers = [
         html_content:
           body.html_content !== undefined ? String(body.html_content) : prev.html_content,
         is_public: body.is_public !== undefined ? Boolean(body.is_public) : prev.is_public,
+        is_favorite:
+          body.is_favorite !== undefined ? Boolean(body.is_favorite) : Boolean(prev.is_favorite),
         updated_at: now,
       };
       cvStore[idx] = next;
@@ -475,6 +555,69 @@ export const PortfolioHandlers = [
       return new HttpResponse(null, { status: 400 });
     }
   }),
+
+  http.post(
+    BASE_URL + `${ENDPOINT.PORTFOLIO_CV}/:id/generate-html`,
+    async ({ params, request }) => {
+      const id = Number(params.id);
+      const idx = cvStore.findIndex(c => c.id === id);
+      if (idx === -1 || Number.isNaN(id)) {
+        return new HttpResponse(null, { status: 404 });
+      }
+      try {
+        const raw = (await request.json()) as {
+          design_preferences?: PortfolioCvDesignPreferences | null;
+        };
+        const rawDp = raw.design_preferences;
+        const design_preferences: PortfolioCvDesignPreferences =
+          rawDp != null && typeof rawDp === 'object'
+            ? {
+                layout: String(rawDp.layout ?? ''),
+                color_theme: String(rawDp.color_theme ?? ''),
+                density: String(rawDp.density ?? ''),
+                additional_notes: String(rawDp.additional_notes ?? ''),
+              }
+            : {
+                layout: '',
+                color_theme: '',
+                density: '',
+                additional_notes: '',
+              };
+        const prev = cvStore[idx];
+        const now = new Date().toISOString();
+        const promptSuffix = [
+          '',
+          '---',
+          '## generate-html (Mock)',
+          `- layout: ${design_preferences.layout || '(없음)'}`,
+          `- color_theme: ${design_preferences.color_theme || '(없음)'}`,
+          `- density: ${design_preferences.density || '(없음)'}`,
+          design_preferences.additional_notes.trim()
+            ? `- 추가: ${design_preferences.additional_notes.trim().slice(0, 200)}`
+            : '',
+        ]
+          .filter(Boolean)
+          .join('\n');
+        const next: PortfolioCvDetail = {
+          ...prev,
+          design_preferences,
+          prompt: `${prev.prompt.trim()}\n${promptSuffix}`,
+          html_content:
+            '<!DOCTYPE html><html lang="ko"><head><meta charset="utf-8"/><title>Mock CV</title></head><body><main><p>Mock <code>generate-html</code> 응답 HTML입니다. 레이아웃: ' +
+            (design_preferences.layout || '-') +
+            '</p></main></body></html>',
+          model_used: 'gpt-4o-mini (mock)',
+          tokens_used: 1280,
+          last_generated_at: now,
+          updated_at: now,
+        };
+        cvStore[idx] = next;
+        return HttpResponse.json({ ...next }, { status: 200 });
+      } catch {
+        return new HttpResponse(null, { status: 400 });
+      }
+    },
+  ),
 
   http.delete(BASE_URL + `${ENDPOINT.PORTFOLIO_CV}/:id`, ({ params }) => {
     const id = Number(params.id);
@@ -501,6 +644,38 @@ export const PortfolioHandlers = [
       const m = body.selected_mileage_ids ?? [];
       const a = body.selected_activity_ids ?? [];
       const r = body.selected_repo_ids ?? [];
+      const rawDp = body.design_preferences;
+      const hasDesignPrefsObject = rawDp != null && typeof rawDp === 'object';
+      const storedDesignPreferences: PortfolioCvDetail['design_preferences'] =
+        hasDesignPrefsObject
+          ? {
+              layout: String((rawDp as { layout?: unknown }).layout ?? ''),
+              color_theme: String((rawDp as { color_theme?: unknown }).color_theme ?? ''),
+              density: String((rawDp as { density?: unknown }).density ?? ''),
+              additional_notes: String(
+                (rawDp as { additional_notes?: unknown }).additional_notes ?? '',
+              ),
+            }
+          : {
+              layout: '',
+              color_theme: '',
+              density: '',
+              additional_notes: '',
+            };
+      const designPrefLines: string[] = [];
+      if (hasDesignPrefsObject) {
+        const d = storedDesignPreferences;
+        if (d.layout.trim()) designPrefLines.push(`- 레이아웃: ${d.layout.trim()}`);
+        if (d.color_theme.trim()) designPrefLines.push(`- 색상 테마: ${d.color_theme.trim()}`);
+        if (d.density.trim()) designPrefLines.push(`- 분량·밀도: ${d.density.trim()}`);
+        if (d.additional_notes.trim()) {
+          designPrefLines.push(`- 추가 메모: ${d.additional_notes.trim()}`);
+        }
+      }
+      const designPrefBlock =
+        designPrefLines.length > 0
+          ? ['', '## [design_preferences] (Mock)', ...designPrefLines, ''].join('\n')
+          : '';
       const prompt = [
         '# 맞춤 CV 프롬프트 (Mock)',
         '',
@@ -516,6 +691,7 @@ export const PortfolioHandlers = [
         job ? job.slice(0, 600) + (job.length > 600 ? '…' : '') : '(미입력)',
         '',
         notes ? `## 추가 요청\n${notes}\n` : '',
+        designPrefBlock,
         '## 포함한 포트폴리오 항목 (선택 ID)',
         `- 마일리지: ${JSON.stringify(m)}`,
         `- 활동: ${JSON.stringify(a)}`,
@@ -534,12 +710,18 @@ export const PortfolioHandlers = [
         job_posting: job,
         target_position: pos,
         additional_notes: notes,
+        design_preferences: storedDesignPreferences,
+        mode,
         prompt,
         html_content: '',
         public_token,
         is_public: false,
+        is_favorite: false,
         created_at: now,
         updated_at: now,
+        selected_repo_ids: [...r],
+        selected_mileage_ids: [...m],
+        selected_activity_ids: [...a],
       });
       return HttpResponse.json({ prompt, cv_id: cvId, public_token }, { status: 200 });
     } catch {
@@ -585,12 +767,18 @@ export const PortfolioHandlers = [
 
     // 백엔드 스펙: visible_only=true면 페이지네이션 무시하고 전부 반환
     if (visibleOnly) {
-      return HttpResponse.json({ repositories: list }, { status: 200 });
+      return HttpResponse.json(
+        { repositories: list, total: list.length },
+        { status: 200 },
+      );
     }
 
     const start = (page - 1) * perPage;
     const slice = list.slice(start, start + perPage);
-    return HttpResponse.json({ repositories: slice }, { status: 200 });
+    return HttpResponse.json(
+      { repositories: slice, total: list.length },
+      { status: 200 },
+    );
   }),
 
   http.put(BASE_URL + ENDPOINT.PORTFOLIO_REPOSITORIES, async ({ request }) => {
@@ -624,6 +812,17 @@ export const PortfolioHandlers = [
         commit_count: existing?.commit_count ?? 0,
         stargazers_count: existing?.stargazers_count ?? 0,
         forks_count: existing?.forks_count ?? 0,
+        team_composition: existing?.team_composition ?? [],
+        my_role: existing?.my_role ?? null,
+        key_contributions: existing?.key_contributions ?? null,
+        duration:
+          existing?.duration ??
+          ({
+            started_at_github: existing?.created_at ?? '',
+            updated_at_github: existing?.updated_at ?? '',
+            started_at: '',
+            updated_at: '',
+          } as PortfolioRepositoryItem['duration']),
       });
     });
     if (repositoriesStore.length > 0) {
@@ -646,13 +845,75 @@ export const PortfolioHandlers = [
         return HttpResponse.json({}, { status: 404 });
       }
       const prev = repositoriesStore[idx];
+
+      const baseDuration =
+        prev.duration ??
+        ({
+          started_at_github: prev.created_at,
+          updated_at_github: prev.updated_at,
+        } as NonNullable<PortfolioRepositoryItem['duration']>);
+
+      let nextDuration: NonNullable<PortfolioRepositoryItem['duration']> = {
+        ...baseDuration,
+      };
+
+      if (body.duration !== undefined && body.duration !== null) {
+        const d = body.duration;
+        nextDuration = { ...nextDuration };
+        if (d.started_at !== undefined) {
+          if (d.started_at === '' || d.started_at === null) {
+            delete nextDuration.started_at;
+          } else {
+            nextDuration.started_at = d.started_at;
+          }
+        }
+        if (d.updated_at !== undefined) {
+          if (d.updated_at === '' || d.updated_at === null) {
+            delete nextDuration.updated_at;
+          } else {
+            nextDuration.updated_at = d.updated_at;
+          }
+        }
+        const sa = nextDuration.started_at;
+        const ua = nextDuration.updated_at;
+        if (
+          sa &&
+          ua &&
+          !Number.isNaN(Date.parse(sa)) &&
+          !Number.isNaN(Date.parse(ua)) &&
+          new Date(sa).getTime() > new Date(ua).getTime()
+        ) {
+          return HttpResponse.json(
+            { message: 'started_at must be <= updated_at' },
+            { status: 400 },
+          );
+        }
+      }
+
       repositoriesStore[idx] = {
         ...prev,
-        custom_title: body.custom_title ?? prev.custom_title,
-        description: body.description ?? prev.description,
+        custom_title:
+          body.custom_title !== undefined ? body.custom_title : prev.custom_title,
+        description:
+          body.description !== undefined ? body.description ?? '' : prev.description,
         github_description: prev.github_description ?? '',
-        is_visible: body.is_visible ?? prev.is_visible,
-        display_order: body.display_order ?? prev.display_order,
+        is_visible:
+          body.is_visible !== undefined ? body.is_visible : prev.is_visible,
+        display_order:
+          body.display_order !== undefined
+            ? body.display_order
+            : prev.display_order,
+        team_composition:
+          body.team_composition !== undefined
+            ? body.team_composition ?? []
+            : prev.team_composition,
+        my_role: body.my_role !== undefined ? body.my_role : prev.my_role,
+        key_contributions:
+          body.key_contributions !== undefined
+            ? body.key_contributions
+            : prev.key_contributions,
+        duration:
+          body.duration !== undefined ? nextDuration : prev.duration,
       };
       return HttpResponse.json(repositoriesStore[idx], { status: 200 });
     },

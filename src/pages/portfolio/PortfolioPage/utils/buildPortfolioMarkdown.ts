@@ -89,13 +89,36 @@ function sectionRepos(repos: RepoItem[]): string {
   const visible = repos.filter(r => r.is_visible);
   if (visible.length === 0) return '';
   const title = SECTION_TITLES.repo;
-  const items = visible.map(r => {
+  const blocks = visible.map(r => {
     const name = r.custom_title ?? r.github_title ?? r.name;
     const desc = r.description ? ` - ${r.description}` : '';
     const lang = r.languages.length > 0 ? ` (${r.languages.join(', ')})` : '';
-    return `- **${escapeMarkdown(name)}**${escapeMarkdown(desc)}${escapeMarkdown(lang)}`;
+    const lines: string[] = [];
+    lines.push(
+      `- **${escapeMarkdown(name)}**${escapeMarkdown(desc)}${escapeMarkdown(lang)}`,
+    );
+    const teamRows = (r.team_composition ?? []).filter(t => t.role.trim());
+    if (teamRows.length > 0) {
+      const tline = teamRows
+        .map(t => `${escapeMarkdown(t.role.trim())} ${t.count}`)
+        .join(', ');
+      lines.push(`  - 팀 구성: ${tline}`);
+    }
+    if (r.my_role?.role?.trim()) {
+      lines.push(
+        `  - 내 역할: ${escapeMarkdown(r.my_role.role.trim())} (${r.my_role.contribution_percent}%)`,
+      );
+    }
+    const key = (r.key_contributions ?? '').trim();
+    if (key !== '') {
+      key.split(/\r?\n/).forEach(line => {
+        const s = line.trim();
+        if (s !== '') lines.push(`  - ${escapeMarkdown(s)}`);
+      });
+    }
+    return lines.join('\n');
   });
-  return `## ${escapeMarkdown(title)}\n\n${items.join('\n')}`;
+  return `## ${escapeMarkdown(title)}\n\n${blocks.join('\n')}`;
 }
 
 function sectionMileage(items: MileageItem[]): string {
@@ -115,14 +138,19 @@ function sectionActivities(activities: ActivityItem[]): string {
   const groups = groupActivitiesByCategory(activities);
   const blocks = groups.map(([cat, groupItems]) => {
     const lines = groupItems.map(a => {
-      const desc = a.description ? ` · ${a.description}` : '';
+      const hostPart = a.host?.trim() ? ` · 주최: ${escapeMarkdown(a.host.trim())}` : '';
+      const rolePart = a.role?.trim() ? ` · 역할: ${escapeMarkdown(a.role.trim())}` : '';
+      const achievementsPart = a.achievements?.trim()
+        ? ` · 성과: ${escapeMarkdown(a.achievements.trim())}`
+        : '';
+      const desc = a.description ? ` · ${escapeMarkdown(a.description)}` : '';
       const urlPart = a.url?.trim()
         ? ` · ${escapeMarkdown(a.url.trim())}`
         : '';
       const tagsPart =
         a.tags?.length ? ` · #${a.tags.map(escapeMarkdown).join(' #')}` : '';
       const period = formatActivityPeriodRange(a.start_date, a.end_date);
-      return `- **${escapeMarkdown(a.title)}** (${escapeMarkdown(period)})${escapeMarkdown(desc)}${urlPart}${tagsPart}`;
+      return `- **${escapeMarkdown(a.title)}** (${escapeMarkdown(period)})${hostPart}${rolePart}${achievementsPart}${desc}${urlPart}${tagsPart}`;
     });
     return `### ${escapeMarkdown(cat)}\n\n${lines.join('\n')}`;
   });

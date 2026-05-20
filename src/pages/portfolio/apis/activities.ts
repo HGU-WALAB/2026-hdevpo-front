@@ -6,6 +6,10 @@ export interface ActivityApiItem {
   id: number;
   title: string;
   description: string;
+  host?: string | null;
+  role?: string | null;
+  achievements?: string | null;
+  achievements_detail?: string | null;
   start_date: string;
   end_date: string;
   /** 사용자 정의 카테고리 문자열 */
@@ -22,6 +26,10 @@ export interface ActivitiesResponse {
 export interface ActivityPostRequest {
   title: string;
   description: string;
+  host?: string;
+  role?: string;
+  achievements?: string;
+  achievements_detail?: string;
   start_date: string;
   end_date: string;
   category: string;
@@ -33,6 +41,10 @@ export interface ActivityPostRequest {
 export interface ActivityPutByIdRequest {
   title: string;
   description: string;
+  host: string;
+  role: string;
+  achievements: string;
+  achievements_detail: string;
   start_date: string;
   end_date: string;
   category: string;
@@ -44,6 +56,10 @@ export interface ActivityPutByIdRequest {
 export interface ActivityPatchByIdRequest {
   title?: string;
   description?: string;
+  host?: string | null;
+  role?: string | null;
+  achievements?: string | null;
+  achievements_detail?: string | null;
   start_date?: string;
   end_date?: string;
   category?: string;
@@ -54,13 +70,17 @@ export interface ActivityPatchByIdRequest {
 /** PATCH /api/portfolio/activities 일괄 수정 요청 한 건 */
 export interface ActivityPatchItem {
   id: number;
-  title: string;
-  description: string;
-  start_date: string;
-  end_date: string;
-  category: string;
-  url?: string;
-  tags?: string[];
+  title?: string;
+  description?: string;
+  host?: string | null;
+  role?: string | null;
+  achievements?: string | null;
+  achievements_detail?: string | null;
+  start_date?: string;
+  end_date?: string;
+  category?: string;
+  url?: string | null;
+  tags?: string[] | null;
 }
 
 /** 활동 목록 조회. `category` 쿼리 생략 시 전체 */

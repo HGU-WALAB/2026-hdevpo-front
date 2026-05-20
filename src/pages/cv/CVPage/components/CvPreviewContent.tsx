@@ -1,29 +1,37 @@
 import { LoadingIcon } from '@/assets';
 import { Button, Flex, Input, Text } from '@/components';
+import { hideScrollbar } from '@/styles/hideScrollbar';
 import { palette } from '@/styles/palette';
 import BusinessIcon from '@mui/icons-material/Business';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import CloseIcon from '@mui/icons-material/Close';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
+import OpenInFullIcon from '@mui/icons-material/OpenInFull';
 import CodeIcon from '@mui/icons-material/Code';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditIcon from '@mui/icons-material/Edit';
 import HtmlIcon from '@mui/icons-material/Html';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
-import { IconButton } from '@mui/material';
+import { Dialog, DialogContent, IconButton } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import { useCallback, useEffect, useMemo, useState, type FunctionComponent, type SVGProps } from 'react';
 import { toast } from 'react-toastify';
 import { openCvShareInNewTab } from '@/constants/routePath';
-import { formatDateOnly } from '@/pages/portfolio/utils/date';
+import { formatDateTime } from '@/pages/portfolio/utils/date';
 import { copyTextToClipboard } from '@/utils/copyTextToClipboard';
-import { getPortfolioCvById, type PortfolioCvDetail } from '../../apis/cv';
+import {
+  CV_COLOR_THEME_SWATCHES,
+  CV_CUSTOMIZE_COLOR_THEME_LABELS,
+  CV_CUSTOMIZE_COLOR_THEME_VALUES,
+  type CvCustomizeColorThemeValue,
+} from '../../constants/cvDesignCustomizeConstants';
+import { getPortfolioCvById, type PortfolioCvDetail, type PortfolioCvDesignPreferences } from '../../apis/cv';
 import usePatchPortfolioCvMutation from '../../hooks/usePatchPortfolioCvMutation';
 import { buildCvPreviewSrcDoc } from '../../utils/buildCvPreviewSrcDoc';
 import { downloadCvHtmlAsA4Pdf } from '../../utils/downloadCvHtmlAsA4Pdf';
 import { sanitizeCvHtml } from '../../utils/sanitizeCvHtml';
 import { CV_PREVIEW_IFRAME_SANDBOX } from '../../constants/cvPreviewIframeSandbox';
-import { CvHtmlPublicSwitchControl } from './cvHtmlPublicUi';
+import { CvHtmlPublicSettingsRow } from './cvHtmlPublicUi';
 
 export type CvPreviewContentLayout = 'modal' | 'panel';
 
@@ -31,6 +39,8 @@ export interface CvPreviewContentProps {
   /** false이면 편집·미리보기 토글 등 일시 상태를 초기화합니다 */
   active: boolean;
   layout?: CvPreviewContentLayout;
+  /** panel 레이아웃(데스크톱 관리 화면)에서는 기본 false */
+  showCloseButton?: boolean;
   onClose: () => void;
   closeAriaLabel?: string;
   data: PortfolioCvDetail | undefined;
@@ -42,6 +52,9 @@ export interface CvPreviewContentProps {
 
 const CopyIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
   <ContentCopyIcon sx={{ fontSize: 18 }} />
+);
+const OpenInFullIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
+  <OpenInFullIcon sx={{ fontSize: 18 }} />
 );
 const CodeIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
   <CodeIcon sx={{ fontSize: 16 }} />
@@ -67,9 +80,47 @@ function notesToPills(notes: string): string[] {
     .filter(Boolean);
 }
 
+function isCvColorThemeKey(s: string): s is CvCustomizeColorThemeValue {
+  return (CV_CUSTOMIZE_COLOR_THEME_VALUES as readonly string[]).includes(s);
+}
+
+/** HTML 생성 시 저장된 design_preferences — 비어 있으면 null */
+function summarizeDesignPreferences(dp: PortfolioCvDesignPreferences | undefined) {
+  if (!dp) return null;
+  const layout = dp.layout?.trim() ?? '';
+  const density = dp.density?.trim() ?? '';
+  const rawTheme = (dp.color_theme ?? '').trim().toLowerCase();
+  const notes = (dp.additional_notes ?? '').trim() ?? '';
+  const themeKey = isCvColorThemeKey(rawTheme) ? rawTheme : null;
+  const themeLabel =
+    themeKey != null
+      ? CV_CUSTOMIZE_COLOR_THEME_LABELS[themeKey]
+      : (dp.color_theme ?? '').trim();
+  if (!layout && !density && !themeLabel && !notes) return null;
+  const sw = themeKey != null ? CV_COLOR_THEME_SWATCHES[themeKey] : CV_COLOR_THEME_SWATCHES.indigo;
+  return { layout, density, themeLabel, notes, accent: sw.primary, soft: sw.soft };
+}
+
+/** 크게 보기 모달: 가로 70vw, 세로 80vh ~ 90vh */
+const CV_EXPAND_MODAL_PAPER_SX = {
+  borderRadius: '0.75rem',
+  border: `1px solid ${palette.grey200}`,
+  boxShadow: '0 4px 24px rgba(83, 127, 241, 0.12)',
+  width: '70vw',
+  maxWidth: '70vw',
+  minHeight: '80vh',
+  maxHeight: '90vh',
+  overflow: 'hidden',
+  display: 'flex',
+  flexDirection: 'column',
+  margin: '1rem',
+  boxSizing: 'border-box',
+} as const;
+
 const CvPreviewContent = ({
   active,
   layout = 'modal',
+  showCloseButton = layout !== 'panel',
   onClose,
   closeAriaLabel = '닫기',
   data,
@@ -79,6 +130,8 @@ const CvPreviewContent = ({
   isDeletePending = false,
 }: CvPreviewContentProps) => {
   const [showHtmlPreview, setShowHtmlPreview] = useState(true);
+  const [expandPromptOpen, setExpandPromptOpen] = useState(false);
+  const [expandHtmlOpen, setExpandHtmlOpen] = useState(false);
   const [pdfDownloading, setPdfDownloading] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editTitle, setEditTitle] = useState('');
@@ -90,6 +143,8 @@ const CvPreviewContent = ({
       setShowHtmlPreview(false);
       setPdfDownloading(false);
       setIsEditing(false);
+      setExpandPromptOpen(false);
+      setExpandHtmlOpen(false);
     }
   }, [active]);
 
@@ -97,6 +152,8 @@ const CvPreviewContent = ({
     setShowHtmlPreview(true);
     setPdfDownloading(false);
     setIsEditing(false);
+    setExpandPromptOpen(false);
+    setExpandHtmlOpen(false);
   }, [data?.id]);
 
   useEffect(() => {
@@ -122,6 +179,10 @@ const CvPreviewContent = ({
   };
 
   const pills = data ? notesToPills(data.additional_notes ?? '') : [];
+  const designPrefsSummary = useMemo(
+    () => (data ? summarizeDesignPreferences(data.design_preferences) : null),
+    [data],
+  );
   const htmlRaw = isEditing ? editHtml : (data?.html_content ?? '');
   const htmlPreviewSrcDoc = useMemo(() => {
     const sanitized = sanitizeCvHtml(htmlRaw);
@@ -245,6 +306,7 @@ const CvPreviewContent = ({
   const subtitlePad = layout === 'panel' ? '1.25rem' : '1.75rem';
 
   return (
+    <>
     <Flex.Column width="100%" style={{ flex: 1, minHeight: 0, minWidth: 0 }}>
       <S.HeaderBar direction="column" gap="0.5rem" $layout={layout}>
         <Flex.Row align="flex-start" justify="space-between" gap="0.75rem" wrap="wrap">
@@ -295,10 +357,14 @@ const CvPreviewContent = ({
               <BusinessIcon sx={{ fontSize: 22, color: palette.blue500, flexShrink: 0 }} />
               <Text
                 as="h2"
-                margin="0"
-                bold
-                color={palette.nearBlack}
-                style={{ fontSize: '1.0625rem', lineHeight: 1.35, wordBreak: 'break-word' }}
+                style={{
+                  margin: 0,
+                  color: palette.nearBlack,
+                  fontSize: '1.125rem',
+                  fontWeight: 700,
+                  lineHeight: 1.35,
+                  wordBreak: 'break-word',
+                }}
               >
                 {data ? `${data.title} — ${data.target_position}` : '포트폴리오 미리보기'}
               </Text>
@@ -329,19 +395,6 @@ const CvPreviewContent = ({
                     onClick={handleConfirmEdit}
                     disabled={patchPending}
                   />
-                </>
-              ) : (
-                <>
-                  <Button
-                    label="수정"
-                    variant="outlined"
-                    color="blue"
-                    size="medium"
-                    icon={EditIconWrap}
-                    iconPosition="start"
-                    onClick={startEdit}
-                    disabled={actionDisabled}
-                  />
                   {onRequestDelete ? (
                     <Button
                       label="삭제"
@@ -355,23 +408,36 @@ const CvPreviewContent = ({
                     />
                   ) : null}
                 </>
+              ) : (
+                <Button
+                  label="수정"
+                  variant="outlined"
+                  color="blue"
+                  size="medium"
+                  icon={EditIconWrap}
+                  iconPosition="start"
+                  onClick={startEdit}
+                  disabled={actionDisabled}
+                />
               )
             ) : null}
-            <IconButton
-              type="button"
-              onClick={onClose}
-              aria-label={closeAriaLabel}
-              size="small"
-              sx={{
-                color: palette.grey600,
-                flexShrink: 0,
-                backgroundColor: palette.white,
-                border: `1px solid ${palette.grey200}`,
-                '&:hover': { backgroundColor: palette.grey100 },
-              }}
-            >
-              <CloseIcon />
-            </IconButton>
+            {showCloseButton ? (
+              <IconButton
+                type="button"
+                onClick={onClose}
+                aria-label={closeAriaLabel}
+                size="small"
+                sx={{
+                  color: palette.grey600,
+                  flexShrink: 0,
+                  backgroundColor: palette.white,
+                  border: `1px solid ${palette.grey200}`,
+                  '&:hover': { backgroundColor: palette.grey100 },
+                }}
+              >
+                <CloseIcon />
+              </IconButton>
+            ) : null}
           </Flex.Row>
         </Flex.Row>
 
@@ -379,10 +445,10 @@ const CvPreviewContent = ({
           <Flex.Row align="center" gap="0.35rem" wrap="wrap">
             <CalendarTodayIcon sx={{ fontSize: 18, color: palette.grey500 }} />
             <Text margin="0" color={palette.grey600} style={{ fontSize: '0.875rem' }}>
-              {formatDateOnly(data.updated_at)}
+              {formatDateTime(data.updated_at)}
             </Text>
             <Text margin="0" color={palette.grey400} style={{ fontSize: '0.75rem' }}>
-              (생성 {formatDateOnly(data.created_at)})
+              (생성 {formatDateTime(data.created_at)})
             </Text>
           </Flex.Row>
         ) : null}
@@ -418,34 +484,29 @@ const CvPreviewContent = ({
         {!isPending && data ? (
           <>
             <S.Section direction="column" gap="0.65rem">
-              <S.SectionTitle>HTML 공개 설정</S.SectionTitle>
               {!isEditing ? (
+                <CvHtmlPublicSettingsRow
+                  title="HTML 공개 설정"
+                  guide="공개 시 링크만으로 로그인 없이 미리보기가 가능합니다."
+                  isPublic={Boolean(data.is_public)}
+                  onPublicChange={handleTogglePublic}
+                  disabled={publicToggleDisabled}
+                  size="small"
+                  appearance="filled"
+                  htmlPreviewSrcDoc={htmlPreviewSrcDoc}
+                  linkButton={{
+                    label: '링크 바로가기',
+                    onClick: handleOpenPublicShare,
+                    disabled: publicToggleDisabled,
+                  }}
+                />
+              ) : (
                 <>
-                  <CvHtmlPublicSwitchControl
-                    isPublic={Boolean(data.is_public)}
-                    onPublicChange={handleTogglePublic}
-                    disabled={publicToggleDisabled}
-                    size="small"
-                    appearance="filled"
-                    linkButton={{
-                      label: '링크 바로가기',
-                      onClick: handleOpenPublicShare,
-                      disabled: publicToggleDisabled,
-                    }}
-                  />
-                  <Text
-                    margin="0"
-                    color={palette.grey600}
-                    style={{ fontSize: '0.75rem', lineHeight: 1.55 }}
-                  >
-                    스위치로 HTML 공개 여부를 바꿀 수 있습니다. 공개 시 링크만으로 로그인 없이
-                    미리보기가 가능합니다.
+                  <S.SectionTitle>HTML 공개 설정</S.SectionTitle>
+                  <Text margin="0" color={palette.grey500} style={{ fontSize: '0.8125rem' }}>
+                    HTML 본문을 수정하는 동안에는 공개 설정을 바꿀 수 없습니다.
                   </Text>
                 </>
-              ) : (
-                <Text margin="0" color={palette.grey500} style={{ fontSize: '0.8125rem' }}>
-                  HTML 본문을 수정하는 동안에는 공개 설정을 바꿀 수 없습니다.
-                </Text>
               )}
             </S.Section>
 
@@ -473,50 +534,151 @@ const CvPreviewContent = ({
             </S.Section>
 
             <S.Section direction="column" gap="0.5rem">
-              <Flex.Row align="center" justify="space-between" gap="0.75rem" wrap="wrap">
+              <Flex.Row
+                align="center"
+                justify="space-between"
+                gap="0.75rem"
+                wrap="nowrap"
+                width="100%"
+                style={{ minWidth: 0 }}
+              >
                 <S.SectionTitle>프롬프트</S.SectionTitle>
-                <Button
-                  label="복사하기"
-                  variant="outlined"
-                  color="blue"
-                  size="small"
-                  icon={CopyIconWrap}
-                  iconPosition="start"
-                  onClick={handleCopyPrompt}
-                  disabled={!data.prompt?.trim()}
-                />
+                {!isEditing ? (
+                  <S.InlineActionsScroll>
+                    <Flex.Row
+                      align="center"
+                      gap="0.5rem"
+                      wrap="nowrap"
+                      style={{ flexShrink: 0, width: 'max-content' }}
+                    >
+                      <Button
+                        label="크게 보기"
+                        variant="outlined"
+                        color="blue"
+                        size="small"
+                        icon={OpenInFullIconWrap}
+                        iconPosition="start"
+                        onClick={() => setExpandPromptOpen(true)}
+                        disabled={!data.prompt?.trim()}
+                      />
+                      <Button
+                        label="복사하기"
+                        variant="outlined"
+                        color="blue"
+                        size="small"
+                        icon={CopyIconWrap}
+                        iconPosition="start"
+                        onClick={handleCopyPrompt}
+                        disabled={!data.prompt?.trim()}
+                      />
+                    </Flex.Row>
+                  </S.InlineActionsScroll>
+                ) : null}
               </Flex.Row>
+              {designPrefsSummary ? (
+                <Flex.Column gap="0.35rem" width="100%" style={{ minWidth: 0 }}>
+                  <Text
+                    margin="0"
+                    color={palette.grey600}
+                    style={{
+                      fontSize: '0.6875rem',
+                      fontWeight: 600,
+                      letterSpacing: '0.02em',
+                    }}
+                  >
+                    AI 맞춤 디자인 (생성 시 설정)
+                  </Text>
+                  <S.DesignPrefsStrip $soft={designPrefsSummary.soft}>
+                    <Flex.Row gap="0.35rem" wrap="wrap" align="center" width="100%" style={{ minWidth: 0 }}>
+                      {designPrefsSummary.layout ? (
+                        <S.DesignPrefTag
+                          $accent={designPrefsSummary.accent}
+                          $soft={designPrefsSummary.soft}
+                          title="레이아웃"
+                        >
+                          레이아웃 · {designPrefsSummary.layout}
+                        </S.DesignPrefTag>
+                      ) : null}
+                      {designPrefsSummary.themeLabel ? (
+                        <S.DesignPrefTag
+                          $accent={designPrefsSummary.accent}
+                          $soft={designPrefsSummary.soft}
+                          title="색상 테마"
+                        >
+                          색상 · {designPrefsSummary.themeLabel}
+                        </S.DesignPrefTag>
+                      ) : null}
+                      {designPrefsSummary.density ? (
+                        <S.DesignPrefTag
+                          $accent={designPrefsSummary.accent}
+                          $soft={designPrefsSummary.soft}
+                          title="정보량"
+                        >
+                          정보량 · {designPrefsSummary.density}
+                        </S.DesignPrefTag>
+                      ) : null}
+                    </Flex.Row>
+                    {designPrefsSummary.notes ? (
+                      <S.DesignPrefNotes>{designPrefsSummary.notes}</S.DesignPrefNotes>
+                    ) : null}
+                  </S.DesignPrefsStrip>
+                </Flex.Column>
+              ) : null}
               <S.PreWrapScrollable $layout={layout}>{data.prompt || '—'}</S.PreWrapScrollable>
             </S.Section>
 
             <S.Section direction="column" gap="0.65rem">
-              <Flex.Row align="center" justify="space-between" gap="0.75rem" wrap="wrap" width="100%">
+              <Flex.Row
+                align="center"
+                justify="space-between"
+                gap="0.75rem"
+                wrap="nowrap"
+                width="100%"
+                style={{ minWidth: 0 }}
+              >
                 <S.SectionTitle>AI 생성 결과 (HTML)</S.SectionTitle>
                 {!isEditing ? (
-                  <Flex.Row align="center" gap="0.5rem" wrap="wrap" style={{ flexShrink: 0 }}>
-                    <Button
-                      label="PDF 다운로드"
-                      variant="outlined"
-                      color="blue"
-                      size="small"
-                      icon={PictureAsPdfIconWrap}
-                      iconPosition="start"
-                      onClick={handleDownloadPdf}
-                      disabled={
-                        !htmlRaw.trim() || pdfDownloading || !data
-                      }
-                    />
-                    <Button
-                      label={showHtmlPreview ? '소스 보기' : 'HTML 미리보기'}
-                      variant="outlined"
-                      color="blue"
-                      size="small"
-                      icon={showHtmlPreview ? CodeIconWrap : HtmlIconWrap}
-                      iconPosition="start"
-                      onClick={() => setShowHtmlPreview(v => !v)}
-                      disabled={!htmlRaw.trim() || pdfDownloading}
-                    />
-                  </Flex.Row>
+                  <S.InlineActionsScroll>
+                    <Flex.Row
+                      align="center"
+                      gap="0.5rem"
+                      wrap="nowrap"
+                      style={{ flexShrink: 0, width: 'max-content' }}
+                    >
+                      <Button
+                        label="크게 보기"
+                        variant="outlined"
+                        color="blue"
+                        size="small"
+                        icon={OpenInFullIconWrap}
+                        iconPosition="start"
+                        onClick={() => setExpandHtmlOpen(true)}
+                        disabled={!htmlRaw.trim() || pdfDownloading}
+                      />
+                      <Button
+                        label="PDF 다운로드"
+                        variant="outlined"
+                        color="blue"
+                        size="small"
+                        icon={PictureAsPdfIconWrap}
+                        iconPosition="start"
+                        onClick={handleDownloadPdf}
+                        disabled={
+                          !htmlRaw.trim() || pdfDownloading || !data
+                        }
+                      />
+                      <Button
+                        label={showHtmlPreview ? '소스 보기' : 'HTML 미리보기'}
+                        variant="outlined"
+                        color="blue"
+                        size="small"
+                        icon={showHtmlPreview ? CodeIconWrap : HtmlIconWrap}
+                        iconPosition="start"
+                        onClick={() => setShowHtmlPreview(v => !v)}
+                        disabled={!htmlRaw.trim() || pdfDownloading}
+                      />
+                    </Flex.Row>
+                  </S.InlineActionsScroll>
                 ) : null}
               </Flex.Row>
               <Flex.Column gap="0.5rem" width="100%" style={{ minWidth: 0 }}>
@@ -547,6 +709,7 @@ const CvPreviewContent = ({
                         borderColor: palette.blue500,
                       },
                       '& textarea': {
+                        ...hideScrollbar,
                         fontFamily: 'ui-monospace, monospace',
                         fontSize: '0.8125rem',
                         lineHeight: 1.5,
@@ -574,6 +737,124 @@ const CvPreviewContent = ({
         ) : null}
       </S.ScrollBody>
     </Flex.Column>
+
+    <Dialog
+      open={expandPromptOpen}
+      onClose={() => setExpandPromptOpen(false)}
+      maxWidth={false}
+      fullWidth
+      aria-labelledby="cv-expand-prompt-title"
+      PaperProps={{
+        sx: CV_EXPAND_MODAL_PAPER_SX,
+      }}
+    >
+      <DialogContent
+        sx={{
+          p: '1rem 1.25rem 1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+          overflow: 'hidden',
+          flex: '1 1 auto',
+          minHeight: 0,
+        }}
+      >
+        <Flex.Row align="center" justify="space-between" gap="0.75rem" wrap="wrap" width="100%">
+          <Text
+            id="cv-expand-prompt-title"
+            as="h3"
+            margin="0"
+            bold
+            color={palette.nearBlack}
+            style={{ fontSize: '1rem', lineHeight: 1.4 }}
+          >
+            프롬프트
+          </Text>
+          <IconButton
+            type="button"
+            onClick={() => setExpandPromptOpen(false)}
+            aria-label="닫기"
+            size="small"
+            sx={{
+              color: palette.grey600,
+              flexShrink: 0,
+              backgroundColor: palette.white,
+              border: `1px solid ${palette.grey200}`,
+              '&:hover': { backgroundColor: palette.grey100 },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Flex.Row>
+        <S.ModalPreScroll>{data?.prompt?.trim() ? data.prompt : '—'}</S.ModalPreScroll>
+      </DialogContent>
+    </Dialog>
+
+    <Dialog
+      open={expandHtmlOpen}
+      onClose={() => setExpandHtmlOpen(false)}
+      maxWidth={false}
+      fullWidth
+      aria-labelledby="cv-expand-html-title"
+      PaperProps={{
+        sx: CV_EXPAND_MODAL_PAPER_SX,
+      }}
+    >
+      <DialogContent
+        sx={{
+          p: '1rem 1.25rem 1.25rem',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '0.75rem',
+          overflow: 'hidden',
+          flex: '1 1 auto',
+          minHeight: 0,
+        }}
+      >
+        <Flex.Row align="center" justify="space-between" gap="0.75rem" wrap="wrap" width="100%">
+          <Text
+            id="cv-expand-html-title"
+            as="h3"
+            margin="0"
+            bold
+            color={palette.nearBlack}
+            style={{ fontSize: '1rem', lineHeight: 1.4 }}
+          >
+            {showHtmlPreview ? 'AI 생성 결과 (HTML 미리보기)' : 'AI 생성 결과 (소스)'}
+          </Text>
+          <IconButton
+            type="button"
+            onClick={() => setExpandHtmlOpen(false)}
+            aria-label="닫기"
+            size="small"
+            sx={{
+              color: palette.grey600,
+              flexShrink: 0,
+              backgroundColor: palette.white,
+              border: `1px solid ${palette.grey200}`,
+              '&:hover': { backgroundColor: palette.grey100 },
+            }}
+          >
+            <CloseIcon />
+          </IconButton>
+        </Flex.Row>
+        {showHtmlPreview ? (
+          <S.ModalIframeShell>
+            <iframe
+              title="HTML 크게 보기"
+              srcDoc={htmlPreviewSrcDoc}
+              sandbox={CV_PREVIEW_IFRAME_SANDBOX}
+              referrerPolicy="no-referrer"
+            />
+          </S.ModalIframeShell>
+        ) : (
+          <S.ModalPreScroll>
+            {htmlRaw.trim() ? htmlRaw : '—'}
+          </S.ModalPreScroll>
+        )}
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
 
@@ -602,6 +883,11 @@ const S = {
       if ($loading) return '0';
       return $layout === 'panel' ? '1rem 1.25rem 1.25rem' : '1.25rem 2.75rem 1.5rem';
     }};
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
   `,
   LoadingArea: styled(Flex.Column, {
     shouldForwardProp: p => p !== '$layout',
@@ -629,6 +915,21 @@ const S = {
     font-size: 0.8125rem;
     font-weight: 700;
     color: ${palette.grey600};
+    flex-shrink: 0;
+  `,
+  InlineActionsScroll: styled('div')`
+    display: flex;
+    flex: 1 1 auto;
+    min-width: 0;
+    max-width: 100%;
+    overflow-x: auto;
+    overflow-y: hidden;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
   `,
   BodyBox: styled('div')`
     margin: 0;
@@ -659,6 +960,51 @@ const S = {
     border-radius: 0.5rem;
     border: 1px solid ${palette.grey200};
     font-family: ui-monospace, monospace;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  `,
+  ModalPreScroll: styled('pre')`
+    margin: 0;
+    flex: 1 1 auto;
+    min-height: 0;
+    overflow: auto;
+    padding: 0.85rem 1rem;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    white-space: pre-wrap;
+    word-break: break-word;
+    color: ${palette.nearBlack};
+    background-color: ${palette.grey100};
+    border-radius: 0.5rem;
+    border: 1px solid ${palette.grey200};
+    font-family: ui-monospace, monospace;
+    box-sizing: border-box;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  `,
+  ModalIframeShell: styled('div')`
+    flex: 1 1 auto;
+    min-height: 0;
+    border-radius: 0.5rem;
+    border: 1px solid ${palette.grey200};
+    overflow: hidden;
+    background-color: ${palette.white};
+    display: flex;
+    flex-direction: column;
+    box-sizing: border-box;
+    & > iframe {
+      display: block;
+      flex: 1 1 auto;
+      width: 100%;
+      min-height: 0;
+      border: none;
+    }
   `,
   HtmlPreviewShell: styled('div', {
     shouldForwardProp: p => p !== '$layout',
@@ -688,5 +1034,50 @@ const S = {
     background-color: ${palette.blue300};
     border: 1px solid ${palette.grey200};
     border-radius: 2rem;
+  `,
+  DesignPrefsStrip: styled('div', {
+    shouldForwardProp: p => p !== '$soft',
+  })<{ $soft: string }>`
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    padding: 0.65rem 0.8rem 0.7rem;
+    border-radius: 0.5rem;
+    border: 1px solid ${palette.grey200};
+    background: ${({ $soft }) =>
+      `linear-gradient(120deg, ${$soft}4d 0%, ${palette.white} 55%, ${palette.grey100} 100%)`};
+  `,
+  DesignPrefTag: styled('span', {
+    shouldForwardProp: p => p !== '$accent' && p !== '$soft',
+  })<{ $accent: string; $soft: string }>`
+    display: inline-flex;
+    align-items: center;
+    max-width: 100%;
+    box-sizing: border-box;
+    padding: 0.22rem 0.55rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1.35;
+    letter-spacing: -0.01em;
+    color: ${({ $accent }) => $accent};
+    background-color: ${({ $soft }) => `${$soft}40`};
+    border: 1px solid ${({ $accent }) => `${$accent}55`};
+    border-radius: 999px;
+    word-break: break-word;
+  `,
+  DesignPrefNotes: styled('div')`
+    margin: 0;
+    padding: 0.5rem 0.6rem;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    color: ${palette.nearBlack};
+    background-color: ${palette.white};
+    border-radius: 0.4rem;
+    border: 1px solid ${palette.grey200};
+    white-space: pre-wrap;
+    word-break: break-word;
   `,
 };

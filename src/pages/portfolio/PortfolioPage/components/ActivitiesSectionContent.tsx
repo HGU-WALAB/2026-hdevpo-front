@@ -1,8 +1,11 @@
-import { Dropdown, Flex, Input, Text, Title } from '@/components';
+import { Button, Dropdown, Flex, Input, Text, Title } from '@/components';
 import { palette } from '@/styles/palette';
 import CloseIcon from '@mui/icons-material/Close';
+import DateRangeOutlinedIcon from '@mui/icons-material/DateRangeOutlined';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditIcon from '@mui/icons-material/Edit';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import {
   forwardRef,
   useCallback,
@@ -10,7 +13,7 @@ import {
   useMemo,
   useState,
 } from 'react';
-import { styled, useTheme } from '@mui/material';
+import { Dialog, DialogContent, styled, useTheme } from '@mui/material';
 
 import { INPUT_MAX_LENGTH } from '../../constants/inputLimits';
 import { groupActivitiesByCategory } from '../../utils/activityGrouping';
@@ -22,7 +25,7 @@ import type { ActivityItem } from '../../types/portfolioItems';
 
 type ActivityEditDraft = Partial<ActivityItem> & { tagCompose?: string };
 
-const ACTIVITY_CATEGORY_PRESETS = ['동아리', '자격증', '수상', '봉사'] as const;
+const ACTIVITY_CATEGORY_PRESETS = ['동아리', '자격증', '수상', '봉사', '공모전', '해커톤' , '어학연수', '인턴/실무', '오픈소스', '대외활동', '기타'] as const;
 
 function dedupeActivityTags(tags: string[] | undefined): string[] {
   if (!tags?.length) return [];
@@ -39,6 +42,23 @@ function dedupeActivityTags(tags: string[] | undefined): string[] {
 }
 
 /** 저장 직전: 칩 목록 + 입력 중인 텍스트까지 합쳐 태그 배열로 만듦 */
+function hasOptionalActivityFields(d: Partial<ActivityItem>): boolean {
+  return Boolean(
+    (d.description ?? '').trim() ||
+    (d.achievements_detail ?? '').trim() ||
+    (d.url ?? '').trim(),
+  );
+}
+
+function ActivityDetailRow({ label, value }: { label: string; value: string }) {
+  return (
+    <S.DetailRow>
+      <S.DetailLabel>{label}</S.DetailLabel>
+      <S.DetailValue>{value}</S.DetailValue>
+    </S.DetailRow>
+  );
+}
+
 function flushActivityTagsFromDraft(d: ActivityEditDraft): string[] {
   const base = dedupeActivityTags(d.tags);
   const piece = (d.tagCompose ?? '').trim();
@@ -72,6 +92,11 @@ const ActivitiesSectionContent = forwardRef<
   } = usePortfolioContext();
   const [editingId, setEditingId] = useState<number | null>(null);
   const [editDraft, setEditDraft] = useState<ActivityEditDraft>({});
+  const [activityDeleteConfirmId, setActivityDeleteConfirmId] = useState<
+    number | null
+  >(null);
+  const [activityDeletePending, setActivityDeletePending] = useState(false);
+  const [showMoreFields, setShowMoreFields] = useState(false);
 
   const savedActivities = useMemo(
     () => activities.filter(a => a.id >= 0),
@@ -95,12 +120,17 @@ const ActivitiesSectionContent = forwardRef<
         tags: dedupeActivityTags(existingDraft.tags),
         tagCompose: '',
       });
+      setShowMoreFields(hasOptionalActivityFields(existingDraft));
       return;
     }
     const newItem: ActivityItem = {
       id: activitiesNextId,
       title: '새 활동',
       description: '',
+      host: '',
+      role: '',
+      achievements: '',
+      achievements_detail: '',
       start_date: new Date().toISOString().slice(0, 10),
       end_date: new Date().toISOString().slice(0, 10),
       category: '기타',
@@ -111,6 +141,7 @@ const ActivitiesSectionContent = forwardRef<
     setActivitiesNextId(prev => prev - 1);
     setEditingId(newItem.id);
     setEditDraft({ ...newItem, tags: [], tagCompose: '' });
+    setShowMoreFields(false);
   }, [activities, activitiesNextId, setActivities, setActivitiesNextId]);
 
   const handleStartEdit = useCallback(
@@ -122,6 +153,7 @@ const ActivitiesSectionContent = forwardRef<
         tags: dedupeActivityTags(item.tags),
         tagCompose: '',
       });
+      setShowMoreFields(hasOptionalActivityFields(item));
     },
     [setActivities],
   );
@@ -137,6 +169,10 @@ const ActivitiesSectionContent = forwardRef<
         ...item,
         title: editDraft.title ?? item.title,
         description: editDraft.description ?? item.description,
+        host: (editDraft.host ?? item.host ?? '').trim(),
+        role: (editDraft.role ?? item.role ?? '').trim(),
+        achievements: (editDraft.achievements ?? item.achievements ?? '').trim(),
+        achievements_detail: (editDraft.achievements_detail ?? item.achievements_detail ?? '').trim(),
         start_date: editDraft.start_date ?? item.start_date,
         end_date: editDraft.end_date ?? item.end_date,
         category: categoryNorm,
@@ -159,6 +195,10 @@ const ActivitiesSectionContent = forwardRef<
       ...item,
       title: editDraft.title ?? item.title,
       description: editDraft.description ?? item.description,
+      host: (editDraft.host ?? item.host ?? '').trim(),
+      role: (editDraft.role ?? item.role ?? '').trim(),
+      achievements: (editDraft.achievements ?? item.achievements ?? '').trim(),
+      achievements_detail: (editDraft.achievements_detail ?? item.achievements_detail ?? '').trim(),
       start_date: editDraft.start_date ?? item.start_date,
       end_date: editDraft.end_date ?? item.end_date,
       category: categoryNorm,
@@ -180,6 +220,7 @@ const ActivitiesSectionContent = forwardRef<
     }
     setEditingId(null);
     setEditDraft({});
+    setShowMoreFields(false);
   }, [editingId, setActivities]);
 
   const handleDelete = useCallback(
@@ -193,6 +234,25 @@ const ActivitiesSectionContent = forwardRef<
     [editingId, deleteActivity],
   );
 
+  const pendingDeleteActivity = useMemo(
+    () =>
+      activityDeleteConfirmId == null
+        ? null
+        : activities.find(a => a.id === activityDeleteConfirmId) ?? null,
+    [activities, activityDeleteConfirmId],
+  );
+
+  const confirmActivityDelete = useCallback(async () => {
+    if (activityDeleteConfirmId == null) return;
+    setActivityDeletePending(true);
+    try {
+      await handleDelete(activityDeleteConfirmId);
+      setActivityDeleteConfirmId(null);
+    } finally {
+      setActivityDeletePending(false);
+    }
+  }, [activityDeleteConfirmId, handleDelete]);
+
   useImperativeHandle(
     ref,
     () => ({
@@ -202,6 +262,92 @@ const ActivitiesSectionContent = forwardRef<
     }),
     [readOnly, handleAdd],
   );
+
+  const renderActivityView = (item: ActivityItem) => {
+    const period = formatActivityPeriodRange(item.start_date, item.end_date);
+    const tags = dedupeActivityTags(item.tags);
+    const hasDetailPanel = Boolean(
+      item.host?.trim() || item.role?.trim() || item.achievements?.trim(),
+    );
+    const showEmptyHint =
+      !item.description?.trim() &&
+      !hasDetailPanel &&
+      !item.url?.trim();
+
+    return (
+      <>
+        <S.CardHeader>
+          <Flex.Column gap="0.4rem" style={{ flex: 1, minWidth: 0 }}>
+            <S.TitlePeriodRow align="center" gap="0.5rem" wrap="wrap">
+              <S.ActivityTitle>{item.title}</S.ActivityTitle>
+              <S.PeriodRow>
+                <DateRangeOutlinedIcon sx={{ fontSize: 14, flexShrink: 0 }} aria-hidden />
+                <span>{period}</span>
+              </S.PeriodRow>
+            </S.TitlePeriodRow>
+            {tags.length > 0 ? (
+              <Flex.Row gap="0.375rem" wrap="wrap" style={{ width: '100%' }}>
+                {tags.map(tag => (
+                  <S.TagChip key={`${item.id}-${tag}`}>{tag}</S.TagChip>
+                ))}
+              </Flex.Row>
+            ) : null}
+          </Flex.Column>
+          {!readOnly ? (
+            <Flex.Row gap="0.25rem" align="center" style={{ flexShrink: 0 }}>
+              <S.EditButton
+                type="button"
+                onClick={() => handleStartEdit(item)}
+                aria-label="수정"
+              >
+                <EditIcon sx={{ fontSize: 16 }} />
+              </S.EditButton>
+              <S.DeleteButton
+                type="button"
+                onClick={() => setActivityDeleteConfirmId(item.id)}
+                aria-label="삭제"
+              >
+                <DeleteOutlineIcon sx={{ fontSize: 18 }} />
+              </S.DeleteButton>
+            </Flex.Row>
+          ) : null}
+        </S.CardHeader>
+
+        {hasDetailPanel ? (
+          <S.DetailPanel>
+            {item.host?.trim() ? (
+              <ActivityDetailRow label="주최" value={item.host.trim()} />
+            ) : null}
+            {item.role?.trim() ? (
+              <ActivityDetailRow label="역할" value={item.role.trim()} />
+            ) : null}
+            {item.achievements?.trim() ? (
+              <ActivityDetailRow label="성과" value={item.achievements.trim()} />
+            ) : null}
+          </S.DetailPanel>
+        ) : null}
+
+        {item.description?.trim() ? (
+          <S.BodyText>{item.description.trim()}</S.BodyText>
+        ) : showEmptyHint ? (
+          <S.EmptyHint>
+            추가 설명을 입력하면 더 나은 프롬프트 결과를 얻을 수 있습니다.
+          </S.EmptyHint>
+        ) : null}
+
+        {item.url?.trim() ? (
+          <S.UrlRow
+            href={item.url.trim()}
+            target="_blank"
+            rel="noopener noreferrer"
+          >
+            <OpenInNewIcon sx={{ fontSize: 16, flexShrink: 0 }} aria-hidden />
+            <span>{item.url.trim()}</span>
+          </S.UrlRow>
+        ) : null}
+      </>
+    );
+  };
 
   const renderActivityEditorForm = () => (
     <Flex.Column gap="0.75rem" style={{ width: '100%', minWidth: 0 }}>
@@ -328,30 +474,73 @@ const ActivitiesSectionContent = forwardRef<
               </Flex.Row>
             </Flex.Column>
           </Flex.Row>
-          <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
-            <S.FieldLabel>제목</S.FieldLabel>
-            <Input
-              value={editDraft.title ?? ''}
-              onChange={e =>
-                setEditDraft(prev => ({
-                  ...prev,
-                  title: e.target.value,
-                }))
-              }
-              placeholder="활동 제목"
-              inputProps={{
-                maxLength: INPUT_MAX_LENGTH.ACTIVITY_TITLE,
-                'aria-label': '제목',
+          <Flex.Row
+            align="flex-end"
+            gap="0.75rem"
+            wrap="wrap"
+            style={{ width: '100%' }}
+          >
+            <Flex.Column
+              gap="0.25rem"
+              style={{
+                flex: '4 1 0',
+                minWidth: 'min(100%, 10rem)',
               }}
-              size="small"
-              style={{ width: '100%' }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: theme.palette.variant.default,
-                },
+            >
+              <S.FieldLabel>주최</S.FieldLabel>
+              <Input
+                value={editDraft.host ?? ''}
+                onChange={e =>
+                  setEditDraft(prev => ({
+                    ...prev,
+                    host: e.target.value,
+                  }))
+                }
+                placeholder="주최 기관·단체명"
+                inputProps={{
+                  maxLength: INPUT_MAX_LENGTH.ACTIVITY_HOST,
+                  'aria-label': '주최',
+                }}
+                size="small"
+                style={{ width: '100%' }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: theme.palette.variant.default,
+                  },
+                }}
+              />
+            </Flex.Column>
+            <Flex.Column
+              gap="0.25rem"
+              style={{
+                flex: '6 1 0',
+                minWidth: 'min(100%, 12rem)',
               }}
-            />
-          </Flex.Column>
+            >
+              <S.FieldLabel>제목</S.FieldLabel>
+              <Input
+                value={editDraft.title ?? ''}
+                onChange={e =>
+                  setEditDraft(prev => ({
+                    ...prev,
+                    title: e.target.value,
+                  }))
+                }
+                placeholder="활동 제목"
+                inputProps={{
+                  maxLength: INPUT_MAX_LENGTH.ACTIVITY_TITLE,
+                  'aria-label': '제목',
+                }}
+                size="small"
+                style={{ width: '100%' }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: theme.palette.variant.default,
+                  },
+                }}
+              />
+            </Flex.Column>
+          </Flex.Row>
           <Flex.Column
             gap="0.25rem"
             style={{
@@ -442,68 +631,219 @@ const ActivitiesSectionContent = forwardRef<
               </S.TagEditorShell>
             </Flex.Column>
           </Flex.Column>
-          <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
-            <S.FieldLabel>상세 설명</S.FieldLabel>
-            <Input
-              multiline
-              value={editDraft.description ?? ''}
-              onChange={e =>
-                setEditDraft(prev => ({
-                  ...prev,
-                  description: e.target.value,
-                }))
-              }
-              placeholder="활동의 상세 내용을 입력해 주세요."
-              rows={3}
-              inputProps={{
-                maxLength: INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION,
-                'aria-label': '상세 설명',
+          <Flex.Row
+            align="flex-start"
+            gap="0.75rem"
+            wrap="wrap"
+            style={{ width: '100%' }}
+          >
+            <Flex.Column
+              gap="0.25rem"
+              style={{
+                flex: '5 1 0',
+                minWidth: 'min(100%, 12rem)',
               }}
-              size="small"
-              fullWidth
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: theme.palette.variant.default,
-                },
-                '& textarea': {
-                  resize: 'vertical',
-                },
-              }}
-            />
-            <S.CharCount
-              warn={
-                (editDraft.description?.length ?? 0) >=
-                INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION - 20
-              }
             >
-              {editDraft.description?.length ?? 0} /{' '}
-              {INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION}
-            </S.CharCount>
-          </Flex.Column>
-          <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
-            <S.FieldLabel>관련 URL</S.FieldLabel>
-            <Input
-              value={editDraft.url ?? ''}
-              onChange={e =>
-                setEditDraft(prev => ({
-                  ...prev,
-                  url: e.target.value,
-                }))
-              }
-              placeholder="https://…"
-              inputProps={{
-                maxLength: INPUT_MAX_LENGTH.ACTIVITY_URL,
-                'aria-label': '활동 관련 URL',
+              <S.FieldLabel>역할</S.FieldLabel>
+              <Input
+                multiline
+                value={editDraft.role ?? ''}
+                onChange={e =>
+                  setEditDraft(prev => ({
+                    ...prev,
+                    role: e.target.value,
+                  }))
+                }
+                placeholder="담당 역할·기여 내용"
+                rows={2}
+                inputProps={{
+                  maxLength: INPUT_MAX_LENGTH.ACTIVITY_ROLE,
+                  'aria-label': '역할',
+                }}
+                size="small"
+                fullWidth
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: theme.palette.variant.default,
+                  },
+                  '& textarea': {
+                    resize: 'vertical',
+                  },
+                }}
+              />
+              <S.CharCount
+                warn={
+                  (editDraft.role?.length ?? 0) >= INPUT_MAX_LENGTH.ACTIVITY_ROLE - 40
+                }
+              >
+                {editDraft.role?.length ?? 0} / {INPUT_MAX_LENGTH.ACTIVITY_ROLE}
+              </S.CharCount>
+            </Flex.Column>
+            <Flex.Column
+              gap="0.25rem"
+              style={{
+                flex: '5 1 0',
+                minWidth: 'min(100%, 12rem)',
               }}
-              size="small"
-              style={{ width: '100%' }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: theme.palette.variant.default,
-                },
-              }}
-            />
-          </Flex.Column>
+            >
+              <S.FieldLabel>성과 및 결과</S.FieldLabel>
+              <Input
+                multiline
+                value={editDraft.achievements ?? ''}
+                onChange={e =>
+                  setEditDraft(prev => ({
+                    ...prev,
+                    achievements: e.target.value,
+                  }))
+                }
+                placeholder="수상, 성과, 결과 요약"
+                rows={2}
+                inputProps={{
+                  maxLength: INPUT_MAX_LENGTH.ACTIVITY_ACHIEVEMENTS,
+                  'aria-label': '성과 및 결과',
+                }}
+                size="small"
+                fullWidth
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: theme.palette.variant.default,
+                  },
+                  '& textarea': {
+                    resize: 'vertical',
+                  },
+                }}
+              />
+              <S.CharCount
+                warn={
+                  (editDraft.achievements?.length ?? 0) >=
+                  INPUT_MAX_LENGTH.ACTIVITY_ACHIEVEMENTS - 80
+                }
+              >
+                {editDraft.achievements?.length ?? 0} /{' '}
+                {INPUT_MAX_LENGTH.ACTIVITY_ACHIEVEMENTS}
+              </S.CharCount>
+            </Flex.Column>
+          </Flex.Row>
+          <S.MoreToggleRow>
+            <S.MoreToggleButton
+              type="button"
+              onClick={() => setShowMoreFields(prev => !prev)}
+              aria-expanded={showMoreFields}
+            >
+              <ExpandMoreIcon
+                sx={{
+                  fontSize: 20,
+                  transform: showMoreFields ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s ease',
+                }}
+              />
+              {showMoreFields ? '추가 항목 접기' : '추가 항목 더보기'}
+            </S.MoreToggleButton>
+          </S.MoreToggleRow>
+          {showMoreFields ? (
+            <Flex.Column gap="0.75rem" style={{ width: '100%' }}>
+              <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
+                <S.FieldLabel>활동 상세 설명</S.FieldLabel>
+                  <Input
+                    multiline
+                    value={editDraft.description ?? ''}
+                    onChange={e =>
+                      setEditDraft(prev => ({
+                        ...prev,
+                        description: e.target.value,
+                      }))
+                    }
+                    placeholder="활동의 상세 내용을 입력해 주세요."
+                    rows={2}
+                    inputProps={{
+                      maxLength: INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION,
+                      'aria-label': '활동 상세 설명',
+                    }}
+                    size="small"
+                    fullWidth
+                    sx={{
+                      '& .MuiOutlinedInput-root': {
+                        backgroundColor: theme.palette.variant.default,
+                      },
+                      '& textarea': {
+                        resize: 'vertical',
+                      },
+                    }}
+                  />
+                  <S.CharCount
+                    warn={
+                      (editDraft.description?.length ?? 0) >=
+                      INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION - 20
+                    }
+                  >
+                    {editDraft.description?.length ?? 0} /{' '}
+                    {INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION}
+                  </S.CharCount>
+              </Flex.Column>
+              <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
+                <S.FieldLabel>관련 URL</S.FieldLabel>
+                <Input
+                  value={editDraft.url ?? ''}
+                  onChange={e =>
+                    setEditDraft(prev => ({
+                      ...prev,
+                      url: e.target.value,
+                    }))
+                  }
+                  placeholder="https://…"
+                  inputProps={{
+                    maxLength: INPUT_MAX_LENGTH.ACTIVITY_URL,
+                    'aria-label': '활동 관련 URL',
+                  }}
+                  size="small"
+                  style={{ width: '100%' }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: theme.palette.variant.default,
+                    },
+                  }}
+                />
+              </Flex.Column>
+              <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
+                <S.FieldLabel>성과 설명</S.FieldLabel>
+                <Input
+                  multiline
+                  value={editDraft.achievements_detail ?? ''}
+                  onChange={e =>
+                    setEditDraft(prev => ({
+                      ...prev,
+                      achievements_detail: e.target.value,
+                    }))
+                  }
+                  placeholder="성과에 대한 상세 설명"
+                  rows={3}
+                  inputProps={{
+                    maxLength: INPUT_MAX_LENGTH.ACTIVITY_ACHIEVEMENTS_DETAIL,
+                    'aria-label': '성과 설명',
+                  }}
+                  size="small"
+                  fullWidth
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: theme.palette.variant.default,
+                    },
+                    '& textarea': {
+                      resize: 'vertical',
+                    },
+                  }}
+                />
+                <S.CharCount
+                  warn={
+                    (editDraft.achievements_detail?.length ?? 0) >=
+                    INPUT_MAX_LENGTH.ACTIVITY_ACHIEVEMENTS_DETAIL - 100
+                  }
+                >
+                  {editDraft.achievements_detail?.length ?? 0} /{' '}
+                  {INPUT_MAX_LENGTH.ACTIVITY_ACHIEVEMENTS_DETAIL}
+                </S.CharCount>
+              </Flex.Column>
+            </Flex.Column>
+          ) : null}
         </Flex.Column>
         <Flex.Row
           justify="flex-end"
@@ -556,111 +896,7 @@ const ActivitiesSectionContent = forwardRef<
                   {!readOnly && editingId === item.id ? (
                     renderActivityEditorForm()
                   ) : (
-                    <>
-                      <Flex.Row
-                        align="flex-start"
-                        justify="space-between"
-                        gap="0.5rem"
-                        wrap="nowrap"
-                        style={{ width: '100%', minWidth: 0 }}
-                      >
-                        <Flex.Row
-                          align="center"
-                          gap="0.5rem"
-                          wrap="wrap"
-                          style={{ flex: 1, minWidth: 0 }}
-                        >
-                          {(item.tags?.length ?? 0) > 0
-                            ? item.tags.map(tag => (
-                                <S.CategoryTag key={`${item.id}-${tag}`}>
-                                  {tag}
-                                </S.CategoryTag>
-                              ))
-                            : null}
-                          <Text
-                            as="span"
-                            style={{
-                              ...theme.typography.body2,
-                              color: theme.palette.grey[600],
-                              flexShrink: 0,
-                              margin: 0,
-                            }}
-                          >
-                            {formatActivityPeriodRange(
-                              item.start_date,
-                              item.end_date,
-                            )}
-                          </Text>
-                          <Text
-                            as="span"
-                            style={{
-                              ...theme.typography.body2,
-                              fontWeight: 600,
-                              margin: 0,
-                              wordBreak: 'break-word',
-                            }}
-                          >
-                            {item.title}
-                          </Text>
-                        </Flex.Row>
-                        {!readOnly && (
-                          <Flex.Row
-                            gap="0.25rem"
-                            align="center"
-                            style={{ flexShrink: 0, alignSelf: 'flex-start' }}
-                          >
-                            <S.EditButton
-                              type="button"
-                              onClick={() => handleStartEdit(item)}
-                              aria-label="수정"
-                            >
-                              <EditIcon sx={{ fontSize: 16 }} />
-                            </S.EditButton>
-                            <S.DeleteButton
-                              type="button"
-                              onClick={() => handleDelete(item.id)}
-                              aria-label="삭제"
-                            >
-                              <DeleteOutlineIcon sx={{ fontSize: 18 }} />
-                            </S.DeleteButton>
-                          </Flex.Row>
-                        )}
-                      </Flex.Row>
-                      <Flex.Column
-                        gap="0.375rem"
-                        style={{
-                          width: '100%',
-                          minWidth: 0,
-                        }}
-                      >
-                        <Text
-                          as="span"
-                          style={{
-                            ...theme.typography.body2,
-                            color: theme.palette.grey[600],
-                            margin: 0,
-                            wordBreak: 'break-word',
-                          }}
-                        >
-                          {item.description ? (
-                            <>{item.description}</>
-                          ) : (
-                            <span style={{ color: theme.palette.grey[400] }}>
-                              추가 설명을 통해 더 나은 프롬프트 결과를 얻을 수 있습니다.
-                            </span>
-                          )}
-                        </Text>
-                        {item.url?.trim() ? (
-                          <S.ActivityUrlLink
-                            href={item.url.trim()}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                          >
-                            {item.url.trim()}
-                          </S.ActivityUrlLink>
-                        ) : null}
-                      </Flex.Column>
-                    </>
+                    renderActivityView(item)
                   )}
                 </S.Row>
               ))}
@@ -668,6 +904,103 @@ const ActivitiesSectionContent = forwardRef<
           </Flex.Column>
         ))}
       </Flex.Column>
+
+      {!readOnly && (
+        <Dialog
+          open={activityDeleteConfirmId != null}
+          aria-labelledby="activity-delete-confirm-title"
+          onClose={() => {
+            if (activityDeletePending) return;
+            setActivityDeleteConfirmId(null);
+          }}
+          maxWidth="sm"
+          fullWidth
+          PaperProps={{
+            sx: {
+              borderRadius: '0.75rem',
+              border: `1px solid ${palette.grey200}`,
+              boxShadow: '0 4px 24px rgba(83, 127, 241, 0.15)',
+              width: '100%',
+              maxWidth: '26rem',
+              overflow: 'hidden',
+            },
+          }}
+          sx={{ zIndex: theme => theme.zIndex.modal + 2 }}
+        >
+          <DialogContent
+            sx={{
+              p: '1.25rem 1.5rem',
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '1rem',
+            }}
+          >
+            <Flex.Row
+              align="flex-start"
+              gap="0.5rem"
+              width="100%"
+              style={{ minWidth: 0 }}
+            >
+              <DeleteOutlineIcon
+                sx={{
+                  fontSize: 22,
+                  color: palette.red500,
+                  flexShrink: 0,
+                  marginTop: '0.125rem',
+                }}
+                aria-hidden
+              />
+              <Flex.Column gap="0.5rem" style={{ flex: '1 1 auto', minWidth: 0 }}>
+                <Text
+                  id="activity-delete-confirm-title"
+                  as="span"
+                  style={{
+                    display: 'block',
+                    fontSize: '1.125rem',
+                    fontWeight: 700,
+                    lineHeight: 1.5,
+                    color: palette.nearBlack,
+                    margin: 0,
+                  }}
+                >
+                  활동을 삭제할까요?
+                </Text>
+                <Text
+                  as="span"
+                  margin="0"
+                  color={palette.grey600}
+                  style={{
+                    fontSize: '0.875rem',
+                    lineHeight: 1.65,
+                    wordBreak: 'keep-all',
+                  }}
+                >
+                  「{pendingDeleteActivity?.title?.trim() || '이 활동'}」 항목을
+                  삭제합니다. 저장된 활동은 복구할 수 없습니다.
+                </Text>
+              </Flex.Column>
+            </Flex.Row>
+            <Flex.Row align="center" justify="flex-end" gap="0.5rem" wrap="wrap" width="100%">
+              <Button
+                label="취소"
+                variant="outlined"
+                color="grey"
+                size="medium"
+                onClick={() => setActivityDeleteConfirmId(null)}
+                disabled={activityDeletePending}
+              />
+              <Button
+                label="삭제하기"
+                variant="outlined"
+                color="red"
+                size="medium"
+                onClick={() => void confirmActivityDelete()}
+                disabled={activityDeletePending}
+              />
+            </Flex.Row>
+          </DialogContent>
+        </Dialog>
+      )}
     </Flex.Column>
   );
 });
@@ -681,14 +1014,141 @@ const S = {
   `,
   Row: styled(Flex.Column)`
     padding: 0.75rem 1rem;
-    gap: 0.375rem;
+    gap: 0.5rem;
     border-radius: 0.5rem;
     background-color: ${({ theme }) => theme.palette.background.paper};
     border: 1px solid ${({ theme }) => theme.palette.grey[200]};
     box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
-    transition: box-shadow 0.15s ease;
+    transition: box-shadow 0.15s ease, border-color 0.15s ease;
     &:hover {
+      border-color: ${({ theme }) => theme.palette.grey[300]};
       box-shadow: 0 2px 6px rgba(16, 24, 40, 0.08);
+    }
+  `,
+  TitlePeriodRow: styled(Flex.Row)`
+    width: 100%;
+    min-width: 0;
+  `,
+  CardHeader: styled(Flex.Row)`
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    width: 100%;
+    min-width: 0;
+  `,
+  ActivityTitle: styled('span')`
+    margin: 0;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: ${palette.nearBlack};
+    word-break: break-word;
+  `,
+  PeriodRow: styled(Flex.Row)`
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 0.3rem;
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.35;
+    color: ${palette.grey500};
+    & > svg {
+      color: ${palette.grey500};
+    }
+  `,
+  TagChip: styled('span')`
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.5rem;
+    border-radius: 999px;
+    background-color: ${palette.white};
+    color: ${palette.blue500};
+    border: 1px solid ${palette.blue400};
+    font-size: 0.6875rem;
+    font-weight: 600;
+    line-height: 1.3;
+  `,
+  DetailPanel: styled(Flex.Column)`
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.65rem 0.75rem;
+    border-radius: 0.5rem;
+    background-color: ${palette.blue300};
+    box-sizing: border-box;
+  `,
+  DetailRow: styled(Flex.Row)`
+    display: flex;
+    flex-direction: row;
+    align-items: flex-start;
+    gap: 0.65rem;
+    width: 100%;
+    min-width: 0;
+  `,
+  DetailLabel: styled('span')`
+    flex: 0 0 2.25rem;
+    font-size: 0.6875rem;
+    font-weight: 700;
+    line-height: 1.45;
+    color: ${palette.blue600};
+    letter-spacing: 0.02em;
+  `,
+  DetailValue: styled('span')`
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.8125rem;
+    font-weight: 500;
+    line-height: 1.5;
+    color: ${palette.nearBlack};
+    word-break: break-word;
+  `,
+  BodyText: styled('p')`
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 400;
+    line-height: 1.55;
+    color: ${palette.grey600};
+    word-break: break-word;
+  `,
+  EmptyHint: styled('p')`
+    margin: 0;
+    font-size: 0.75rem;
+    font-weight: 400;
+    line-height: 1.5;
+    color: ${palette.grey400};
+    font-style: italic;
+  `,
+  UrlRow: styled('a')`
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.35rem;
+    max-width: 100%;
+    padding: 0.4rem 0.55rem;
+    border-radius: 0.375rem;
+    background-color: ${palette.grey100};
+    border: 1px solid ${palette.grey200};
+    box-sizing: border-box;
+    font-size: 0.75rem;
+    font-weight: 600;
+    line-height: 1.35;
+    color: ${palette.blue500};
+    text-decoration: none;
+    word-break: break-all;
+    transition: background-color 0.15s ease, border-color 0.15s ease, color 0.15s ease;
+    & > svg {
+      color: ${palette.blue500};
+    }
+    &:hover {
+      background-color: ${palette.blue300};
+      border-color: ${palette.blue400};
+      color: ${palette.blue600};
     }
   `,
   FieldLabel: styled('span')`
@@ -696,17 +1156,6 @@ const S = {
     font-weight: 500;
     color: ${({ theme }) => theme.palette.text.secondary};
     line-height: 1.2;
-  `,
-  ActivityUrlLink: styled('a')`
-    display: inline-block;
-    max-width: 100%;
-    font-size: 0.8125rem;
-    color: ${palette.blue500};
-    text-decoration: underline;
-    word-break: break-all;
-    &:hover {
-      color: ${palette.blue600};
-    }
   `,
   CategoryTag: styled('span')`
     display: inline-flex;
@@ -771,6 +1220,29 @@ const S = {
     font-size: 0.75rem;
     color: ${({ warn }) => (warn ? palette.pink500 : palette.grey400)};
     text-align: right;
+  `,
+  MoreToggleRow: styled(Flex.Row)`
+    width: 100%;
+    justify-content: flex-start;
+  `,
+  MoreToggleButton: styled('button')`
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    margin: 0;
+    border: none;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: ${palette.blue500};
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-sizing: border-box;
+    &:hover {
+      background-color: ${palette.blue300};
+    }
   `,
   EditButton: styled('button')`
     display: flex;

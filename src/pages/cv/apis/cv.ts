@@ -8,6 +8,14 @@ const cvSharePublicClient = axios.create({
   baseURL: BASE_URL,
 });
 
+/** GET 응답 — 디자인 선호 (추후 UI에서 사용 예정) */
+export interface PortfolioCvDesignPreferences {
+  layout: string;
+  color_theme: string;
+  density: string;
+  additional_notes: string;
+}
+
 /** GET /api/portfolio/cv 목록 한 건 */
 export interface PortfolioCvListItem {
   id: number;
@@ -15,20 +23,39 @@ export interface PortfolioCvListItem {
   job_posting: string;
   target_position: string;
   additional_notes: string;
+  design_preferences: PortfolioCvDesignPreferences;
+  /** `cv` · 취업 준비 / `archive` · 역량 평가 등 */
+  mode: string;
   public_token: string;
   created_at: string;
   updated_at: string;
   is_public: boolean;
+  is_favorite: boolean;
+}
+
+export type PortfolioCvListSort = 'newest' | 'favorites';
+
+export interface GetPortfolioCvListParams {
+  /** 기본 `newest`. `favorites` — 즐겨찾기 먼저, 그다음 최신순 */
+  sort?: PortfolioCvListSort;
 }
 
 export interface PortfolioCvListResponse {
   cvs: PortfolioCvListItem[];
+  total: number;
 }
 
 /** GET /api/portfolio/cv/{id} 상세 */
 export interface PortfolioCvDetail extends PortfolioCvListItem {
   prompt: string;
   html_content: string;
+  selected_repo_ids: number[];
+  selected_mileage_ids: number[];
+  selected_activity_ids: number[];
+  /** POST generate-html 등 응답에 포함될 수 있음 */
+  model_used?: string;
+  tokens_used?: number;
+  last_generated_at?: string;
 }
 
 function readCvId(o: Record<string, unknown>): number {
@@ -46,6 +73,47 @@ function readCvIsPublic(o: Record<string, unknown>): boolean {
   return Boolean(v);
 }
 
+function readDesignPreferences(raw: unknown): PortfolioCvDesignPreferences {
+  if (raw == null || typeof raw !== 'object') {
+    return {
+      layout: '',
+      color_theme: '',
+      density: '',
+      additional_notes: '',
+    };
+  }
+  const d = raw as Record<string, unknown>;
+  return {
+    layout: String(d.layout ?? ''),
+    color_theme: String(d.color_theme ?? ''),
+    density: String(d.density ?? ''),
+    additional_notes: String(d.additional_notes ?? ''),
+  };
+}
+
+function readCvMode(o: Record<string, unknown>): string {
+  const m = o.mode;
+  if (m === 'archive') return 'archive';
+  if (m === 'cv') return 'cv';
+  if (typeof m === 'string' && m.trim() !== '') return m.trim();
+  return 'cv';
+}
+
+function readIdArray(raw: unknown): number[] {
+  if (!Array.isArray(raw)) return [];
+  const out: number[] = [];
+  for (const x of raw) {
+    if (typeof x === 'number' && Number.isFinite(x)) {
+      out.push(x);
+      continue;
+    }
+    if (typeof x === 'string' && x.trim() !== '' && !Number.isNaN(Number(x))) {
+      out.push(Number(x));
+    }
+  }
+  return out;
+}
+
 function normalizePortfolioCvListItem(raw: unknown): PortfolioCvListItem {
   if (raw == null || typeof raw !== 'object') {
     return {
@@ -54,10 +122,13 @@ function normalizePortfolioCvListItem(raw: unknown): PortfolioCvListItem {
       job_posting: '',
       target_position: '',
       additional_notes: '',
+      design_preferences: readDesignPreferences(undefined),
+      mode: 'cv',
       public_token: '',
       created_at: '',
       updated_at: '',
       is_public: false,
+      is_favorite: false,
     };
   }
   const o = raw as Record<string, unknown>;
@@ -67,11 +138,22 @@ function normalizePortfolioCvListItem(raw: unknown): PortfolioCvListItem {
     job_posting: String(o.job_posting ?? ''),
     target_position: String(o.target_position ?? ''),
     additional_notes: String(o.additional_notes ?? ''),
+    design_preferences: readDesignPreferences(o.design_preferences),
+    mode: readCvMode(o),
     public_token: String(o.public_token ?? ''),
     created_at: String(o.created_at ?? ''),
     updated_at: String(o.updated_at ?? ''),
     is_public: readCvIsPublic(o),
+    is_favorite: Boolean(o.is_favorite ?? o.isFavorite),
   };
+}
+
+function readOptionalTokensUsed(v: unknown): number | undefined {
+  if (typeof v === 'number' && Number.isFinite(v)) return v;
+  if (typeof v === 'string' && v.trim() !== '' && !Number.isNaN(Number(v))) {
+    return Number(v);
+  }
+  return undefined;
 }
 
 export function normalizePortfolioCvDetail(raw: unknown): PortfolioCvDetail {
@@ -80,18 +162,39 @@ export function normalizePortfolioCvDetail(raw: unknown): PortfolioCvDetail {
     raw != null && typeof raw === 'object'
       ? (raw as Record<string, unknown>)
       : {};
-  return {
+  const detail: PortfolioCvDetail = {
     ...base,
     prompt: String(o.prompt ?? ''),
     html_content: String(o.html_content ?? ''),
+    selected_repo_ids: readIdArray(o.selected_repo_ids),
+    selected_mileage_ids: readIdArray(o.selected_mileage_ids),
+    selected_activity_ids: readIdArray(o.selected_activity_ids),
   };
+  if (o.model_used != null && String(o.model_used).trim() !== '') {
+    detail.model_used = String(o.model_used);
+  }
+  const tu = readOptionalTokensUsed(o.tokens_used);
+  if (tu !== undefined) {
+    detail.tokens_used = tu;
+  }
+  if (o.last_generated_at != null && String(o.last_generated_at).trim() !== '') {
+    detail.last_generated_at = String(o.last_generated_at);
+  }
+  return detail;
 }
 
-export const getPortfolioCvList = async () => {
-  const raw = await http.get<{ cvs?: unknown[] }>(ENDPOINT.PORTFOLIO_CV);
-  return {
-    cvs: (raw.cvs ?? []).map(normalizePortfolioCvListItem),
-  } satisfies PortfolioCvListResponse;
+export const getPortfolioCvList = async (params?: GetPortfolioCvListParams) => {
+  const searchParams = new URLSearchParams();
+  if (params?.sort != null && params.sort !== 'newest') {
+    searchParams.set('sort', params.sort);
+  }
+  const query = searchParams.toString();
+  const url = query ? `${ENDPOINT.PORTFOLIO_CV}?${query}` : ENDPOINT.PORTFOLIO_CV;
+  const raw = await http.get<{ cvs?: unknown[]; total?: number }>(url);
+  const cvs = (raw.cvs ?? []).map(normalizePortfolioCvListItem);
+  const total =
+    typeof raw.total === 'number' && Number.isFinite(raw.total) ? raw.total : cvs.length;
+  return { cvs, total } satisfies PortfolioCvListResponse;
 };
 
 export const getPortfolioCvById = async (id: number) => {
@@ -112,6 +215,10 @@ export interface PortfolioCvBuildPromptRequest {
   selected_mileage_ids: number[];
   selected_activity_ids: number[];
   selected_repo_ids: number[];
+  /**
+   * 2→3단계에서는 `null`로 전송. 객체 전송 시 서버가 STEP 2에 [design_preferences] 블록으로 반영·저장.
+   */
+  design_preferences: PortfolioCvDesignPreferences | null;
 }
 
 export interface PortfolioCvBuildPromptResponse {
@@ -127,11 +234,35 @@ export const postPortfolioCvBuildPrompt = async (body: PortfolioCvBuildPromptReq
   );
 };
 
+/**
+ * POST /api/portfolio/cv/{id}/generate-html
+ * design_preferences 적용 + OpenAI로 HTML 생성. `model`은 서버 기본 사용 시 생략.
+ */
+export interface PortfolioCvGenerateHtmlRequest {
+  design_preferences: PortfolioCvDesignPreferences;
+  model?: string;
+}
+
+export const postPortfolioCvGenerateHtml = async (
+  id: number,
+  body: PortfolioCvGenerateHtmlRequest,
+) => {
+  const payload: { design_preferences: PortfolioCvDesignPreferences } = {
+    design_preferences: body.design_preferences,
+  };
+  const raw = await http.post<typeof payload, unknown>(
+    `${ENDPOINT.PORTFOLIO_CV}/${id}/generate-html`,
+    payload,
+  );
+  return normalizePortfolioCvDetail(raw);
+};
+
 /** PATCH /api/portfolio/cv/{id} — title·html_content·is_public 각각 선택(부분 갱신 가능) */
 export interface PortfolioCvPatchRequest {
   title?: string;
   html_content?: string;
   is_public?: boolean;
+  is_favorite?: boolean;
 }
 
 export const patchPortfolioCv = async (id: number, body: PortfolioCvPatchRequest) => {

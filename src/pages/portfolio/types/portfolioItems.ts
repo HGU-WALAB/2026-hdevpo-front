@@ -1,5 +1,10 @@
 import type { UserInfoResponse } from '../apis/userInfo';
-import type { PortfolioRepositoryLanguage } from '../apis/repositories';
+import type {
+  PortfolioRepositoryDuration,
+  PortfolioRepositoryLanguage,
+  PortfolioRepositoryMyRole,
+  TeamCompositionEntry,
+} from '../apis/repositories';
 
 export interface RepoItem {
   /** PATCH /api/portfolio/repositories/:id 시 사용. API가 null 반환 시 없을 수 있음 */
@@ -27,6 +32,14 @@ export interface RepoItem {
   forks_count?: number;
   /** GitHub 레포 페이지 URL (제목 클릭 시 이동) */
   html_url?: string;
+  /** 전체 팀 구성(역할별 인원) */
+  team_composition?: TeamCompositionEntry[];
+  /** 내 역할 및 기여도(0–100) */
+  my_role?: PortfolioRepositoryMyRole | null;
+  /** 주요 기여 상세 */
+  key_contributions?: string | null;
+  /** 표시 기간(GitHub 메타 + override) */
+  duration?: PortfolioRepositoryDuration | null;
 }
 
 export interface MileageItem {
@@ -44,6 +57,10 @@ export interface ActivityItem {
   id: number;
   title: string;
   description: string;
+  host: string;
+  role: string;
+  achievements: string;
+  achievements_detail: string;
   start_date: string;
   end_date: string;
   /** 사용자 정의 카테고리 문자열 */

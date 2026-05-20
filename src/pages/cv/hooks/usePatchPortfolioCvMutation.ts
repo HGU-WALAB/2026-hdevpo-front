@@ -56,6 +56,10 @@ function mergeDetailFromPatchResponse(
   const isPublic = coerceBoolean(pub);
   if (isPublic !== undefined) patch.is_public = isPublic;
 
+  const fav = o.is_favorite ?? o.isFavorite;
+  const isFavorite = coerceBoolean(fav);
+  if (isFavorite !== undefined) patch.is_favorite = isFavorite;
+
   const str = (a: unknown, b?: unknown) =>
     (typeof a === 'string' ? a : typeof b === 'string' ? b : undefined) as
       | string
@@ -80,6 +84,62 @@ function mergeDetailFromPatchResponse(
   const html = str(o.html_content, o.htmlContent);
   if (html !== undefined) patch.html_content = html;
 
+  if (o.mode !== undefined) {
+    patch.mode = String(o.mode);
+  }
+
+  if (o.design_preferences != null && typeof o.design_preferences === 'object') {
+    const d = o.design_preferences as Record<string, unknown>;
+    patch.design_preferences = {
+      layout:
+        d.layout !== undefined ? String(d.layout) : prev.design_preferences.layout,
+      color_theme:
+        d.color_theme !== undefined
+          ? String(d.color_theme)
+          : prev.design_preferences.color_theme,
+      density:
+        d.density !== undefined ? String(d.density) : prev.design_preferences.density,
+      additional_notes:
+        d.additional_notes !== undefined
+          ? String(d.additional_notes)
+          : prev.design_preferences.additional_notes,
+    };
+  }
+
+  const readIdArray = (raw: unknown): number[] => {
+    if (!Array.isArray(raw)) return [];
+    const out: number[] = [];
+    for (const x of raw) {
+      if (typeof x === 'number' && Number.isFinite(x)) out.push(x);
+      else if (typeof x === 'string' && x.trim() !== '' && !Number.isNaN(Number(x))) {
+        out.push(Number(x));
+      }
+    }
+    return out;
+  };
+  if (o.selected_repo_ids !== undefined) {
+    patch.selected_repo_ids = readIdArray(o.selected_repo_ids);
+  }
+  if (o.selected_mileage_ids !== undefined) {
+    patch.selected_mileage_ids = readIdArray(o.selected_mileage_ids);
+  }
+  if (o.selected_activity_ids !== undefined) {
+    patch.selected_activity_ids = readIdArray(o.selected_activity_ids);
+  }
+
+  if (o.model_used != null) {
+    const s = String(o.model_used).trim();
+    if (s) patch.model_used = s;
+  }
+  if (typeof o.tokens_used === 'number' && Number.isFinite(o.tokens_used)) {
+    patch.tokens_used = o.tokens_used;
+  } else if (typeof o.tokens_used === 'string' && o.tokens_used.trim() !== '') {
+    const n = Number(o.tokens_used);
+    if (!Number.isNaN(n)) patch.tokens_used = n;
+  }
+  const lga = str(o.last_generated_at, o.lastGeneratedAt);
+  if (lga !== undefined) patch.last_generated_at = lga;
+
   return patch;
 }
 
@@ -96,12 +156,23 @@ const usePatchPortfolioCvMutation = () => {
           job_posting: '',
           target_position: '',
           additional_notes: '',
+          design_preferences: {
+            layout: '',
+            color_theme: '',
+            density: '',
+            additional_notes: '',
+          },
+          mode: 'cv',
           public_token: '',
           created_at: '',
           updated_at: '',
           is_public: false,
+          is_favorite: false,
           prompt: '',
           html_content: '',
+          selected_repo_ids: [],
+          selected_mileage_ids: [],
+          selected_activity_ids: [],
         },
         rawUpdated,
       );
@@ -112,11 +183,12 @@ const usePatchPortfolioCvMutation = () => {
           rawUpdated !== null &&
           Object.keys(rawUpdated as object).length === 0);
 
-      queryClient.setQueryData<PortfolioCvListResponse | undefined>(
-        [QUERY_KEYS.portfolioCv, 'list'],
+      queryClient.setQueriesData<PortfolioCvListResponse>(
+        { queryKey: [QUERY_KEYS.portfolioCv, 'list'] },
         old => {
           if (!old?.cvs) return old;
           return {
+            ...old,
             cvs: old.cvs.map(c => {
               if (c.id !== id) return c;
               let next: PortfolioCvListItem = { ...c };
@@ -129,10 +201,17 @@ const usePatchPortfolioCvMutation = () => {
                     fromResponse.is_public !== undefined
                       ? fromResponse.is_public
                       : next.is_public,
+                  is_favorite:
+                    fromResponse.is_favorite !== undefined
+                      ? fromResponse.is_favorite
+                      : next.is_favorite,
                 };
               }
               if (body.is_public !== undefined) {
                 next = { ...next, is_public: Boolean(body.is_public) };
+              }
+              if (body.is_favorite !== undefined) {
+                next = { ...next, is_favorite: Boolean(body.is_favorite) };
               }
               if (body.title !== undefined) {
                 next = { ...next, title: body.title };
@@ -160,6 +239,9 @@ const usePatchPortfolioCvMutation = () => {
           if (body.html_content !== undefined) {
             next = { ...next, html_content: body.html_content };
           }
+          if (body.is_favorite !== undefined) {
+            next = { ...next, is_favorite: Boolean(body.is_favorite) };
+          }
           return next;
         },
       );
@@ -167,6 +249,7 @@ const usePatchPortfolioCvMutation = () => {
       if (
         responseLooksEmpty &&
         body.is_public === undefined &&
+        body.is_favorite === undefined &&
         body.title === undefined &&
         body.html_content === undefined
       ) {

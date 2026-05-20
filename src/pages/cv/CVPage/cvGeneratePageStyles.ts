@@ -1,5 +1,6 @@
 import { Flex } from '@/components';
 import { boxShadow } from '@/styles/common';
+import { hideScrollbar } from '@/styles/hideScrollbar';
 import { palette } from '@/styles/palette';
 import { Button as MuiButton } from '@mui/material';
 import { styled } from '@mui/material/styles';
@@ -214,16 +215,17 @@ export const CvGeneratePageS = {
       cursor: not-allowed;
     }
   `,
-  ScrollList: styled('div')`
-    display: flex;
-    flex-direction: column;
-    gap: 0.5rem;
-    max-height: 17.5rem;
-    overflow-y: auto;
-    width: 100%;
-    min-width: 0;
-    padding-right: 0.25rem;
-  `,
+  ScrollList: styled('div')(() => ({
+    display: 'flex',
+    flexDirection: 'column',
+    gap: '0.5rem',
+    maxHeight: '17.5rem',
+    overflowY: 'auto',
+    width: '100%',
+    minWidth: 0,
+    paddingRight: '0.25rem',
+    ...hideScrollbar,
+  })),
   /** 체크박스는 1행만 차지하고, 첫 텍스트 줄 높이 기준 세로 가운데 */
   SelectRowInner: styled('div')`
     display: grid;

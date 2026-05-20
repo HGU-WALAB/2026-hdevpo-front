@@ -3,6 +3,7 @@ import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { palette } from '@/styles/palette';
 import AddIcon from '@mui/icons-material/Add';
 import CloseIcon from '@mui/icons-material/Close';
+import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import TextFieldsOutlinedIcon from '@mui/icons-material/TextFieldsOutlined';
 import ViewWeekOutlinedIcon from '@mui/icons-material/ViewWeekOutlined';
 import {
@@ -125,6 +126,9 @@ const TechStackSectionContent = forwardRef<
   const [editDomainOpen, setEditDomainOpen] = useState(false);
   const [editDomainId, setEditDomainId] = useState<number | null>(null);
   const [editDomainNameInput, setEditDomainNameInput] = useState('');
+  const [domainDeleteConfirmId, setDomainDeleteConfirmId] = useState<number | null>(
+    null,
+  );
 
   const [addSkillOpen, setAddSkillOpen] = useState(false);
   const [skillDomainId, setSkillDomainId] = useState<number | null>(null);
@@ -259,6 +263,20 @@ const TechStackSectionContent = forwardRef<
     },
     [setTechStackDomains],
   );
+
+  const pendingDeleteDomain = useMemo(
+    () =>
+      domainDeleteConfirmId == null
+        ? null
+        : sortedDomains.find(d => d.id === domainDeleteConfirmId) ?? null,
+    [domainDeleteConfirmId, sortedDomains],
+  );
+
+  const confirmDeleteDomain = useCallback(() => {
+    if (domainDeleteConfirmId == null) return;
+    handleDeleteDomain(domainDeleteConfirmId);
+    setDomainDeleteConfirmId(null);
+  }, [domainDeleteConfirmId, handleDeleteDomain]);
 
   const openEditDomainDialog = useCallback(
     (domainId: number) => {
@@ -450,7 +468,7 @@ const TechStackSectionContent = forwardRef<
                     {!readOnly && domain.id != null && (
                       <S.IconGhostBtn
                         type="button"
-                        onClick={() => handleDeleteDomain(domain.id!)}
+                        onClick={() => setDomainDeleteConfirmId(domain.id!)}
                         aria-label={`도메인 ${domain.name} 전체 삭제`}
                       >
                         <CloseIcon sx={{ fontSize: 18 }} />
@@ -623,7 +641,7 @@ const TechStackSectionContent = forwardRef<
                   {!readOnly && domain.id != null && (
                     <S.IconGhostBtn
                       type="button"
-                      onClick={() => handleDeleteDomain(domain.id!)}
+                      onClick={() => setDomainDeleteConfirmId(domain.id!)}
                       aria-label={`도메인 ${domain.name} 전체 삭제`}
                       style={{ flexShrink: 0 }}
                     >
@@ -977,6 +995,95 @@ const TechStackSectionContent = forwardRef<
                 onClick={handleSkillDialogSubmit}
               />
             </DialogActions>
+          </Dialog>
+
+          <Dialog
+            open={domainDeleteConfirmId != null}
+            aria-labelledby="domain-delete-confirm-title"
+            onClose={() => setDomainDeleteConfirmId(null)}
+            fullWidth
+            maxWidth="sm"
+            PaperProps={{
+              sx: {
+                borderRadius: '0.75rem',
+                border: `1px solid ${palette.grey200}`,
+                boxShadow: '0 4px 24px rgba(83, 127, 241, 0.15)',
+                width: '100%',
+                maxWidth: '26rem',
+                overflow: 'hidden',
+              },
+            }}
+          >
+            <DialogContent
+              sx={{
+                p: '1.25rem 1.5rem',
+                display: 'flex',
+                flexDirection: 'column',
+                gap: '1rem',
+              }}
+            >
+              <Flex.Row
+                align="flex-start"
+                gap="0.5rem"
+                width="100%"
+                style={{ minWidth: 0 }}
+              >
+                <DeleteOutlineIcon
+                  sx={{
+                    fontSize: 22,
+                    color: palette.red500,
+                    flexShrink: 0,
+                    marginTop: '0.125rem',
+                  }}
+                  aria-hidden
+                />
+                <Flex.Column gap="0.5rem" style={{ flex: '1 1 auto', minWidth: 0 }}>
+                  <Text
+                    id="domain-delete-confirm-title"
+                    style={{
+                      ...theme.typography.h3,
+                      fontWeight: 700,
+                      margin: 0,
+                      letterSpacing: '-0.02em',
+                      fontSize: '1.125rem',
+                      lineHeight: 1.5,
+                      color: palette.nearBlack,
+                    }}
+                  >
+                    도메인을 삭제할까요?
+                  </Text>
+                  <Text
+                    style={{
+                      ...theme.typography.body2,
+                      color: theme.palette.grey[600],
+                      margin: 0,
+                      fontSize: '0.875rem',
+                      lineHeight: 1.65,
+                      wordBreak: 'keep-all',
+                    }}
+                  >
+                    「{pendingDeleteDomain?.name?.trim() || '이 도메인'}」과 포함된
+                    기술 항목이 모두 삭제됩니다.
+                  </Text>
+                </Flex.Column>
+              </Flex.Row>
+              <Flex.Row align="center" justify="flex-end" gap="0.5rem" wrap="wrap" width="100%">
+                <Button
+                  label="취소"
+                  variant="outlined"
+                  color="grey"
+                  size="medium"
+                  onClick={() => setDomainDeleteConfirmId(null)}
+                />
+                <Button
+                  label="삭제하기"
+                  variant="outlined"
+                  color="red"
+                  size="medium"
+                  onClick={confirmDeleteDomain}
+                />
+              </Flex.Row>
+            </DialogContent>
           </Dialog>
         </>
       )}

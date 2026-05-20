@@ -21,6 +21,10 @@ export const palette = {
   green300: '#66D2D0',
   green500: '#00A9A5',
   green600: '#007D7A',
+  /** 칩·태그 — 연민트 배경 (스킬 칩 등 녹색 UI) */
+  chipMintBg: '#E8F5EC',
+  /** 칩·태그 — 포레스트 녹 테두리·글자 */
+  chipForest700: '#2E7D32',
   // yellow
   yellow300: '#FFEB66',
   yellow500: '#FFDD00',
