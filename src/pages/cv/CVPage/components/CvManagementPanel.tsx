@@ -592,18 +592,30 @@ const S = {
     box-sizing: border-box;
     padding: 1.25rem;
     border-radius: 0.75rem;
-    background-color: ${({ theme }) => theme.palette.background.paper};
+    background-color: ${({ theme, $selected }) =>
+      $selected ? palette.blue300 : theme.palette.background.paper};
     border: 1px solid
       ${({ theme, $selected }) =>
         $selected ? palette.blue400 : theme.palette.grey[200]};
-    box-shadow: 0 1px 2px rgba(16, 24, 40, 0.06);
-    transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    box-shadow: ${({ $selected }) =>
+      $selected
+        ? '0 2px 8px rgba(83, 127, 241, 0.12)'
+        : '0 1px 2px rgba(16, 24, 40, 0.06)'};
+    transition:
+      background-color 0.15s ease,
+      border-color 0.15s ease,
+      box-shadow 0.15s ease;
     cursor: pointer;
     text-align: left;
     &:hover {
+      background-color: ${({ theme, $selected }) =>
+        $selected ? palette.blue300 : theme.palette.background.paper};
       border-color: ${({ theme, $selected }) =>
-        $selected ? palette.blue400 : theme.palette.grey[300]};
-      box-shadow: 0 2px 6px rgba(16, 24, 40, 0.08);
+        $selected ? palette.blue500 : theme.palette.grey[300]};
+      box-shadow: ${({ $selected }) =>
+        $selected
+          ? '0 2px 10px rgba(83, 127, 241, 0.16)'
+          : '0 2px 6px rgba(16, 24, 40, 0.08)'};
     }
     &:focus-visible {
       outline: 2px solid ${palette.blue500};
