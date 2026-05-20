@@ -1,5 +1,19 @@
 import type { PortfolioRepositoryDuration } from '../apis/repositories';
 
+/** ISO 날짜·시간 문자열을 YYYY-MM-DD HH:mm:ss로 변환 */
+export function formatDateTime(iso: string): string {
+  if (!iso || typeof iso !== 'string') return '';
+  const d = new Date(iso.trim());
+  if (Number.isNaN(d.getTime())) return '';
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  const h = String(d.getHours()).padStart(2, '0');
+  const min = String(d.getMinutes()).padStart(2, '0');
+  const s = String(d.getSeconds()).padStart(2, '0');
+  return `${y}-${m}-${day} ${h}:${min}:${s}`;
+}
+
 /** ISO 날짜 문자열을 YYYY-MM-DD로 변환 */
 export function formatDateOnly(iso: string): string {
   if (!iso || typeof iso !== 'string') return '';

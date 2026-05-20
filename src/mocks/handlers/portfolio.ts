@@ -390,22 +390,42 @@ export const PortfolioHandlers = [
     return HttpResponse.json({ ...userInfoStore }, { status: 200 });
   }),
 
-  http.get(BASE_URL + ENDPOINT.PORTFOLIO_CV, () => {
+  http.get(BASE_URL + ENDPOINT.PORTFOLIO_CV, ({ request }) => {
+    const url = new URL(request.url);
+    const sort = url.searchParams.get('sort') === 'favorites' ? 'favorites' : 'newest';
+
+    const toListItem = (c: PortfolioCvDetail) => ({
+      id: c.id,
+      title: c.title,
+      job_posting: c.job_posting,
+      target_position: c.target_position,
+      additional_notes: c.additional_notes,
+      design_preferences: c.design_preferences,
+      mode: c.mode,
+      public_token: c.public_token,
+      created_at: c.created_at,
+      updated_at: c.updated_at,
+      is_public: c.is_public,
+      is_favorite: Boolean(c.is_favorite),
+    });
+
+    let ordered = [...cvStore];
+    if (sort === 'favorites') {
+      ordered.sort((a, b) => {
+        const favDiff = Number(Boolean(b.is_favorite)) - Number(Boolean(a.is_favorite));
+        if (favDiff !== 0) return favDiff;
+        return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
+      });
+    } else {
+      ordered.sort(
+        (a, b) => new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime(),
+      );
+    }
+
     return HttpResponse.json(
       {
-        cvs: cvStore.map(c => ({
-          id: c.id,
-          title: c.title,
-          job_posting: c.job_posting,
-          target_position: c.target_position,
-          additional_notes: c.additional_notes,
-          design_preferences: c.design_preferences,
-          mode: c.mode,
-          public_token: c.public_token,
-          created_at: c.created_at,
-          updated_at: c.updated_at,
-          is_public: c.is_public,
-        })),
+        cvs: ordered.map(toListItem),
+        total: cvStore.length,
       },
       { status: 200 },
     );
@@ -464,6 +484,7 @@ export const PortfolioHandlers = [
         title?: string;
         html_content?: string;
         is_public?: boolean;
+        is_favorite?: boolean;
       };
       const now = new Date().toISOString();
       const prev = cvStore[idx];
@@ -476,6 +497,8 @@ export const PortfolioHandlers = [
         html_content:
           body.html_content !== undefined ? String(body.html_content) : prev.html_content,
         is_public: body.is_public !== undefined ? Boolean(body.is_public) : prev.is_public,
+        is_favorite:
+          body.is_favorite !== undefined ? Boolean(body.is_favorite) : Boolean(prev.is_favorite),
         updated_at: now,
       };
       cvStore[idx] = next;
@@ -645,6 +668,7 @@ export const PortfolioHandlers = [
         html_content: '',
         public_token,
         is_public: false,
+        is_favorite: false,
         created_at: now,
         updated_at: now,
         selected_repo_ids: [...r],

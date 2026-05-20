@@ -17,7 +17,7 @@ import { styled } from '@mui/material/styles';
 import { useCallback, useEffect, useMemo, useState, type FunctionComponent, type SVGProps } from 'react';
 import { toast } from 'react-toastify';
 import { openCvShareInNewTab } from '@/constants/routePath';
-import { formatDateOnly } from '@/pages/portfolio/utils/date';
+import { formatDateOnly, formatDateTime } from '@/pages/portfolio/utils/date';
 import { copyTextToClipboard } from '@/utils/copyTextToClipboard';
 import {
   CV_COLOR_THEME_SWATCHES,
@@ -357,10 +357,14 @@ const CvPreviewContent = ({
               <BusinessIcon sx={{ fontSize: 22, color: palette.blue500, flexShrink: 0 }} />
               <Text
                 as="h2"
-                margin="0"
-                bold
-                color={palette.nearBlack}
-                style={{ fontSize: '1.0625rem', lineHeight: 1.35, wordBreak: 'break-word' }}
+                style={{
+                  margin: 0,
+                  color: palette.nearBlack,
+                  fontSize: '1.125rem',
+                  fontWeight: 700,
+                  lineHeight: 1.35,
+                  wordBreak: 'break-word',
+                }}
               >
                 {data ? `${data.title} — ${data.target_position}` : '포트폴리오 미리보기'}
               </Text>
@@ -441,10 +445,10 @@ const CvPreviewContent = ({
           <Flex.Row align="center" gap="0.35rem" wrap="wrap">
             <CalendarTodayIcon sx={{ fontSize: 18, color: palette.grey500 }} />
             <Text margin="0" color={palette.grey600} style={{ fontSize: '0.875rem' }}>
-              {formatDateOnly(data.updated_at)}
+              {formatDateTime(data.updated_at)}
             </Text>
             <Text margin="0" color={palette.grey400} style={{ fontSize: '0.75rem' }}>
-              (생성 {formatDateOnly(data.created_at)})
+              (생성 {formatDateTime(data.created_at)})
             </Text>
           </Flex.Row>
         ) : null}

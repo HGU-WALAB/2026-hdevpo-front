@@ -30,10 +30,19 @@ export interface PortfolioCvListItem {
   created_at: string;
   updated_at: string;
   is_public: boolean;
+  is_favorite: boolean;
+}
+
+export type PortfolioCvListSort = 'newest' | 'favorites';
+
+export interface GetPortfolioCvListParams {
+  /** 기본 `newest`. `favorites` — 즐겨찾기 먼저, 그다음 최신순 */
+  sort?: PortfolioCvListSort;
 }
 
 export interface PortfolioCvListResponse {
   cvs: PortfolioCvListItem[];
+  total: number;
 }
 
 /** GET /api/portfolio/cv/{id} 상세 */
@@ -119,6 +128,7 @@ function normalizePortfolioCvListItem(raw: unknown): PortfolioCvListItem {
       created_at: '',
       updated_at: '',
       is_public: false,
+      is_favorite: false,
     };
   }
   const o = raw as Record<string, unknown>;
@@ -134,6 +144,7 @@ function normalizePortfolioCvListItem(raw: unknown): PortfolioCvListItem {
     created_at: String(o.created_at ?? ''),
     updated_at: String(o.updated_at ?? ''),
     is_public: readCvIsPublic(o),
+    is_favorite: Boolean(o.is_favorite ?? o.isFavorite),
   };
 }
 
@@ -172,11 +183,18 @@ export function normalizePortfolioCvDetail(raw: unknown): PortfolioCvDetail {
   return detail;
 }
 
-export const getPortfolioCvList = async () => {
-  const raw = await http.get<{ cvs?: unknown[] }>(ENDPOINT.PORTFOLIO_CV);
-  return {
-    cvs: (raw.cvs ?? []).map(normalizePortfolioCvListItem),
-  } satisfies PortfolioCvListResponse;
+export const getPortfolioCvList = async (params?: GetPortfolioCvListParams) => {
+  const searchParams = new URLSearchParams();
+  if (params?.sort != null && params.sort !== 'newest') {
+    searchParams.set('sort', params.sort);
+  }
+  const query = searchParams.toString();
+  const url = query ? `${ENDPOINT.PORTFOLIO_CV}?${query}` : ENDPOINT.PORTFOLIO_CV;
+  const raw = await http.get<{ cvs?: unknown[]; total?: number }>(url);
+  const cvs = (raw.cvs ?? []).map(normalizePortfolioCvListItem);
+  const total =
+    typeof raw.total === 'number' && Number.isFinite(raw.total) ? raw.total : cvs.length;
+  return { cvs, total } satisfies PortfolioCvListResponse;
 };
 
 export const getPortfolioCvById = async (id: number) => {
@@ -244,6 +262,7 @@ export interface PortfolioCvPatchRequest {
   title?: string;
   html_content?: string;
   is_public?: boolean;
+  is_favorite?: boolean;
 }
 
 export const patchPortfolioCv = async (id: number, body: PortfolioCvPatchRequest) => {

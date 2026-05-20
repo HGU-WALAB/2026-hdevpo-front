@@ -1,4 +1,4 @@
-import { Button, Flex, Heading, Text } from '@/components';
+import { Button, Flex, Heading, Text, ToggleButton } from '@/components';
 import { QUERY_KEYS } from '@/constants/queryKeys';
 import { MAX_RESPONSIVE_WIDTH } from '@/constants/system';
 import { boxShadow } from '@/styles/common';
@@ -8,6 +8,8 @@ import VerticalSplitOutlinedIcon from '@mui/icons-material/VerticalSplitOutlined
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import StarIcon from '@mui/icons-material/Star';
+import StarBorderIcon from '@mui/icons-material/StarBorder';
 import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
 import { Dialog, DialogContent, LinearProgress, useMediaQuery } from '@mui/material';
 import { styled } from '@mui/material/styles';
@@ -15,6 +17,7 @@ import { useQuery } from '@tanstack/react-query';
 import {
   useCallback,
   useEffect,
+  useMemo,
   useState,
   type FunctionComponent,
   type KeyboardEvent,
@@ -25,13 +28,15 @@ import { toast } from 'react-toastify';
 
 import { openCvShareInNewTab, ROUTE_PATH } from '@/constants/routePath';
 
-import { formatDateOnly } from '@/pages/portfolio/utils/date';
+import { formatDateTime } from '@/pages/portfolio/utils/date';
 import {
   getPortfolioCvById,
   getPortfolioCvList,
   type PortfolioCvListItem,
+  type PortfolioCvListSort,
 } from '../../apis/cv';
 import useDeletePortfolioCvMutation from '../../hooks/useDeletePortfolioCvMutation';
+import usePatchPortfolioCvMutation from '../../hooks/usePatchPortfolioCvMutation';
 import CvPreviewContent from './CvPreviewContent';
 
 import { CV_QUERY_CONFIG } from '../../constants/cvQueryConfig';
@@ -72,28 +77,36 @@ const CvManagementPanel = () => {
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
   const [previewId, setPreviewId] = useState<number | null>(null);
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [listSort, setListSort] = useState<PortfolioCvListSort>('newest');
   const deleteMutation = useDeletePortfolioCvMutation();
+  const patchMutation = usePatchPortfolioCvMutation();
 
   const listQuery = useQuery({
-    queryKey: [QUERY_KEYS.portfolioCv, 'list'] as const,
-    queryFn: () => getPortfolioCvList(),
+    queryKey: [QUERY_KEYS.portfolioCv, 'list', listSort] as const,
+    queryFn: () => getPortfolioCvList({ sort: listSort }),
     ...CV_QUERY_CONFIG,
   });
 
   const cvs = listQuery.data?.cvs ?? [];
+  const cvTotal = listQuery.data?.total ?? cvs.length;
+  const favoriteFilterActive = listSort === 'favorites';
+  const displayCvs = useMemo(
+    () => (favoriteFilterActive ? cvs.filter(c => c.is_favorite) : cvs),
+    [cvs, favoriteFilterActive],
+  );
 
   /** 목록 로드 시 상단(첫) 항목 자동 선택 · 삭제 후에도 유효한 선택 유지 */
   useEffect(() => {
     if (listQuery.isPending || listQuery.isError) return;
-    if (cvs.length === 0) {
+    if (displayCvs.length === 0) {
       setPreviewId(null);
       return;
     }
     setPreviewId(prev => {
-      if (prev != null && cvs.some(c => c.id === prev)) return prev;
-      return cvs[0].id;
+      if (prev != null && displayCvs.some(c => c.id === prev)) return prev;
+      return displayCvs[0].id;
     });
-  }, [cvs, listQuery.isPending, listQuery.isError]);
+  }, [displayCvs, listQuery.isPending, listQuery.isError]);
 
   const detailQuery = useQuery({
     queryKey: [QUERY_KEYS.portfolioCv, 'detail', previewId] as const,
@@ -135,6 +148,22 @@ const CvManagementPanel = () => {
     setDeleteConfirmId(null);
     handleDeleteCv(id);
   }, [deleteConfirmId, handleDeleteCv]);
+
+  const handleToggleFavorite = useCallback(
+    (item: PortfolioCvListItem) => {
+      patchMutation.mutate(
+        { id: item.id, body: { is_favorite: !item.is_favorite } },
+        {
+          onError: () => {
+            toast.error('즐겨찾기 변경에 실패했습니다.', { position: 'top-center' });
+          },
+        },
+      );
+    },
+    [patchMutation],
+  );
+
+  const favoriteTogglePending = patchMutation.isPending;
 
   const hasPreviewSelection = previewId != null;
   /** 모바일: 카드 선택 시에만 패널. 데스크톱: 항상 오른쪽 슬롯(미선택 시 빈 상태). */
@@ -181,7 +210,7 @@ const CvManagementPanel = () => {
         {showListColumn ? (
           <S.ListColumn
             direction="column"
-            gap="1rem"
+            gap="0"
             width="100%"
             style={{
               flex: !isMobile ? '1 1 0' : '1 1 100%',
@@ -190,29 +219,26 @@ const CvManagementPanel = () => {
               overflow: 'hidden',
             }}
           >
-            <S.ListStack
-              direction="column"
-              gap="1rem"
-              width="100%"
-              style={{ flex: 1, minHeight: 0, minWidth: 0, overflow: 'auto' }}
-            >
-              <Flex.Row align="center" gap="0.5rem" wrap="wrap">
-                <Text
-                  margin="0"
-                  color={palette.grey600}
-                  style={{ fontSize: '0.8125rem', fontWeight: 600 }}
-                >
-                  전체 {cvs.length}건
-                </Text>
-              </Flex.Row>
+            <S.ListToolbar>
+              <S.ListCount>전체 {cvTotal}건</S.ListCount>
+              <ToggleButton
+                label="즐겨찾기"
+                selected={favoriteFilterActive}
+                disabled={listQuery.isPending}
+                onClick={() =>
+                  setListSort(prev => (prev === 'favorites' ? 'newest' : 'favorites'))
+                }
+              />
+            </S.ListToolbar>
 
+            <S.ListScrollBody>
               {listQuery.isError ? (
                 <Text margin="0" color={palette.pink500} style={{ fontSize: '0.875rem' }}>
                   목록을 불러오지 못했습니다. 잠시 후 다시 시도해 주세요.
                 </Text>
               ) : null}
 
-              {!listQuery.isPending && cvs.length === 0 ? (
+              {!listQuery.isPending && cvTotal === 0 ? (
                 <S.EmptyState>
                   <S.EmptyTitle>아직 저장된 포트폴리오가 없습니다</S.EmptyTitle>
                   <S.EmptyHint>
@@ -222,12 +248,24 @@ const CvManagementPanel = () => {
                 </S.EmptyState>
               ) : null}
 
-              {cvs.map(item => (
+              {!listQuery.isPending &&
+              cvTotal > 0 &&
+              favoriteFilterActive &&
+              displayCvs.length === 0 ? (
+                <S.EmptyState>
+                  <S.EmptyTitle>즐겨찾기한 포트폴리오가 없습니다</S.EmptyTitle>
+                  <S.EmptyHint>카드의 별 아이콘을 눌러 즐겨찾기에 추가할 수 있습니다.</S.EmptyHint>
+                </S.EmptyState>
+              ) : null}
+
+              {displayCvs.map(item => (
                 <CvHistoryCard
                   key={item.id}
                   item={item}
                   isSelected={previewId === item.id}
+                  favoriteToggleDisabled={favoriteTogglePending}
                   onSelect={() => openPreview(item.id)}
+                  onToggleFavorite={() => handleToggleFavorite(item)}
                   onOpenShareLink={() => {
                     const token = String(item.public_token ?? '').trim();
                     if (!token) return;
@@ -239,7 +277,7 @@ const CvManagementPanel = () => {
                   }}
                 />
               ))}
-            </S.ListStack>
+            </S.ListScrollBody>
           </S.ListColumn>
         ) : null}
 
@@ -372,12 +410,16 @@ const CvManagementPanel = () => {
 function CvHistoryCard({
   item,
   isSelected,
+  favoriteToggleDisabled,
   onSelect,
+  onToggleFavorite,
   onOpenShareLink,
 }: {
   item: PortfolioCvListItem;
   isSelected: boolean;
+  favoriteToggleDisabled: boolean;
   onSelect: () => void;
+  onToggleFavorite: () => void;
   onOpenShareLink: () => void;
 }) {
   const isMobile = useMediaQuery(MAX_RESPONSIVE_WIDTH);
@@ -426,18 +468,26 @@ function CvHistoryCard({
         style={{ minWidth: 0 }}
       >
         <Flex.Column gap="0.5rem" style={{ flex: '1 1 14rem', minWidth: 0 }}>
-          <Text
-            margin="0"
-            bold
-            color={palette.nearBlack}
-            style={{
-              fontSize: '1rem',
-              lineHeight: 1.4,
-              wordBreak: 'break-word',
-            }}
-          >
-            {cardTitle}
-          </Text>
+          <Flex.Row align="center" gap="0.35rem" style={{ minWidth: 0 }}>
+            <S.FavoriteButton
+              type="button"
+              $active={item.is_favorite}
+              disabled={favoriteToggleDisabled}
+              aria-label={item.is_favorite ? '즐겨찾기 해제' : '즐겨찾기 추가'}
+              aria-pressed={item.is_favorite}
+              onClick={e => {
+                e.stopPropagation();
+                onToggleFavorite();
+              }}
+            >
+              {item.is_favorite ? (
+                <StarIcon sx={{ fontSize: 20 }} aria-hidden />
+              ) : (
+                <StarBorderIcon sx={{ fontSize: 20 }} aria-hidden />
+              )}
+            </S.FavoriteButton>
+            <S.CardTitle>{cardTitle}</S.CardTitle>
+          </Flex.Row>
           <Flex.Row align="center" gap="0.5rem" wrap="wrap">
             <S.MetaChip>
               <WorkOutlineIcon sx={{ fontSize: 15, color: palette.grey500 }} aria-hidden />
@@ -445,7 +495,7 @@ function CvHistoryCard({
             </S.MetaChip>
             <S.MetaChip>
               <CalendarTodayIcon sx={{ fontSize: 15, color: palette.grey500 }} aria-hidden />
-              <span>{formatDateOnly(item.updated_at)}</span>
+              <span>{formatDateTime(item.updated_at)}</span>
             </S.MetaChip>
             <S.HtmlPublicStatusTag $public={isHtmlPublic}>
               {isHtmlPublic ? 'HTML 공개 중' : 'HTML 비공개'}
@@ -542,14 +592,58 @@ const S = {
     width: 100%;
     box-sizing: border-box;
   `,
-  ListStack: styled(Flex.Column)`
-    width: 100%;
+  ListScrollBody: styled('div')`
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    flex: 1 1 auto;
+    min-height: 0;
     min-width: 0;
+    width: 100%;
+    padding-top: 1rem;
+    overflow-y: auto;
+    box-sizing: border-box;
     scrollbar-width: none;
     -ms-overflow-style: none;
     &::-webkit-scrollbar {
       display: none;
     }
+  `,
+  ListToolbar: styled('div')`
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    flex-shrink: 0;
+    width: 100%;
+    min-width: 0;
+    min-height: 2.25rem;
+    padding-bottom: 0.5rem;
+    box-sizing: border-box;
+    border-bottom: 1px solid ${palette.grey200};
+    background-color: ${({ theme }) => theme.palette.background.default};
+  `,
+  ListCount: styled('span')`
+    display: flex;
+    align-items: center;
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1;
+    color: ${palette.grey600};
+  `,
+  CardTitle: styled('span')`
+    display: block;
+    flex: 1 1 auto;
+    min-width: 0;
+    margin: 0;
+    font-size: 1rem;
+    font-weight: 700;
+    line-height: 1.4;
+    color: ${palette.nearBlack};
+    word-break: break-word;
   `,
   EmptyState: styled('div')`
     display: flex;
@@ -577,6 +671,32 @@ const S = {
     line-height: 1.6;
     color: ${palette.grey500};
     max-width: 22rem;
+  `,
+  FavoriteButton: styled('button', {
+    shouldForwardProp: p => p !== '$active',
+  })<{ $active: boolean }>`
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    width: 2rem;
+    height: 2rem;
+    margin: 0;
+    padding: 0;
+    border: none;
+    border-radius: 0.375rem;
+    background-color: transparent;
+    color: ${({ $active }) => ($active ? palette.blue500 : palette.grey400)};
+    cursor: pointer;
+    transition: color 0.15s ease, background-color 0.15s ease;
+    &:hover:not(:disabled) {
+      background-color: ${palette.blue300};
+      color: ${palette.blue600};
+    }
+    &:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
   `,
   HistoryCard: styled('article', {
     shouldForwardProp: p => p !== '$selected',

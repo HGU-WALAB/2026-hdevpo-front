@@ -56,6 +56,10 @@ function mergeDetailFromPatchResponse(
   const isPublic = coerceBoolean(pub);
   if (isPublic !== undefined) patch.is_public = isPublic;
 
+  const fav = o.is_favorite ?? o.isFavorite;
+  const isFavorite = coerceBoolean(fav);
+  if (isFavorite !== undefined) patch.is_favorite = isFavorite;
+
   const str = (a: unknown, b?: unknown) =>
     (typeof a === 'string' ? a : typeof b === 'string' ? b : undefined) as
       | string
@@ -163,6 +167,7 @@ const usePatchPortfolioCvMutation = () => {
           created_at: '',
           updated_at: '',
           is_public: false,
+          is_favorite: false,
           prompt: '',
           html_content: '',
           selected_repo_ids: [],
@@ -178,11 +183,12 @@ const usePatchPortfolioCvMutation = () => {
           rawUpdated !== null &&
           Object.keys(rawUpdated as object).length === 0);
 
-      queryClient.setQueryData<PortfolioCvListResponse | undefined>(
-        [QUERY_KEYS.portfolioCv, 'list'],
+      queryClient.setQueriesData<PortfolioCvListResponse>(
+        { queryKey: [QUERY_KEYS.portfolioCv, 'list'] },
         old => {
           if (!old?.cvs) return old;
           return {
+            ...old,
             cvs: old.cvs.map(c => {
               if (c.id !== id) return c;
               let next: PortfolioCvListItem = { ...c };
@@ -195,10 +201,17 @@ const usePatchPortfolioCvMutation = () => {
                     fromResponse.is_public !== undefined
                       ? fromResponse.is_public
                       : next.is_public,
+                  is_favorite:
+                    fromResponse.is_favorite !== undefined
+                      ? fromResponse.is_favorite
+                      : next.is_favorite,
                 };
               }
               if (body.is_public !== undefined) {
                 next = { ...next, is_public: Boolean(body.is_public) };
+              }
+              if (body.is_favorite !== undefined) {
+                next = { ...next, is_favorite: Boolean(body.is_favorite) };
               }
               if (body.title !== undefined) {
                 next = { ...next, title: body.title };
@@ -226,6 +239,9 @@ const usePatchPortfolioCvMutation = () => {
           if (body.html_content !== undefined) {
             next = { ...next, html_content: body.html_content };
           }
+          if (body.is_favorite !== undefined) {
+            next = { ...next, is_favorite: Boolean(body.is_favorite) };
+          }
           return next;
         },
       );
@@ -233,6 +249,7 @@ const usePatchPortfolioCvMutation = () => {
       if (
         responseLooksEmpty &&
         body.is_public === undefined &&
+        body.is_favorite === undefined &&
         body.title === undefined &&
         body.html_content === undefined
       ) {
