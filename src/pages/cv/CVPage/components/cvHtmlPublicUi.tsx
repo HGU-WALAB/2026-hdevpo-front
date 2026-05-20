@@ -4,7 +4,13 @@ import OpenInNewIcon from '@mui/icons-material/OpenInNew';
 import { Switch } from '@mui/material';
 import { styled } from '@mui/material/styles';
 import type { SxProps, Theme } from '@mui/material/styles';
-import { useLayoutEffect, useRef, useState, type FunctionComponent, type SVGProps } from 'react';
+import {
+  useLayoutEffect,
+  useRef,
+  useState,
+  type FunctionComponent,
+  type SVGProps,
+} from 'react';
 
 import type { Size } from '@/types/style';
 import { CV_PREVIEW_IFRAME_SANDBOX } from '../../constants/cvPreviewIframeSandbox';
@@ -54,7 +60,7 @@ const IFRAME_H = 1020;
 const THUMB_SCALE = Math.min(THUMB_PX / IFRAME_W, THUMB_PX / IFRAME_H);
 
 /**
- * HTML 공개 — 상태 문구 + 라벨 + Switch 토글, 공개 시 같은 줄(줄 바꿈 시 아래)에 링크 버튼.
+ * HTML 공개 — 1행: 상태 문구 + 스위치(항상 같은 줄), 2행: 공개 시 링크 버튼.
  * 포트폴리오 카드 / 미리보기 모달 공통.
  * @param appearance `filled`(기본) — 파란 톤 / `plain` — 흰 배경·목록 카드 안에서 사용
  */
@@ -79,49 +85,57 @@ export function CvHtmlPublicSwitchControl({
   const isMedium = size === 'medium';
   const plain = appearance === 'plain';
 
+  const headline = isPublic ? 'HTML 공개 중' : 'HTML 비공개';
+
   return (
     <S.Bar $medium={isMedium} $plain={plain}>
-      <S.LeftCluster>
-        <S.Status $on={isPublic} $medium={isMedium}>
-          {isPublic ? '공개 중' : '비공개'}
-        </S.Status>
+      <S.BarTopRow $medium={isMedium}>
         <Text
           margin="0"
-          color={palette.nearBlack}
-          style={{ fontSize: labelFs, fontWeight: 600, lineHeight: 1.35 }}
+          color={isPublic ? palette.blue600 : palette.grey600}
+          style={{
+            fontSize: labelFs,
+            fontWeight: 600,
+            lineHeight: 1.35,
+            flex: '1 1 auto',
+            minWidth: 0,
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            whiteSpace: 'nowrap',
+          }}
         >
-          HTML 공개
+          {headline}
         </Text>
         <Switch
           checked={Boolean(isPublic)}
           onChange={(_, checked) => onPublicChange(checked)}
           disabled={disabled}
           size="small"
-          sx={htmlPublicSwitchSx}
-          inputProps={{ 'aria-label': 'HTML 공개' }}
+          sx={{ ...(htmlPublicSwitchSx as object), flexShrink: 0 } as SxProps<Theme>}
+          inputProps={{
+            'aria-label': isPublic ? 'HTML 공개 끄기' : 'HTML 공개 켜기',
+          }}
         />
-      </S.LeftCluster>
-      {linkButton ? (
-        <S.RightSlot>
-          {isPublic ? (
-            <Button
-              label={linkButton.label ?? '링크 열기'}
-              variant="outlined"
-              color="blue"
-              size={size}
-              icon={LinkIcon}
-              iconPosition="start"
-              onClick={linkButton.onClick}
-              disabled={linkButton.disabled}
-            />
-          ) : null}
-        </S.RightSlot>
+      </S.BarTopRow>
+      {linkButton && isPublic ? (
+        <S.BarLinkRow>
+          <Button
+            label={linkButton.label ?? '링크 열기'}
+            variant="outlined"
+            color="blue"
+            size={size}
+            icon={LinkIcon}
+            iconPosition="start"
+            onClick={linkButton.onClick}
+            disabled={linkButton.disabled}
+          />
+        </S.BarLinkRow>
       ) : null}
     </S.Bar>
   );
 }
 
-/** 왼쪽(제목·스위치·가이드) 넓게 + 오른쪽 HTML 미리보기(왼쪽 묶음과 동일 높이) */
+/** 왼쪽(제목·스위치·가이드) 넓게 + 오른쪽 HTML 미리보기(가로 고정·세로는 왼쪽 열 높이) */
 export function CvHtmlPublicSettingsRow({
   title,
   guide,
@@ -138,9 +152,27 @@ export function CvHtmlPublicSettingsRow({
   linkButton?: CvHtmlPublicLinkButtonProps;
   appearance?: CvHtmlPublicAppearance;
 }) {
+  const leftColumnRef = useRef<HTMLDivElement>(null);
+  const [thumbMatchHeightPx, setThumbMatchHeightPx] = useState(THUMB_PX);
+  const { isPublic, linkButton } = switchProps;
+
+  useLayoutEffect(() => {
+    const el = leftColumnRef.current;
+    if (!el) return;
+    const measure = () => {
+      const h = el.getBoundingClientRect().height;
+      if (h <= 0) return;
+      setThumbMatchHeightPx(Math.max(THUMB_PX, Math.ceil(h)));
+    };
+    measure();
+    const ro = new ResizeObserver(() => measure());
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [title, guide, isPublic, linkButton != null]);
+
   return (
     <S.SettingsRow>
-      <S.LeftColumn>
+      <S.LeftColumn ref={leftColumnRef}>
         {title ? <S.SettingsTitle>{title}</S.SettingsTitle> : null}
         <CvHtmlPublicSwitchControl {...switchProps} />
         {guide ? (
@@ -150,7 +182,11 @@ export function CvHtmlPublicSettingsRow({
         ) : null}
       </S.LeftColumn>
       <S.RightColumn>
-        <CvHtmlPreviewThumb htmlPreviewSrcDoc={htmlPreviewSrcDoc} matchRowHeight />
+        <CvHtmlPreviewThumb
+          htmlPreviewSrcDoc={htmlPreviewSrcDoc}
+          matchRowHeight
+          matchLeftColumnHeightPx={thumbMatchHeightPx}
+        />
       </S.RightColumn>
     </S.SettingsRow>
   );
@@ -160,10 +196,13 @@ export function CvHtmlPublicSettingsRow({
 export function CvHtmlPreviewThumb({
   htmlPreviewSrcDoc,
   matchRowHeight = false,
+  matchLeftColumnHeightPx,
 }: {
   htmlPreviewSrcDoc?: string | null;
-  /** true — 부모(왼쪽 묶음) 높이에 맞춤, 정사각형 */
+  /** true — 왼쪽 설정 열 높이 등에 맞춤 */
   matchRowHeight?: boolean;
+  /** 설정 행: 가로는 고정(THUMB_PX), 세로만 왼쪽 열(제목·바·안내) 높이에 맞춤 */
+  matchLeftColumnHeightPx?: number;
 }) {
   const hasHtml = Boolean(htmlPreviewSrcDoc?.trim());
   const thumbRef = useRef<HTMLDivElement>(null);
@@ -188,10 +227,15 @@ export function CvHtmlPreviewThumb({
     const observer = new ResizeObserver(updateScale);
     observer.observe(el);
     return () => observer.disconnect();
-  }, [matchRowHeight, htmlPreviewSrcDoc]);
+  }, [matchRowHeight, htmlPreviewSrcDoc, matchLeftColumnHeightPx]);
 
   return (
-    <S.PreviewThumb ref={thumbRef} $matchRowHeight={matchRowHeight} aria-label="HTML 미리보기">
+    <S.PreviewThumb
+      ref={thumbRef}
+      $matchRowHeight={matchRowHeight}
+      $matchHeightPx={matchLeftColumnHeightPx ?? null}
+      aria-label="HTML 미리보기"
+    >
       {hasHtml ? (
         <S.PreviewScaler $scale={scale}>
           <iframe
@@ -228,6 +272,7 @@ const S = {
     display: flex;
     flex-direction: column;
     gap: 0.5rem;
+    align-self: start;
     min-width: 0;
     max-width: 100%;
   `,
@@ -240,11 +285,14 @@ const S = {
   `,
   RightColumn: styled('div')`
     display: flex;
-    flex: 0 0 auto;
+    flex: 0 0 ${THUMB_PX}px;
+    width: ${THUMB_PX}px;
     flex-direction: column;
     align-self: start;
+    justify-content: flex-start;
     min-height: 0;
-    min-width: 0;
+    min-width: ${THUMB_PX}px;
+    max-width: ${THUMB_PX}px;
   `,
   SettingsTitle: styled('span')`
     display: block;
@@ -257,11 +305,9 @@ const S = {
     shouldForwardProp: p => p !== '$medium' && p !== '$plain',
   })<{ $medium: boolean; $plain: boolean }>`
     display: flex;
-    flex-direction: row;
-    flex-wrap: nowrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem 0.75rem;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.45rem;
     width: 100%;
     max-width: 100%;
     min-width: 0;
@@ -274,38 +320,32 @@ const S = {
       $plain ? 'none' : '0 1px 2px rgba(83, 127, 241, 0.08)'};
     flex: 0 0 auto;
     align-self: flex-start;
+  `,
+  BarTopRow: styled('div', {
+    shouldForwardProp: p => p !== '$medium',
+  })<{ $medium?: boolean }>`
+    display: flex;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    align-items: center;
+    justify-content: flex-start;
+    gap: 0.5rem;
+    width: 100%;
+    min-width: 0;
     min-height: ${({ $medium }) =>
       $medium ? 'calc(0.55rem * 2 + 36px)' : 'calc(0.55rem * 2 + 30px)'};
   `,
-  LeftCluster: styled('div')`
+  BarLinkRow: styled('div')`
     display: flex;
     flex-direction: row;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem 0.65rem;
-    flex: 1 1 auto;
+    width: 100%;
     min-width: 0;
   `,
-  RightSlot: styled('div')`
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    flex-shrink: 0;
-  `,
-  Status: styled('span', {
-    shouldForwardProp: p => p !== '$on' && p !== '$medium',
-  })<{ $on: boolean; $medium?: boolean }>`
-    display: inline-flex;
-    align-items: center;
-    font-weight: 700;
-    letter-spacing: 0.02em;
-    white-space: nowrap;
-    font-size: ${({ $medium }) => ($medium ? '0.75rem' : '0.6875rem')};
-    color: ${({ $on }) => ($on ? palette.blue600 : palette.grey500)};
-  `,
   PreviewThumb: styled('div', {
-    shouldForwardProp: p => p !== '$matchRowHeight',
-  })<{ $matchRowHeight: boolean }>`
+    shouldForwardProp: p => p !== '$matchRowHeight' && p !== '$matchHeightPx',
+  })<{ $matchRowHeight: boolean; $matchHeightPx: number | null }>`
     position: relative;
     display: flex;
     flex-shrink: 0;
@@ -317,10 +357,19 @@ const S = {
     border: 1px solid ${palette.grey200};
     background-color: ${palette.white};
     box-shadow: 0 1px 3px rgba(16, 24, 40, 0.08);
-    ${({ $matchRowHeight }) =>
-      $matchRowHeight
+    ${({ $matchRowHeight, $matchHeightPx }) =>
+      $matchRowHeight && $matchHeightPx != null
         ? `
-    /* stretch + 정사각형 썸네일이 행 높이만큼 가로로 커지며 본문을 압축하는 것을 막음 */
+    align-self: flex-start;
+    flex-shrink: 0;
+    width: ${THUMB_PX}px;
+    height: ${$matchHeightPx}px;
+    min-width: ${THUMB_PX}px;
+    min-height: ${THUMB_PX}px;
+    max-width: 100%;
+    `
+        : $matchRowHeight
+          ? `
     align-self: flex-start;
     width: min(100%, 10rem);
     max-width: min(10rem, 36vw);
@@ -330,16 +379,26 @@ const S = {
     min-height: ${THUMB_PX}px;
     max-height: min(10rem, 50vh);
     `
-        : `
+          : `
     width: ${THUMB_PX}px;
     height: ${THUMB_PX}px;
     min-width: ${THUMB_PX}px;
     min-height: ${THUMB_PX}px;
     `}
     @media (max-width: 480px) {
-      width: ${({ $matchRowHeight }) => ($matchRowHeight ? 'auto' : '100%')};
+      ${({ $matchRowHeight, $matchHeightPx }) =>
+        $matchRowHeight && $matchHeightPx != null
+          ? `
+      width: min(100%, ${THUMB_PX}px);
+      height: ${$matchHeightPx}px;
+      min-width: 0;
+      min-height: ${THUMB_PX}px;
+      `
+          : `
+      width: ${$matchRowHeight ? 'auto' : '100%'};
       max-width: ${THUMB_PX}px;
       min-width: 0;
+      `}
     }
   `,
   PreviewScaler: styled('div', {
