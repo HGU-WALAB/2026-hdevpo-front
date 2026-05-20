@@ -17,7 +17,7 @@ import { styled } from '@mui/material/styles';
 import { useCallback, useEffect, useMemo, useState, type FunctionComponent, type SVGProps } from 'react';
 import { toast } from 'react-toastify';
 import { openCvShareInNewTab } from '@/constants/routePath';
-import { formatDateOnly, formatDateTime } from '@/pages/portfolio/utils/date';
+import { formatDateTime } from '@/pages/portfolio/utils/date';
 import { copyTextToClipboard } from '@/utils/copyTextToClipboard';
 import {
   CV_COLOR_THEME_SWATCHES,
@@ -31,7 +31,7 @@ import { buildCvPreviewSrcDoc } from '../../utils/buildCvPreviewSrcDoc';
 import { downloadCvHtmlAsA4Pdf } from '../../utils/downloadCvHtmlAsA4Pdf';
 import { sanitizeCvHtml } from '../../utils/sanitizeCvHtml';
 import { CV_PREVIEW_IFRAME_SANDBOX } from '../../constants/cvPreviewIframeSandbox';
-import { CvHtmlPublicSwitchControl } from './cvHtmlPublicUi';
+import { CvHtmlPublicSettingsRow } from './cvHtmlPublicUi';
 
 export type CvPreviewContentLayout = 'modal' | 'panel';
 
@@ -484,34 +484,29 @@ const CvPreviewContent = ({
         {!isPending && data ? (
           <>
             <S.Section direction="column" gap="0.65rem">
-              <S.SectionTitle>HTML 공개 설정</S.SectionTitle>
               {!isEditing ? (
+                <CvHtmlPublicSettingsRow
+                  title="HTML 공개 설정"
+                  guide="스위치로 HTML 공개 여부를 바꿀 수 있습니다. 공개 시 링크만으로 로그인 없이 미리보기가 가능합니다."
+                  isPublic={Boolean(data.is_public)}
+                  onPublicChange={handleTogglePublic}
+                  disabled={publicToggleDisabled}
+                  size="small"
+                  appearance="filled"
+                  htmlPreviewSrcDoc={htmlPreviewSrcDoc}
+                  linkButton={{
+                    label: '링크 바로가기',
+                    onClick: handleOpenPublicShare,
+                    disabled: publicToggleDisabled,
+                  }}
+                />
+              ) : (
                 <>
-                  <CvHtmlPublicSwitchControl
-                    isPublic={Boolean(data.is_public)}
-                    onPublicChange={handleTogglePublic}
-                    disabled={publicToggleDisabled}
-                    size="small"
-                    appearance="filled"
-                    linkButton={{
-                      label: '링크 바로가기',
-                      onClick: handleOpenPublicShare,
-                      disabled: publicToggleDisabled,
-                    }}
-                  />
-                  <Text
-                    margin="0"
-                    color={palette.grey600}
-                    style={{ fontSize: '0.75rem', lineHeight: 1.55 }}
-                  >
-                    스위치로 HTML 공개 여부를 바꿀 수 있습니다. 공개 시 링크만으로 로그인 없이
-                    미리보기가 가능합니다.
+                  <S.SectionTitle>HTML 공개 설정</S.SectionTitle>
+                  <Text margin="0" color={palette.grey500} style={{ fontSize: '0.8125rem' }}>
+                    HTML 본문을 수정하는 동안에는 공개 설정을 바꿀 수 없습니다.
                   </Text>
                 </>
-              ) : (
-                <Text margin="0" color={palette.grey500} style={{ fontSize: '0.8125rem' }}>
-                  HTML 본문을 수정하는 동안에는 공개 설정을 바꿀 수 없습니다.
-                </Text>
               )}
             </S.Section>
 
