@@ -3,6 +3,7 @@ import { palette } from '@/styles/palette';
 import CloseIcon from '@mui/icons-material/Close';
 import DeleteOutlineIcon from '@mui/icons-material/DeleteOutline';
 import EditIcon from '@mui/icons-material/Edit';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import {
   forwardRef,
   useCallback,
@@ -39,6 +40,14 @@ function dedupeActivityTags(tags: string[] | undefined): string[] {
 }
 
 /** 저장 직전: 칩 목록 + 입력 중인 텍스트까지 합쳐 태그 배열로 만듦 */
+function hasOptionalActivityFields(d: Partial<ActivityItem>): boolean {
+  return Boolean(
+    (d.description ?? '').trim() ||
+    (d.achievements_detail ?? '').trim() ||
+    (d.url ?? '').trim(),
+  );
+}
+
 function flushActivityTagsFromDraft(d: ActivityEditDraft): string[] {
   const base = dedupeActivityTags(d.tags);
   const piece = (d.tagCompose ?? '').trim();
@@ -76,6 +85,7 @@ const ActivitiesSectionContent = forwardRef<
     number | null
   >(null);
   const [activityDeletePending, setActivityDeletePending] = useState(false);
+  const [showMoreFields, setShowMoreFields] = useState(false);
 
   const savedActivities = useMemo(
     () => activities.filter(a => a.id >= 0),
@@ -99,12 +109,17 @@ const ActivitiesSectionContent = forwardRef<
         tags: dedupeActivityTags(existingDraft.tags),
         tagCompose: '',
       });
+      setShowMoreFields(hasOptionalActivityFields(existingDraft));
       return;
     }
     const newItem: ActivityItem = {
       id: activitiesNextId,
       title: '새 활동',
       description: '',
+      host: '',
+      role: '',
+      achievements: '',
+      achievements_detail: '',
       start_date: new Date().toISOString().slice(0, 10),
       end_date: new Date().toISOString().slice(0, 10),
       category: '기타',
@@ -115,6 +130,7 @@ const ActivitiesSectionContent = forwardRef<
     setActivitiesNextId(prev => prev - 1);
     setEditingId(newItem.id);
     setEditDraft({ ...newItem, tags: [], tagCompose: '' });
+    setShowMoreFields(false);
   }, [activities, activitiesNextId, setActivities, setActivitiesNextId]);
 
   const handleStartEdit = useCallback(
@@ -126,6 +142,7 @@ const ActivitiesSectionContent = forwardRef<
         tags: dedupeActivityTags(item.tags),
         tagCompose: '',
       });
+      setShowMoreFields(hasOptionalActivityFields(item));
     },
     [setActivities],
   );
@@ -141,6 +158,10 @@ const ActivitiesSectionContent = forwardRef<
         ...item,
         title: editDraft.title ?? item.title,
         description: editDraft.description ?? item.description,
+        host: (editDraft.host ?? item.host ?? '').trim(),
+        role: (editDraft.role ?? item.role ?? '').trim(),
+        achievements: (editDraft.achievements ?? item.achievements ?? '').trim(),
+        achievements_detail: (editDraft.achievements_detail ?? item.achievements_detail ?? '').trim(),
         start_date: editDraft.start_date ?? item.start_date,
         end_date: editDraft.end_date ?? item.end_date,
         category: categoryNorm,
@@ -163,6 +184,10 @@ const ActivitiesSectionContent = forwardRef<
       ...item,
       title: editDraft.title ?? item.title,
       description: editDraft.description ?? item.description,
+      host: (editDraft.host ?? item.host ?? '').trim(),
+      role: (editDraft.role ?? item.role ?? '').trim(),
+      achievements: (editDraft.achievements ?? item.achievements ?? '').trim(),
+      achievements_detail: (editDraft.achievements_detail ?? item.achievements_detail ?? '').trim(),
       start_date: editDraft.start_date ?? item.start_date,
       end_date: editDraft.end_date ?? item.end_date,
       category: categoryNorm,
@@ -184,6 +209,7 @@ const ActivitiesSectionContent = forwardRef<
     }
     setEditingId(null);
     setEditDraft({});
+    setShowMoreFields(false);
   }, [editingId, setActivities]);
 
   const handleDelete = useCallback(
@@ -351,30 +377,73 @@ const ActivitiesSectionContent = forwardRef<
               </Flex.Row>
             </Flex.Column>
           </Flex.Row>
-          <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
-            <S.FieldLabel>제목</S.FieldLabel>
-            <Input
-              value={editDraft.title ?? ''}
-              onChange={e =>
-                setEditDraft(prev => ({
-                  ...prev,
-                  title: e.target.value,
-                }))
-              }
-              placeholder="활동 제목"
-              inputProps={{
-                maxLength: INPUT_MAX_LENGTH.ACTIVITY_TITLE,
-                'aria-label': '제목',
+          <Flex.Row
+            align="flex-end"
+            gap="0.75rem"
+            wrap="wrap"
+            style={{ width: '100%' }}
+          >
+            <Flex.Column
+              gap="0.25rem"
+              style={{
+                flex: '4 1 0',
+                minWidth: 'min(100%, 10rem)',
               }}
-              size="small"
-              style={{ width: '100%' }}
-              sx={{
-                '& .MuiOutlinedInput-root': {
-                  backgroundColor: theme.palette.variant.default,
-                },
+            >
+              <S.FieldLabel>주최</S.FieldLabel>
+              <Input
+                value={editDraft.host ?? ''}
+                onChange={e =>
+                  setEditDraft(prev => ({
+                    ...prev,
+                    host: e.target.value,
+                  }))
+                }
+                placeholder="주최 기관·단체명"
+                inputProps={{
+                  maxLength: INPUT_MAX_LENGTH.ACTIVITY_HOST,
+                  'aria-label': '주최',
+                }}
+                size="small"
+                style={{ width: '100%' }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: theme.palette.variant.default,
+                  },
+                }}
+              />
+            </Flex.Column>
+            <Flex.Column
+              gap="0.25rem"
+              style={{
+                flex: '6 1 0',
+                minWidth: 'min(100%, 12rem)',
               }}
-            />
-          </Flex.Column>
+            >
+              <S.FieldLabel>제목</S.FieldLabel>
+              <Input
+                value={editDraft.title ?? ''}
+                onChange={e =>
+                  setEditDraft(prev => ({
+                    ...prev,
+                    title: e.target.value,
+                  }))
+                }
+                placeholder="활동 제목"
+                inputProps={{
+                  maxLength: INPUT_MAX_LENGTH.ACTIVITY_TITLE,
+                  'aria-label': '제목',
+                }}
+                size="small"
+                style={{ width: '100%' }}
+                sx={{
+                  '& .MuiOutlinedInput-root': {
+                    backgroundColor: theme.palette.variant.default,
+                  },
+                }}
+              />
+            </Flex.Column>
+          </Flex.Row>
           <Flex.Column
             gap="0.25rem"
             style={{
@@ -466,21 +535,21 @@ const ActivitiesSectionContent = forwardRef<
             </Flex.Column>
           </Flex.Column>
           <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
-            <S.FieldLabel>상세 설명</S.FieldLabel>
+            <S.FieldLabel>역할</S.FieldLabel>
             <Input
               multiline
-              value={editDraft.description ?? ''}
+              value={editDraft.role ?? ''}
               onChange={e =>
                 setEditDraft(prev => ({
                   ...prev,
-                  description: e.target.value,
+                  role: e.target.value,
                 }))
               }
-              placeholder="활동의 상세 내용을 입력해 주세요."
-              rows={3}
+              placeholder="담당 역할·기여 내용"
+              rows={2}
               inputProps={{
-                maxLength: INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION,
-                'aria-label': '상세 설명',
+                maxLength: INPUT_MAX_LENGTH.ACTIVITY_ROLE,
+                'aria-label': '역할',
               }}
               size="small"
               fullWidth
@@ -495,38 +564,170 @@ const ActivitiesSectionContent = forwardRef<
             />
             <S.CharCount
               warn={
-                (editDraft.description?.length ?? 0) >=
-                INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION - 20
+                (editDraft.role?.length ?? 0) >= INPUT_MAX_LENGTH.ACTIVITY_ROLE - 40
               }
             >
-              {editDraft.description?.length ?? 0} /{' '}
-              {INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION}
+              {editDraft.role?.length ?? 0} / {INPUT_MAX_LENGTH.ACTIVITY_ROLE}
             </S.CharCount>
           </Flex.Column>
           <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
-            <S.FieldLabel>관련 URL</S.FieldLabel>
+            <S.FieldLabel>성과 및 결과</S.FieldLabel>
             <Input
-              value={editDraft.url ?? ''}
+              multiline
+              value={editDraft.achievements ?? ''}
               onChange={e =>
                 setEditDraft(prev => ({
                   ...prev,
-                  url: e.target.value,
+                  achievements: e.target.value,
                 }))
               }
-              placeholder="https://…"
+              placeholder="수상, 성과, 결과 요약"
+              rows={3}
               inputProps={{
-                maxLength: INPUT_MAX_LENGTH.ACTIVITY_URL,
-                'aria-label': '활동 관련 URL',
+                maxLength: INPUT_MAX_LENGTH.ACTIVITY_ACHIEVEMENTS,
+                'aria-label': '성과 및 결과',
               }}
               size="small"
-              style={{ width: '100%' }}
+              fullWidth
               sx={{
                 '& .MuiOutlinedInput-root': {
                   backgroundColor: theme.palette.variant.default,
                 },
+                '& textarea': {
+                  resize: 'vertical',
+                },
               }}
             />
+            <S.CharCount
+              warn={
+                (editDraft.achievements?.length ?? 0) >=
+                INPUT_MAX_LENGTH.ACTIVITY_ACHIEVEMENTS - 80
+              }
+            >
+              {editDraft.achievements?.length ?? 0} /{' '}
+              {INPUT_MAX_LENGTH.ACTIVITY_ACHIEVEMENTS}
+            </S.CharCount>
           </Flex.Column>
+          <S.MoreToggleRow>
+            <S.MoreToggleButton
+              type="button"
+              onClick={() => setShowMoreFields(prev => !prev)}
+              aria-expanded={showMoreFields}
+            >
+              <ExpandMoreIcon
+                sx={{
+                  fontSize: 20,
+                  transform: showMoreFields ? 'rotate(180deg)' : 'rotate(0deg)',
+                  transition: 'transform 0.2s ease',
+                }}
+              />
+              {showMoreFields ? '추가 항목 접기' : '추가 항목 더보기'}
+            </S.MoreToggleButton>
+          </S.MoreToggleRow>
+          {showMoreFields ? (
+            <Flex.Column gap="0.75rem" style={{ width: '100%' }}>
+              <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
+                <S.FieldLabel>상세 설명</S.FieldLabel>
+                <Input
+                  multiline
+                  value={editDraft.description ?? ''}
+                  onChange={e =>
+                    setEditDraft(prev => ({
+                      ...prev,
+                      description: e.target.value,
+                    }))
+                  }
+                  placeholder="활동의 상세 내용을 입력해 주세요."
+                  rows={3}
+                  inputProps={{
+                    maxLength: INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION,
+                    'aria-label': '상세 설명',
+                  }}
+                  size="small"
+                  fullWidth
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: theme.palette.variant.default,
+                    },
+                    '& textarea': {
+                      resize: 'vertical',
+                    },
+                  }}
+                />
+                <S.CharCount
+                  warn={
+                    (editDraft.description?.length ?? 0) >=
+                    INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION - 20
+                  }
+                >
+                  {editDraft.description?.length ?? 0} /{' '}
+                  {INPUT_MAX_LENGTH.ACTIVITY_DESCRIPTION}
+                </S.CharCount>
+              </Flex.Column>
+              <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
+                <S.FieldLabel>성과 설명</S.FieldLabel>
+                <Input
+                  multiline
+                  value={editDraft.achievements_detail ?? ''}
+                  onChange={e =>
+                    setEditDraft(prev => ({
+                      ...prev,
+                      achievements_detail: e.target.value,
+                    }))
+                  }
+                  placeholder="성과에 대한 상세 설명"
+                  rows={3}
+                  inputProps={{
+                    maxLength: INPUT_MAX_LENGTH.ACTIVITY_ACHIEVEMENTS_DETAIL,
+                    'aria-label': '성과 설명',
+                  }}
+                  size="small"
+                  fullWidth
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: theme.palette.variant.default,
+                    },
+                    '& textarea': {
+                      resize: 'vertical',
+                    },
+                  }}
+                />
+                <S.CharCount
+                  warn={
+                    (editDraft.achievements_detail?.length ?? 0) >=
+                    INPUT_MAX_LENGTH.ACTIVITY_ACHIEVEMENTS_DETAIL - 100
+                  }
+                >
+                  {editDraft.achievements_detail?.length ?? 0} /{' '}
+                  {INPUT_MAX_LENGTH.ACTIVITY_ACHIEVEMENTS_DETAIL}
+                </S.CharCount>
+              </Flex.Column>
+              <Flex.Column gap="0.25rem" style={{ width: '100%' }}>
+                <S.FieldLabel>관련 URL</S.FieldLabel>
+                <Input
+                  value={editDraft.url ?? ''}
+                  onChange={e =>
+                    setEditDraft(prev => ({
+                      ...prev,
+                      url: e.target.value,
+                    }))
+                  }
+                  placeholder="https://…"
+                  inputProps={{
+                    maxLength: INPUT_MAX_LENGTH.ACTIVITY_URL,
+                    'aria-label': '활동 관련 URL',
+                  }}
+                  size="small"
+                  style={{ width: '100%' }}
+                  sx={{
+                    '& .MuiOutlinedInput-root': {
+                      backgroundColor: theme.palette.variant.default,
+                    },
+                  }}
+                />
+              </Flex.Column>
+            </Flex.Column>
+          ) : null}
         </Flex.Column>
         <Flex.Row
           justify="flex-end"
@@ -656,6 +857,45 @@ const ActivitiesSectionContent = forwardRef<
                           minWidth: 0,
                         }}
                       >
+                        {item.host?.trim() ? (
+                          <Text
+                            as="span"
+                            style={{
+                              ...theme.typography.body2,
+                              color: theme.palette.grey[600],
+                              margin: 0,
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            주최: {item.host.trim()}
+                          </Text>
+                        ) : null}
+                        {item.role?.trim() ? (
+                          <Text
+                            as="span"
+                            style={{
+                              ...theme.typography.body2,
+                              color: theme.palette.grey[600],
+                              margin: 0,
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            역할: {item.role.trim()}
+                          </Text>
+                        ) : null}
+                        {item.achievements?.trim() ? (
+                          <Text
+                            as="span"
+                            style={{
+                              ...theme.typography.body2,
+                              color: theme.palette.grey[600],
+                              margin: 0,
+                              wordBreak: 'break-word',
+                            }}
+                          >
+                            성과: {item.achievements.trim()}
+                          </Text>
+                        ) : null}
                         <Text
                           as="span"
                           style={{
@@ -667,11 +907,13 @@ const ActivitiesSectionContent = forwardRef<
                         >
                           {item.description ? (
                             <>{item.description}</>
-                          ) : (
+                          ) : !item.host?.trim() &&
+                            !item.role?.trim() &&
+                            !item.achievements?.trim() ? (
                             <span style={{ color: theme.palette.grey[400] }}>
                               추가 설명을 통해 더 나은 프롬프트 결과를 얻을 수 있습니다.
                             </span>
-                          )}
+                          ) : null}
                         </Text>
                         {item.url?.trim() ? (
                           <S.ActivityUrlLink
@@ -891,6 +1133,29 @@ const S = {
     font-size: 0.75rem;
     color: ${({ warn }) => (warn ? palette.pink500 : palette.grey400)};
     text-align: right;
+  `,
+  MoreToggleRow: styled(Flex.Row)`
+    width: 100%;
+    justify-content: flex-start;
+  `,
+  MoreToggleButton: styled('button')`
+    display: inline-flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.25rem 0.5rem;
+    margin: 0;
+    border: none;
+    border-radius: 0.375rem;
+    background: transparent;
+    color: ${palette.blue500};
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    box-sizing: border-box;
+    &:hover {
+      background-color: ${palette.blue300};
+    }
   `,
   EditButton: styled('button')`
     display: flex;

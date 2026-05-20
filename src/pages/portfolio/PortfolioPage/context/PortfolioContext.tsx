@@ -60,13 +60,55 @@ function apiActivityToItem(
   return {
     id: a.id,
     title: a.title,
-    description: a.description,
+    description: a.description ?? '',
+    host: (a.host ?? '').trim(),
+    role: (a.role ?? '').trim(),
+    achievements: (a.achievements ?? '').trim(),
+    achievements_detail: (a.achievements_detail ?? '').trim(),
     start_date: a.start_date,
     end_date: a.end_date,
     category: (a.category ?? '').trim() || '기타',
     display_order: a.display_order,
     url: (a.url ?? '').trim(),
     tags: normalizeActivityTags(a.tags),
+  };
+}
+
+function optionalActivityField(value: string | undefined | null): string | undefined {
+  const trimmed = (value ?? '').trim();
+  return trimmed === '' ? undefined : trimmed;
+}
+
+function activityItemToPostBody(item: ActivityItem): import('../../apis/portfolio').ActivityPostRequest {
+  const tags = normalizeActivityTags(item.tags);
+  return {
+    title: item.title.trim(),
+    description: (item.description ?? '').trim(),
+    host: optionalActivityField(item.host),
+    role: optionalActivityField(item.role),
+    achievements: optionalActivityField(item.achievements),
+    achievements_detail: optionalActivityField(item.achievements_detail),
+    start_date: item.start_date,
+    end_date: item.end_date,
+    category: item.category.trim() || '기타',
+    url: optionalActivityField(item.url),
+    tags: tags.length > 0 ? tags : undefined,
+  };
+}
+
+function activityItemToPutBody(item: ActivityItem): import('../../apis/portfolio').ActivityPutByIdRequest {
+  return {
+    title: item.title.trim(),
+    description: (item.description ?? '').trim(),
+    host: (item.host ?? '').trim(),
+    role: (item.role ?? '').trim(),
+    achievements: (item.achievements ?? '').trim(),
+    achievements_detail: (item.achievements_detail ?? '').trim(),
+    start_date: item.start_date,
+    end_date: item.end_date,
+    category: item.category.trim() || '기타',
+    url: (item.url ?? '').trim(),
+    tags: normalizeActivityTags(item.tags),
   };
 }
 
@@ -379,16 +421,7 @@ export const PortfolioProvider = ({ children }: PortfolioProviderProps) => {
   const postNewActivity = useCallback(async (item: ActivityItem) => {
     if (item.id >= 0) return;
     try {
-      const tags = normalizeActivityTags(item.tags);
-      const posted = await postActivity({
-        title: item.title,
-        description: item.description,
-        start_date: item.start_date,
-        end_date: item.end_date,
-        category: item.category.trim() || '기타',
-        url: (item.url ?? '').trim() || undefined,
-        tags: tags.length > 0 ? tags : undefined,
-      });
+      const posted = await postActivity(activityItemToPostBody(item));
       setActivities(prev =>
         prev.map(a => (a.id === item.id ? apiActivityToItem(posted) : a)),
       );
@@ -401,15 +434,7 @@ export const PortfolioProvider = ({ children }: PortfolioProviderProps) => {
   const saveExistingActivity = useCallback(async (item: ActivityItem) => {
     if (item.id <= 0) return;
     try {
-      const updated = await putActivityById(item.id, {
-        title: item.title,
-        description: item.description ?? '',
-        start_date: item.start_date,
-        end_date: item.end_date,
-        category: item.category.trim() || '기타',
-        url: (item.url ?? '').trim(),
-        tags: normalizeActivityTags(item.tags),
-      });
+      const updated = await putActivityById(item.id, activityItemToPutBody(item));
       setActivities(prev =>
         prev.map(a => (a.id === item.id ? apiActivityToItem(updated) : a)),
       );

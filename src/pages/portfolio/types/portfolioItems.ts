@@ -57,6 +57,10 @@ export interface ActivityItem {
   id: number;
   title: string;
   description: string;
+  host: string;
+  role: string;
+  achievements: string;
+  achievements_detail: string;
   start_date: string;
   end_date: string;
   /** 사용자 정의 카테고리 문자열 */

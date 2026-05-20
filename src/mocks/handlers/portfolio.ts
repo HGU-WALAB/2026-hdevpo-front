@@ -181,21 +181,33 @@ export const PortfolioHandlers = [
     const body = (await request.json()) as {
       title: string;
       description: string;
+      host?: string;
+      role?: string;
+      achievements?: string;
+      achievements_detail?: string;
       start_date: string;
       end_date: string;
       category?: string;
       url?: string;
       tags?: string[];
     };
+    const opt = (v: string | undefined) => {
+      const t = (v ?? '').trim();
+      return t === '' ? '' : t;
+    };
     const newItem: ActivityApiItem = {
       id: nextActivityId++,
       title: body.title ?? '',
       description: body.description ?? '',
+      host: opt(body.host),
+      role: opt(body.role),
+      achievements: opt(body.achievements),
+      achievements_detail: opt(body.achievements_detail),
       start_date: body.start_date ?? '',
       end_date: body.end_date ?? '',
       category: (body.category ?? '').trim() || '기타',
       display_order: activitiesStore.length,
-      url: (body.url ?? '').trim(),
+      url: opt(body.url),
       tags: Array.isArray(body.tags)
         ? body.tags.map(t => String(t).trim()).filter(Boolean)
         : [],
@@ -207,13 +219,17 @@ export const PortfolioHandlers = [
   http.patch(BASE_URL + ENDPOINT.PORTFOLIO_ACTIVITIES, async ({ request }) => {
     const body = (await request.json()) as Array<{
       id: number;
-      title: string;
-      description: string;
-      start_date: string;
-      end_date: string;
+      title?: string;
+      description?: string;
+      host?: string | null;
+      role?: string | null;
+      achievements?: string | null;
+      achievements_detail?: string | null;
+      start_date?: string;
+      end_date?: string;
       category?: string;
-      url?: string;
-      tags?: string[];
+      url?: string | null;
+      tags?: string[] | null;
     }>;
     if (!Array.isArray(body)) {
       return HttpResponse.json({ activities: activitiesStore }, { status: 200 });
@@ -221,22 +237,33 @@ export const PortfolioHandlers = [
     for (const item of body) {
       const idx = activitiesStore.findIndex(a => a.id === item.id);
       if (idx !== -1) {
+        const cur = activitiesStore[idx];
+        const clearable = (
+          v: string | null | undefined,
+          prev: string | null | undefined,
+        ) => {
+          if (v === undefined || v === null) return (prev ?? '').trim();
+          return String(v).trim();
+        };
         activitiesStore[idx] = {
-          ...activitiesStore[idx],
-          title: item.title ?? activitiesStore[idx].title,
-          description: item.description ?? activitiesStore[idx].description,
-          start_date: item.start_date ?? activitiesStore[idx].start_date,
-          end_date: item.end_date ?? activitiesStore[idx].end_date,
+          ...cur,
+          title: item.title ?? cur.title,
+          description: item.description ?? cur.description,
+          host: clearable(item.host, cur.host),
+          role: clearable(item.role, cur.role),
+          achievements: clearable(item.achievements, cur.achievements),
+          achievements_detail: clearable(item.achievements_detail, cur.achievements_detail),
+          start_date: item.start_date ?? cur.start_date,
+          end_date: item.end_date ?? cur.end_date,
           category:
             item.category != null && item.category !== ''
               ? item.category
-              : activitiesStore[idx].category,
-          url:
-            item.url !== undefined ? item.url : activitiesStore[idx].url ?? '',
+              : cur.category,
+          url: clearable(item.url, cur.url),
           tags:
-            item.tags !== undefined
+            item.tags !== undefined && item.tags !== null
               ? item.tags.map(t => String(t).trim()).filter(Boolean)
-              : activitiesStore[idx].tags ?? [],
+              : cur.tags ?? [],
         };
       }
     }
@@ -253,6 +280,10 @@ export const PortfolioHandlers = [
       const body = (await request.json()) as {
         title: string;
         description: string;
+        host?: string;
+        role?: string;
+        achievements?: string;
+        achievements_detail?: string;
         start_date: string;
         end_date: string;
         category: string;
@@ -264,14 +295,19 @@ export const PortfolioHandlers = [
         return HttpResponse.json({}, { status: 404 });
       }
       const prev = activitiesStore[idx];
+      const opt = (v: string | undefined) => (v ?? '').trim();
       activitiesStore[idx] = {
         ...prev,
         title: body.title ?? '',
         description: body.description ?? '',
+        host: opt(body.host),
+        role: opt(body.role),
+        achievements: opt(body.achievements),
+        achievements_detail: opt(body.achievements_detail),
         start_date: body.start_date ?? '',
         end_date: body.end_date ?? '',
         category: (body.category ?? '').trim() || '기타',
-        url: (body.url ?? '').trim(),
+        url: opt(body.url),
         tags: Array.isArray(body.tags)
           ? body.tags.map(t => String(t).trim()).filter(Boolean)
           : [],
@@ -287,6 +323,10 @@ export const PortfolioHandlers = [
       const body = (await request.json()) as {
         title?: string;
         description?: string;
+        host?: string | null;
+        role?: string | null;
+        achievements?: string | null;
+        achievements_detail?: string | null;
         start_date?: string;
         end_date?: string;
         category?: string;
@@ -298,20 +338,28 @@ export const PortfolioHandlers = [
         return HttpResponse.json({}, { status: 404 });
       }
       const cur = activitiesStore[idx];
+      const clearable = (
+        v: string | null | undefined,
+        prev: string | null | undefined,
+      ) => {
+        if (v === undefined || v === null) return (prev ?? '').trim();
+        return String(v).trim();
+      };
       activitiesStore[idx] = {
         ...cur,
         title: body.title ?? cur.title,
         description: body.description ?? cur.description,
+        host: clearable(body.host, cur.host),
+        role: clearable(body.role, cur.role),
+        achievements: clearable(body.achievements, cur.achievements),
+        achievements_detail: clearable(body.achievements_detail, cur.achievements_detail),
         start_date: body.start_date ?? cur.start_date,
         end_date: body.end_date ?? cur.end_date,
         category:
           body.category != null && body.category !== ''
             ? body.category
             : cur.category,
-        url:
-          body.url !== undefined && body.url !== null
-            ? body.url
-            : cur.url ?? '',
+        url: clearable(body.url, cur.url),
         tags:
           body.tags !== undefined && body.tags !== null
             ? body.tags.map(t => String(t).trim()).filter(Boolean)

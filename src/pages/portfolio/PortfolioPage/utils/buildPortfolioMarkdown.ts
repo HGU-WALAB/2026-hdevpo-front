@@ -138,14 +138,19 @@ function sectionActivities(activities: ActivityItem[]): string {
   const groups = groupActivitiesByCategory(activities);
   const blocks = groups.map(([cat, groupItems]) => {
     const lines = groupItems.map(a => {
-      const desc = a.description ? ` · ${a.description}` : '';
+      const hostPart = a.host?.trim() ? ` · 주최: ${escapeMarkdown(a.host.trim())}` : '';
+      const rolePart = a.role?.trim() ? ` · 역할: ${escapeMarkdown(a.role.trim())}` : '';
+      const achievementsPart = a.achievements?.trim()
+        ? ` · 성과: ${escapeMarkdown(a.achievements.trim())}`
+        : '';
+      const desc = a.description ? ` · ${escapeMarkdown(a.description)}` : '';
       const urlPart = a.url?.trim()
         ? ` · ${escapeMarkdown(a.url.trim())}`
         : '';
       const tagsPart =
         a.tags?.length ? ` · #${a.tags.map(escapeMarkdown).join(' #')}` : '';
       const period = formatActivityPeriodRange(a.start_date, a.end_date);
-      return `- **${escapeMarkdown(a.title)}** (${escapeMarkdown(period)})${escapeMarkdown(desc)}${urlPart}${tagsPart}`;
+      return `- **${escapeMarkdown(a.title)}** (${escapeMarkdown(period)})${hostPart}${rolePart}${achievementsPart}${desc}${urlPart}${tagsPart}`;
     });
     return `### ${escapeMarkdown(cat)}\n\n${lines.join('\n')}`;
   });

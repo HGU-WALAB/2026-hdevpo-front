@@ -11,6 +11,14 @@ export const INPUT_MAX_LENGTH = {
   ACTIVITY_CATEGORY: 40,
   /** 활동 설명 */
   ACTIVITY_DESCRIPTION: 300,
+  /** 활동 주최 */
+  ACTIVITY_HOST: 255,
+  /** 활동 역할 */
+  ACTIVITY_ROLE: 500,
+  /** 활동 성과 및 결과 */
+  ACTIVITY_ACHIEVEMENTS: 2000,
+  /** 활동 성과 설명 */
+  ACTIVITY_ACHIEVEMENTS_DETAIL: 5000,
   /** 활동 관련 URL */
   ACTIVITY_URL: 2048,
   /** 활동 태그(쉼표로 구분해 입력하는 문자열 전체) */

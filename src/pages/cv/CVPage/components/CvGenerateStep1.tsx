@@ -687,6 +687,9 @@ function ActivitySelectableRow({
     activity.end_date,
   );
   const hasBody =
+    Boolean(activity.host?.trim()) ||
+    Boolean(activity.role?.trim()) ||
+    Boolean(activity.achievements?.trim()) ||
     Boolean(activity.description?.trim()) ||
     Boolean(activity.url?.trim()) ||
     (activity.tags && activity.tags.length > 0);
