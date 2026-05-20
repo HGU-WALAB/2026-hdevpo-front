@@ -12,7 +12,15 @@ import ContentPasteIcon from '@mui/icons-material/ContentPaste';
 import WorkOutlineIcon from '@mui/icons-material/WorkOutline';
 import { Dialog, DialogContent, IconButton, TextField, useTheme } from '@mui/material';
 import { styled } from '@mui/material/styles';
-import { useCallback, useMemo, useState, type FunctionComponent, type SVGProps } from 'react';
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type FunctionComponent,
+  type SVGProps,
+} from 'react';
 
 import { CV_PREVIEW_IFRAME_SANDBOX } from '../../constants/cvPreviewIframeSandbox';
 import { buildCvPreviewSrcDoc } from '../../utils/buildCvPreviewSrcDoc';
@@ -64,6 +72,7 @@ const CvGenerateStep4 = ({
 }: CvGenerateStep4Props) => {
   const theme = useTheme();
   const [htmlExpandOpen, setHtmlExpandOpen] = useState(false);
+  const autoExpandDoneRef = useRef(false);
   const closeHtmlExpand = useCallback(() => setHtmlExpandOpen(false), []);
 
   const sanitizedHtml = useMemo(() => sanitizeCvHtml(htmlInput), [htmlInput]);
@@ -71,6 +80,13 @@ const CvGenerateStep4 = ({
     () => buildCvPreviewSrcDoc(sanitizedHtml),
     [sanitizedHtml],
   );
+
+  /** 4단계 진입 시 미리보기가 있으면 크게 보기 모달 자동 오픈 (1회) */
+  useEffect(() => {
+    if (autoExpandDoneRef.current || !sanitizedHtml.trim()) return;
+    autoExpandDoneRef.current = true;
+    setHtmlExpandOpen(true);
+  }, [sanitizedHtml]);
   const parsedCompany = useMemo(
     () => extractCompanyLineFromJobPosting(jobPosting),
     [jobPosting],
