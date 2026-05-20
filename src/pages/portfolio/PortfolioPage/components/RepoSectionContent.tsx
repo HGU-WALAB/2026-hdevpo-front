@@ -21,7 +21,11 @@ import { useNavigate } from 'react-router-dom';
 import { INPUT_MAX_LENGTH } from '../../constants/inputLimits';
 import type { PatchRepositoryBody } from '../../apis/repositories';
 import { patchRepository } from '../../apis/repositories';
-import { formatRepositoryDisplayDateRange } from '../../utils/date';
+import {
+  formatDateOnly,
+  formatRepositoryDisplayDateRange,
+  resolveRepositoryDurationIso,
+} from '../../utils/date';
 import {
   mergePortfolioRepoPatch,
   usePortfolioContext,
@@ -39,23 +43,6 @@ const ITEMS_PER_PAGE = 4;
 const AddIconWrap: FunctionComponent<SVGProps<SVGSVGElement>> = () => (
   <AddIcon sx={{ fontSize: 18 }} />
 );
-
-/* 표시 기간(선택) UI 복구 시 사용
-function isoToDatetimeLocal(iso: string | undefined | null): string {
-  if (!iso?.trim()) return '';
-  const d = new Date(iso.trim());
-  if (Number.isNaN(d.getTime())) return '';
-  const pad = (n: number) => String(n).padStart(2, '0');
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
-function datetimeLocalToIso(local: string): string {
-  const t = local.trim();
-  if (!t) return '';
-  const d = new Date(t);
-  return Number.isNaN(d.getTime()) ? '' : d.toISOString();
-}
-*/
 
 interface RepoSectionContentProps {
   readOnly?: boolean;
@@ -79,8 +66,8 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
   const [editMyRoleRole, setEditMyRoleRole] = useState('');
   const [editMyRolePercent, setEditMyRolePercent] = useState(0);
   const [editKeyContributions, setEditKeyContributions] = useState('');
-  // const [editDurStart, setEditDurStart] = useState('');
-  // const [editDurEnd, setEditDurEnd] = useState('');
+  const [editDurStart, setEditDurStart] = useState('');
+  const [editDurEnd, setEditDurEnd] = useState('');
   const [submitting, setSubmitting] = useState(false);
 
   const openEdit = useCallback((repo: RepoItem) => {
@@ -105,8 +92,10 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
     setEditMyRoleRole(repo.my_role?.role ?? '');
     setEditMyRolePercent(repo.my_role?.contribution_percent ?? 0);
     setEditKeyContributions(repo.key_contributions ?? '');
-    // setEditDurStart(isoToDatetimeLocal(repo.duration?.started_at));
-    // setEditDurEnd(isoToDatetimeLocal(repo.duration?.updated_at));
+    setEditDurStart(
+      formatDateOnly(resolveRepositoryDurationIso(repo, 'start')),
+    );
+    setEditDurEnd(formatDateOnly(resolveRepositoryDurationIso(repo, 'end')));
   }, []);
 
   const closeEdit = useCallback(() => {
@@ -117,8 +106,8 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
     setEditMyRoleRole('');
     setEditMyRolePercent(0);
     setEditKeyContributions('');
-    // setEditDurStart('');
-    // setEditDurEnd('');
+    setEditDurStart('');
+    setEditDurEnd('');
   }, []);
 
   const addTeamRow = useCallback(() => {
@@ -133,12 +122,12 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
 
   const handleSaveEdit = useCallback(async () => {
     if (editingRepo?.id == null) return;
-    // const ds = datetimeLocalToIso(editDurStart);
-    // const de = datetimeLocalToIso(editDurEnd);
-    // if (ds && de && new Date(ds).getTime() > new Date(de).getTime()) {
-    //   toast.error('표시 시작일은 종료일과 같거나 이전이어야 합니다.');
-    //   return;
-    // }
+    const ds = editDurStart.trim();
+    const de = editDurEnd.trim();
+    if (ds && de && ds > de) {
+      toast.error('표시 시작일은 종료일과 같거나 이전이어야 합니다.');
+      return;
+    }
     setSubmitting(true);
     try {
       const teamPayload = editTeam
@@ -168,10 +157,10 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
         team_composition: teamPayload,
         my_role: myRolePayload,
         key_contributions: editKeyContributions.trim() || null,
-        // duration: {
-        //   started_at: ds,
-        //   updated_at: de,
-        // },
+        duration: {
+          started_at: ds,
+          updated_at: de,
+        },
       };
 
       const res = await patchRepository(editingRepo.id, patchBody);
@@ -197,6 +186,8 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
     editMyRoleRole,
     editMyRolePercent,
     editKeyContributions,
+    editDurStart,
+    editDurEnd,
     setRepos,
     closeEdit,
   ]);
@@ -543,19 +534,8 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
                     </Text>
                   </Flex.Column>
 
-                  {/* 표시 기간(선택) — UI 일시 비활성화 (복구 시 editDurStart/editDurEnd 상태·handleSaveEdit duration·헬퍼 주석 해제)
                   <Flex.Column gap="0.35rem" style={{ width: '100%' }}>
-                    <S.FieldLabel>표시 기간 (선택)</S.FieldLabel>
-                    <Text
-                      margin="0"
-                      style={{
-                        ...theme.typography.caption,
-                        color: theme.palette.grey[600],
-                      }}
-                    >
-                      비우면 GitHub 저장소 생성·수정일을 그대로 표시합니다. 값을
-                      넣으면 카드에 해당 기간이 표시됩니다.
-                    </Text>
+                    <S.FieldLabel>표시 기간</S.FieldLabel>
                     <Flex.Row
                       gap="0.5rem"
                       wrap="wrap"
@@ -565,13 +545,13 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
                         style={{ flex: '1 1 11rem', minWidth: 0 }}
                       >
                         <Input
-                          type="datetime-local"
+                          type="date"
                           value={editDurStart}
                           onChange={e => setEditDurStart(e.target.value)}
                           size="small"
                           fullWidth
                           inputProps={{
-                            'aria-label': '표시 시작 일시',
+                            'aria-label': '표시 시작일',
                           }}
                           sx={{
                             '& .MuiOutlinedInput-root': {
@@ -584,13 +564,13 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
                         style={{ flex: '1 1 11rem', minWidth: 0 }}
                       >
                         <Input
-                          type="datetime-local"
+                          type="date"
                           value={editDurEnd}
                           onChange={e => setEditDurEnd(e.target.value)}
                           size="small"
                           fullWidth
                           inputProps={{
-                            'aria-label': '표시 종료 일시',
+                            'aria-label': '표시 종료일',
                           }}
                           sx={{
                             '& .MuiOutlinedInput-root': {
@@ -601,7 +581,6 @@ const RepoSectionContent = ({ readOnly = false }: RepoSectionContentProps) => {
                       </Flex.Column>
                     </Flex.Row>
                   </Flex.Column>
-                  */}
 
                   <Flex.Row gap="0.5rem" justify="flex-end" wrap="wrap">
                     <Button

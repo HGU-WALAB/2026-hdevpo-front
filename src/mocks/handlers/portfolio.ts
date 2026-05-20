@@ -40,7 +40,13 @@ const activitiesStore: ActivityApiItem[] = mockActivitiesResponse.map(a => ({
 let nextActivityId = Math.max(0, ...activitiesStore.map(a => a.id)) + 1;
 
 const repositoriesStore: PortfolioRepositoryItem[] = mockPortfolioRepositories.map(
-  r => ({ ...r }),
+  r => ({
+    ...r,
+    duration: r.duration ?? {
+      started_at_github: r.created_at,
+      updated_at_github: r.updated_at,
+    },
+  }),
 );
 let nextRepoId = Math.max(0, ...repositoriesStore.map(r => r.id)) + 1;
 
