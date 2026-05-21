@@ -266,8 +266,13 @@ const ActivitiesSectionContent = forwardRef<
   const renderActivityView = (item: ActivityItem) => {
     const period = formatActivityPeriodRange(item.start_date, item.end_date);
     const tags = dedupeActivityTags(item.tags);
+    const achievementSummary = item.achievements?.trim() ?? '';
+    const achievementDetail = item.achievements_detail?.trim() ?? '';
     const hasDetailPanel = Boolean(
-      item.host?.trim() || item.role?.trim() || item.achievements?.trim(),
+      item.host?.trim() ||
+        item.role?.trim() ||
+        achievementSummary ||
+        achievementDetail,
     );
     const showEmptyHint =
       !item.description?.trim() &&
@@ -321,8 +326,14 @@ const ActivitiesSectionContent = forwardRef<
             {item.role?.trim() ? (
               <ActivityDetailRow label="역할" value={item.role.trim()} />
             ) : null}
-            {item.achievements?.trim() ? (
-              <ActivityDetailRow label="성과" value={item.achievements.trim()} />
+            {achievementSummary ? (
+              <ActivityDetailRow label="성과 및 결과" value={achievementSummary} />
+            ) : null}
+            {achievementDetail ? (
+              <ActivityDetailRow
+                label={achievementSummary ? '성과 설명' : '성과'}
+                value={achievementDetail}
+              />
             ) : null}
           </S.DetailPanel>
         ) : null}
