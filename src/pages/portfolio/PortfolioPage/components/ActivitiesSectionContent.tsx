@@ -1094,30 +1094,31 @@ const S = {
     background-color: ${palette.blue300};
     box-sizing: border-box;
   `,
-  DetailRow: styled(Flex.Row)`
-    display: flex;
-    flex-direction: row;
-    align-items: flex-start;
-    gap: 0.65rem;
+  DetailRow: styled('div')`
+    display: grid;
+    grid-template-columns: minmax(5.75rem, auto) minmax(0, 1fr);
+    align-items: start;
+    gap: 0.65rem 0.75rem;
     width: 100%;
     min-width: 0;
   `,
   DetailLabel: styled('span')`
-    flex: 0 0 2.25rem;
     font-size: 0.6875rem;
     font-weight: 700;
     line-height: 1.45;
     color: ${palette.blue600};
     letter-spacing: 0.02em;
+    word-break: keep-all;
+    white-space: nowrap;
   `,
   DetailValue: styled('span')`
-    flex: 1 1 auto;
     min-width: 0;
     font-size: 0.8125rem;
     font-weight: 500;
     line-height: 1.5;
     color: ${palette.nearBlack};
     word-break: break-word;
+    overflow-wrap: anywhere;
   `,
   BodyText: styled('p')`
     margin: 0;
